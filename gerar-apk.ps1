@@ -7,7 +7,12 @@ Write-Host "====================================================" -ForegroundCol
 
 Write-Host "`n[1/3] Building TypeScript/Vite bundle and syncing Capacitor Android..." -ForegroundColor Yellow
 npm run build
-npx cap sync android
+try {
+    npx cap sync android
+} catch {
+    Write-Host "Retry sync..." -ForegroundColor Yellow
+    npx cap sync android
+}
 
 $DefaultSdk = "$env:LOCALAPPDATA\Android\Sdk"
 $env:ANDROID_HOME = $DefaultSdk
@@ -26,9 +31,9 @@ New-Item -ItemType Directory -Force -Path $TempBuildDir | Out-Null
 robocopy (Join-Path $PSScriptRoot "node_modules\@capacitor") "$TempBuildDir\node_modules\@capacitor" /E /NFL /NDL /NJH /NJS | Out-Null
 robocopy (Join-Path $PSScriptRoot "android") "$TempBuildDir\android" /E /XD build .gradle /NFL /NDL /NJH /NJS | Out-Null
 
-Write-Host "`n[3/3] Compiling APK via Gradle (assembleDebug)..." -ForegroundColor Yellow
+Write-Host "`n[3/3] Compiling APK via Gradle (assembleDebug --no-daemon)..." -ForegroundColor Yellow
 Push-Location "$TempBuildDir\android"
-.\gradlew.bat assembleDebug
+.\gradlew.bat assembleDebug --no-daemon
 Pop-Location
 
 $ApkSource = "$TempBuildDir\android\app\build\outputs\apk\debug\app-debug.apk"

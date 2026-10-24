@@ -480,6 +480,20 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         desc: 'Balde de ferro ultra resistente. Nepentes Ácida (☣️) derrete sua armadura 2x mais rápido!'
       },
       {
+        variant: 'rubber_hazard',
+        name: 'Zumbi Isolador Emborrachado',
+        hp: 440,
+        speedText: 'Normal (Lama: 85%)',
+        desc: '⚡ IMUNE A RAIOS! Traje de borracha dissipa choques elétricos (0 dano). VULNERÁVEL: ☣️ Ácido (+160% de dano) e 🔥 Fogo derretem a borracha!'
+      },
+      {
+        variant: 'pyro_scavenger',
+        name: 'Zumbi Lança-Chamas de Sucata',
+        hp: 490,
+        speedText: 'Normal',
+        desc: '🔥 Dispara jatos térmicos que incineram plantas de Natureza com dano duplo! CONTRA-ATAQUE: 💧 Água apaga o maçarico e atordoa por 2.8s!'
+      },
+      {
         variant: 'gargantuar',
         name: 'Titã Devorador (Sub-Chefe)',
         hp: 1450,
@@ -575,6 +589,14 @@ function startLevel(level: LevelConfig): void {
   currentLevel = level;
   ProgressionManager.setCurrentLevel(level.id);
 
+  if (level.world === 2) {
+    const swamp = BIOME_CATALOG.find((b) => b.id === 'bioluminescent_swamp');
+    if (swamp) draftBiome = swamp;
+  } else {
+    const garden = BIOME_CATALOG.find((b) => b.id === 'sunny_garden') || BIOME_CATALOG[0];
+    draftBiome = garden;
+  }
+
   const progress = ProgressionManager.getProgress();
   draftDeckIds = draftDeckIds.filter((id) => progress.unlockedPlants.includes(id));
   if (draftDeckIds.length === 0) {
@@ -658,7 +680,33 @@ function renderLevelsGrid(): void {
   const progress = ProgressionManager.getProgress();
   levelsGridEl.innerHTML = '';
 
+  let lastWorld = 0;
+
   for (const lvl of LEVEL_CATALOG) {
+    if (lvl.world !== lastWorld) {
+      lastWorld = lvl.world;
+      const worldHeader = document.createElement('div');
+      worldHeader.className = 'level-world-header';
+      worldHeader.style.gridColumn = '1 / -1';
+      worldHeader.style.margin = '12px 0 6px 0';
+      worldHeader.style.padding = '8px 14px';
+      worldHeader.style.borderRadius = '8px';
+      worldHeader.style.background =
+        lvl.world === 1
+          ? 'linear-gradient(90deg, rgba(22, 101, 52, 0.85), rgba(20, 83, 45, 0.35))'
+          : 'linear-gradient(90deg, rgba(15, 118, 110, 0.85), rgba(13, 148, 136, 0.35))';
+      worldHeader.style.borderLeft = lvl.world === 1 ? '4px solid #4ade80' : '4px solid #2dd4bf';
+      worldHeader.style.fontWeight = 'bold';
+      worldHeader.style.fontSize = '0.94rem';
+      worldHeader.style.color = '#f0fdf4';
+      worldHeader.style.letterSpacing = '0.5px';
+      worldHeader.innerHTML =
+        lvl.world === 1
+          ? '🏡 MUNDO 1: JARDIM DIURNO & FRONTAL'
+          : '🍄 MUNDO 2: PÂNTANO BIOLUMINESCENTE';
+      levelsGridEl.appendChild(worldHeader);
+    }
+
     const isUnlocked = lvl.id <= progress.maxUnlockedLevelId;
     const isCurrent = lvl.id === currentLevel.id;
     const card = document.createElement('div');

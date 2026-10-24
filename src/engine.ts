@@ -47,7 +47,9 @@ export type ZombieVariant =
   | 'bucket'
   | 'cyber_sprinter'
   | 'gargantuar'
-  | 'zomboss_mech';
+  | 'zomboss_mech'
+  | 'rubber_hazard'
+  | 'pyro_scavenger';
 
 export interface ZombieEntity {
   id: number;
@@ -73,6 +75,9 @@ export interface ZombieEntity {
   // PvZ 1 Dismemberment flags
   lostHeadgear: boolean;
   lostArm: boolean;
+  // Special tactical abilities
+  flameTimer?: number;
+  torchDoused?: boolean;
 }
 
 export interface PhysicsDebris {
@@ -334,6 +339,15 @@ export class GameEngine {
       this.tiles[r][c].hazardTimer = 999;
     }
 
+    if (this.currentBiome.id === 'bioluminescent_swamp') {
+      for (let i = 0; i < 4; i++) {
+        const r = activeLanes[i % activeLanes.length];
+        const c = 2 + ((i * 2 + 1) % 6);
+        this.tiles[r][c].hazard = 'swamp_mud';
+        this.tiles[r][c].hazardTimer = 999;
+      }
+    }
+
     this.plants = [];
     this.zombies = [];
     this.projectiles = [];
@@ -426,7 +440,8 @@ export class GameEngine {
           r,
           c,
           this.weather === 'night_storm',
-          this.weather === 'rain'
+          this.weather === 'rain',
+          this.weather === 'spore_fog' || this.currentBiome.id === 'bioluminescent_swamp'
         );
 
         if (!isAvailable) {
@@ -981,6 +996,41 @@ export class GameEngine {
       z.isEating = false;
       if (z.frozenTimer <= 0 && z.stunTimer <= 0) {
         const chillMult = z.chilledTimer > 0 ? 0.5 : 1.0;
+
+        // Swamp Mud hazard deceleration on zombies
+        const currentTileCol = Math.floor(z.x);
+        let mudSpeedMult = 1.0;
+        if (
+          currentTileCol >= 0 &&
+          currentTileCol < GRID_COLS &&
+          this.tiles[z.row][currentTileCol]?.hazard === 'swamp_mud'
+        ) {
+          mudSpeedMult = z.variant === 'rubber_hazard' ? 0.85 : 0.6;
+        }
+
+        // Pyro Scavenger Flamethrower Attack
+        if (z.variant === 'pyro_scavenger' && !z.torchDoused) {
+          const aheadPlant = this.plants.find(
+            (p) => p.row === z.row && z.x - (p.col + 0.5) > 0.3 && z.x - (p.col + 0.5) <= 1.8
+          );
+          if (aheadPlant) {
+            const isNature =
+              aheadPlant.def.element === 'nature' ||
+              aheadPlant.def.id === 'sunflower' ||
+              aheadPlant.def.id === 'peashooter' ||
+              aheadPlant.def.id === 'wallnut';
+            const flameDps = isNature ? 115 : 65;
+            aheadPlant.hp -= flameDps * dt;
+            if (Math.random() < 0.25) {
+              this.spawnParticles(aheadPlant.col + 0.5, aheadPlant.row + 0.5, '#f97316', 3);
+            }
+            if (aheadPlant.hp <= 0) {
+              const pIdx = this.plants.indexOf(aheadPlant);
+              if (pIdx !== -1) this.plants.splice(pIdx, 1);
+            }
+          }
+        }
+
         const targetPlant = this.plants.find(
           (p) => p.row === z.row && Math.abs(z.x - (p.col + 0.55)) < 0.38
         );
@@ -999,7 +1049,7 @@ export class GameEngine {
             if (pIdx !== -1) this.plants.splice(pIdx, 1);
           }
         } else {
-          z.x -= z.speed * chillMult * dt;
+          z.x -= z.speed * chillMult * mudSpeedMult * dt;
           z.walkPhase += dt * (z.chilledTimer > 0 ? 3 : 6);
         }
       }
@@ -1188,6 +1238,36 @@ export class GameEngine {
   ): void {
     target.hitFlash = 1.0;
     let finalDamage = baseDamage;
+
+    // TACTICAL COUNTER 1: RUBBER HAZARD ZOMBIE (Insulated against Electric)
+    if (target.variant === 'rubber_hazard') {
+      if (element === 'electric') {
+        target.stunTimer = 0;
+        this.spawnFloatingText('🛡️ ISOLADO (0⚡)!', target.x, target.row + 0.15, '#facc15', 1.05);
+        this.spawnParticles(target.x, target.row + 0.5, '#eab308', 6);
+        return; // Complete immunity to electricity!
+      } else if (element === 'toxin') {
+        finalDamage = Math.floor(baseDamage * 2.6);
+        this.spawnFloatingText('🧪 BORRACHA DISSOLVIDA!', target.x, target.row + 0.15, '#a3e635', 1.25);
+      } else if (element === 'fire') {
+        finalDamage = Math.floor(baseDamage * 1.6);
+        target.burnTimer = 7.0;
+        this.spawnFloatingText('🔥 BORRACHA EM CHAMAS!', target.x, target.row + 0.15, '#f97316', 1.15);
+      }
+    }
+
+    // TACTICAL COUNTER 2: PYRO SCAVENGER ZOMBIE (Doused by Water)
+    if (target.variant === 'pyro_scavenger') {
+      if (element === 'water') {
+        target.torchDoused = true;
+        target.stunTimer = 2.8;
+        target.burnTimer = 0;
+        this.spawnFloatingText('💨 TOCHA APAGADA!', target.x, target.row + 0.15, '#38bdf8', 1.35);
+        this.spawnParticles(target.x, target.row + 0.5, '#94a3b8', 16);
+      } else if (element === 'ice') {
+        finalDamage = Math.floor(baseDamage * 1.5);
+      }
+    }
 
     // 1. WATER APPLICATION
     if (element === 'water') {
@@ -1533,6 +1613,20 @@ export class GameEngine {
       hp = 1450;
       speed = 0.19;
       damage = 95;
+    } else if (type === 'rubber_hazard') {
+      variant = 'rubber_hazard';
+      name = 'Zumbi Isolador';
+      emoji = '⚡';
+      hp = 440;
+      speed = 0.26;
+      damage = 32;
+    } else if (type === 'pyro_scavenger') {
+      variant = 'pyro_scavenger';
+      name = 'Zumbi Lança-Chamas';
+      emoji = '🔥';
+      hp = 490;
+      speed = 0.27;
+      damage = 45;
     }
 
     this.zombies.push({
@@ -1831,6 +1925,44 @@ export class GameEngine {
           ctx.lineWidth = 2;
           ctx.strokeStyle = '#bef264';
           ctx.stroke();
+          ctx.restore();
+        } else if (tile.hazard === 'swamp_mud') {
+          ctx.save();
+          ctx.beginPath();
+          ctx.ellipse(
+            x + this.cellW * 0.5,
+            y + this.cellH * 0.58,
+            this.cellW * 0.42,
+            this.cellH * 0.28,
+            0,
+            0,
+            Math.PI * 2
+          );
+          ctx.fillStyle = 'rgba(20, 83, 45, 0.72)';
+          ctx.fill();
+          ctx.lineWidth = 1.8;
+          ctx.strokeStyle = 'rgba(45, 212, 191, 0.45)';
+          ctx.stroke();
+
+          // Bioluminescent swamp bubbles
+          const bubblePhase = (performance.now() * 0.003 + r * 2 + c) % Math.PI;
+          ctx.fillStyle = '#2dd4bf';
+          ctx.beginPath();
+          ctx.arc(
+            x + this.cellW * 0.4,
+            y + this.cellH * 0.5 - Math.sin(bubblePhase) * 4,
+            2.5,
+            0,
+            Math.PI * 2
+          );
+          ctx.arc(
+            x + this.cellW * 0.65,
+            y + this.cellH * 0.62 - Math.cos(bubblePhase) * 3,
+            2,
+            0,
+            Math.PI * 2
+          );
+          ctx.fill();
           ctx.restore();
         }
 

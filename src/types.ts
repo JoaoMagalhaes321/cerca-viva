@@ -9,7 +9,7 @@ export type ElementType =
   | 'toxin'
   | 'explosive';
 
-export type WeatherType = 'sunny' | 'rain' | 'night_storm';
+export type WeatherType = 'sunny' | 'rain' | 'night_storm' | 'spore_fog';
 
 export type TileHazard =
   | 'none'
@@ -17,7 +17,8 @@ export type TileHazard =
   | 'electrified_puddle'
   | 'scorched'
   | 'ice_patch'
-  | 'toxic_pool';
+  | 'toxic_pool'
+  | 'swamp_mud';
 
 export interface PlantDefinition {
   id: string;
@@ -53,7 +54,15 @@ export interface BiomeDefinition {
   defaultWeather: WeatherType;
   puddlesCount: number;
   toxicCount: number;
-  zombiePreviews: ('basic' | 'cone' | 'bucket' | 'cyber_sprinter' | 'gargantuar')[];
+  zombiePreviews: (
+    | 'basic'
+    | 'cone'
+    | 'bucket'
+    | 'cyber_sprinter'
+    | 'gargantuar'
+    | 'rubber_hazard'
+    | 'pyro_scavenger'
+  )[];
   description: string;
 }
 
@@ -128,6 +137,19 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     toxicCount: 4,
     zombiePreviews: ['cone', 'cyber_sprinter', 'bucket', 'gargantuar'],
     description: 'Noite de tempestade com resíduos bioquímicos no solo. Queda de Sol reduzida; use Girassóis e Fogo!'
+  },
+  {
+    id: 'bioluminescent_swamp',
+    name: '4. Pântano Bioluminescente',
+    subtitle: 'Névoa de Esporos & Lodo Desacelerador',
+    icon: '🍄',
+    startingSun: 225,
+    maxWaves: 7,
+    defaultWeather: 'spore_fog',
+    puddlesCount: 3,
+    toxicCount: 2,
+    zombiePreviews: ['rubber_hazard', 'pyro_scavenger', 'cone', 'bucket'],
+    description: 'Pântano sombrio repleto de névoa fluorescente e lodo denso. Zumbis com trajes isoladores e lança-chamas exigem contra-ataque de Ácido e Água!'
   }
 ];
 

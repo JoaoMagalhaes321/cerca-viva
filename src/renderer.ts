@@ -14,12 +14,16 @@ export class CharacterRenderer {
     row: number,
     col: number,
     isNight: boolean,
-    isRain: boolean
+    isRain: boolean,
+    isSwamp: boolean = false
   ): void {
     const isEven = (row + col) % 2 === 0;
 
     const grad = ctx.createLinearGradient(x, y, x, y + h);
-    if (isNight) {
+    if (isSwamp) {
+      grad.addColorStop(0, isEven ? '#042f2e' : '#022c22');
+      grad.addColorStop(1, isEven ? '#061c17' : '#031410');
+    } else if (isNight) {
       grad.addColorStop(0, isEven ? '#163a30' : '#122f27');
       grad.addColorStop(1, isEven ? '#0f2922' : '#0c211b');
     } else if (isRain) {
@@ -33,13 +37,15 @@ export class CharacterRenderer {
     ctx.fillStyle = grad;
     ctx.fillRect(x, y, w, h);
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.05)';
+    ctx.strokeStyle = isSwamp ? 'rgba(45, 212, 191, 0.15)' : 'rgba(255, 255, 255, 0.05)';
     ctx.lineWidth = 1;
     ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
 
     const seed = (row * 17 + col * 31) % 10;
     ctx.save();
-    ctx.strokeStyle = isNight
+    ctx.strokeStyle = isSwamp
+      ? 'rgba(45, 212, 191, 0.4)'
+      : isNight
       ? 'rgba(52, 211, 153, 0.22)'
       : 'rgba(134, 239, 172, 0.28)';
     ctx.lineWidth = 2;
@@ -53,6 +59,30 @@ export class CharacterRenderer {
     ctx.moveTo(gx, gy);
     ctx.quadraticCurveTo(gx + 3, gy - 8, gx + 5, gy - 11);
     ctx.stroke();
+
+    // Swamp details: glowing mini mushroom sprouts or ripples
+    if (isSwamp) {
+      if (seed % 3 === 0) {
+        const mx = x + w * 0.72;
+        const my = y + h * 0.62;
+        ctx.fillStyle = 'rgba(20, 184, 166, 0.9)';
+        ctx.beginPath();
+        ctx.arc(mx, my - 4, 3.5, Math.PI, 0);
+        ctx.fill();
+        ctx.strokeStyle = '#99f6e4';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.moveTo(mx, my - 4);
+        ctx.lineTo(mx, my);
+        ctx.stroke();
+      } else {
+        ctx.strokeStyle = 'rgba(20, 184, 166, 0.22)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(x + w * 0.5, y + h * 0.7, w * 0.26, 4, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    }
 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
     ctx.fillRect(x, y + h - 5, w, 5);
@@ -277,6 +307,12 @@ export class CharacterRenderer {
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
       ctx.arc(ex + 1.2, -1.6, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Secondary micro-reflection (Pixar/anime glossy eye depth)
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
+      ctx.beginPath();
+      ctx.arc(ex - 1.0, 1.3, 0.8, 0, Math.PI * 2);
       ctx.fill();
 
       if (angry) {
@@ -965,13 +1001,32 @@ export class CharacterRenderer {
     ctx.lineTo(-22, -30 + armBob);
     ctx.stroke();
 
+    // Back gas tank for Pyro Scavenger
+    if (z.variant === 'pyro_scavenger') {
+      ctx.save();
+      ctx.fillStyle = '#b91c1c';
+      ctx.strokeStyle = '#450a0a';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.roundRect(8, -42, 9, 22, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#94a3b8';
+      ctx.fillRect(9, -45, 7, 3);
+      ctx.restore();
+    }
+
     // Torso
     const coatColor =
       z.variant === 'cyber_sprinter'
         ? '#0284c7'
-        : isBoss
-          ? '#3f3f46'
-          : '#334155';
+        : z.variant === 'rubber_hazard'
+          ? '#eab308'
+          : z.variant === 'pyro_scavenger'
+            ? '#78350f'
+            : isBoss
+              ? '#3f3f46'
+              : '#334155';
     ctx.fillStyle = coatColor;
     ctx.strokeStyle = '#0f172a';
     ctx.lineWidth = 2.4;
@@ -980,15 +1035,34 @@ export class CharacterRenderer {
     ctx.fill();
     ctx.stroke();
 
-    // Red Tie
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.moveTo(-2, -35);
-    ctx.lineTo(-6, -21);
-    ctx.lineTo(-1, -18);
-    ctx.lineTo(2, -21);
-    ctx.closePath();
-    ctx.fill();
+    if (z.variant === 'rubber_hazard') {
+      // Black & Yellow Hazard caution stripes on torso
+      ctx.save();
+      ctx.beginPath();
+      ctx.roundRect(-11, -38, 22, 24, 6);
+      ctx.clip();
+      ctx.strokeStyle = '#18181b';
+      ctx.lineWidth = 3.5;
+      for (let s = -30; s <= 20; s += 8) {
+        ctx.beginPath();
+        ctx.moveTo(-15 + s, -40);
+        ctx.lineTo(5 + s, -12);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    // Red Tie (only for office zombies)
+    if (z.variant !== 'rubber_hazard' && z.variant !== 'pyro_scavenger') {
+      ctx.fillStyle = '#dc2626';
+      ctx.beginPath();
+      ctx.moveTo(-2, -35);
+      ctx.lineTo(-6, -21);
+      ctx.lineTo(-1, -18);
+      ctx.lineTo(2, -21);
+      ctx.closePath();
+      ctx.fill();
+    }
 
     // Front Zombie Arm (Only drawn if not yet severed by damage!)
     if (!z.lostArm) {
@@ -1004,6 +1078,53 @@ export class CharacterRenderer {
       ctx.beginPath();
       ctx.arc(5, -31, 4, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    // Weapon: Scrap Flamethrower for Pyro Scavenger
+    if (z.variant === 'pyro_scavenger') {
+      ctx.save();
+      ctx.translate(-19, -25 - armBob);
+      // Metal scrap blowtorch
+      ctx.strokeStyle = '#57534e';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(-22, 4);
+      ctx.stroke();
+
+      // Nozzle flare
+      ctx.fillStyle = '#292524';
+      ctx.beginPath();
+      ctx.moveTo(-22, 1);
+      ctx.lineTo(-28, -2);
+      ctx.lineTo(-28, 10);
+      ctx.lineTo(-22, 7);
+      ctx.closePath();
+      ctx.fill();
+
+      if (!z.torchDoused) {
+        // Flickering flamethrower pilot flame
+        const flameLen = 12 + Math.sin(performance.now() * 0.04) * 6;
+        const flm = ctx.createLinearGradient(-28, 4, -28 - flameLen, 4);
+        flm.addColorStop(0, '#fef08a');
+        flm.addColorStop(0.4, '#f97316');
+        flm.addColorStop(1, 'rgba(239, 68, 68, 0)');
+        ctx.fillStyle = flm;
+        ctx.beginPath();
+        ctx.moveTo(-28, 1);
+        ctx.lineTo(-28 - flameLen, 4);
+        ctx.lineTo(-28, 7);
+        ctx.closePath();
+        ctx.fill();
+      } else {
+        // Doused smoke puffs
+        ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
+        ctx.beginPath();
+        ctx.arc(-32, 2, 3.5, 0, Math.PI * 2);
+        ctx.arc(-37, 0, 5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.restore();
     }
 
     if (isBoss) {
@@ -1103,6 +1224,68 @@ export class CharacterRenderer {
         ctx.roundRect(-13, -6, 16, 6, 3);
         ctx.fill();
         ctx.stroke();
+      } else if (z.variant === 'rubber_hazard') {
+        // Yellow rubber hazmat hood
+        ctx.fillStyle = '#ca8a04';
+        ctx.strokeStyle = '#713f12';
+        ctx.lineWidth = 2.2;
+        ctx.beginPath();
+        ctx.arc(0, -6, 15, Math.PI, 0);
+        ctx.fill();
+        ctx.stroke();
+
+        // Protective dark visor
+        ctx.fillStyle = '#09090b';
+        ctx.fillRect(-10, -7, 20, 8);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 1.4;
+        ctx.strokeRect(-10, -7, 20, 8);
+
+        // Grounding rod with blue electric sparks
+        ctx.strokeStyle = '#ea580c';
+        ctx.lineWidth = 2.8;
+        ctx.beginPath();
+        ctx.moveTo(0, -18);
+        ctx.lineTo(0, -32);
+        ctx.stroke();
+
+        ctx.fillStyle = '#f97316';
+        ctx.beginPath();
+        ctx.arc(0, -33, 3.5, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Spark effect
+        const sparkTime = performance.now() * 0.01;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(-4, -32 + Math.sin(sparkTime) * 3);
+        ctx.lineTo(4, -34 - Math.sin(sparkTime) * 3);
+        ctx.stroke();
+      } else if (z.variant === 'pyro_scavenger') {
+        // Scrap welding mask with molten glowing eye slit
+        ctx.fillStyle = '#292524';
+        ctx.strokeStyle = '#44403c';
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.roundRect(-14, -13, 27, 25, 4);
+        ctx.fill();
+        ctx.stroke();
+
+        // Glowing molten slit
+        ctx.fillStyle = z.torchDoused ? '#57534e' : '#f97316';
+        ctx.beginPath();
+        ctx.roundRect(-10, -5, 19, 4.5, 2);
+        ctx.fill();
+
+        // Welder rivets
+        ctx.fillStyle = '#a8a29e';
+        [-11, 10].forEach((rx) => {
+          ctx.beginPath();
+          ctx.arc(rx, -9, 1.8, 0, Math.PI * 2);
+          ctx.arc(rx, 7, 1.8, 0, Math.PI * 2);
+          ctx.fill();
+        });
       } else if (isBoss) {
         ctx.fillStyle = '#27272a';
         ctx.beginPath();

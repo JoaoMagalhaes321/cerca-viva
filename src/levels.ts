@@ -256,7 +256,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     name: 'Fase 1-10: Dr. Zomboss Mecha-Titã',
     initialSun: 350,
     availableLanes: 5,
-    unlockedPlantOnClear: undefined, // Vitória completa do modo Aventura!
+    unlockedPlantOnClear: undefined, // Vitória do Mundo 1!
     spawns: createSpawns([
       { time: 5, type: 'cone' },
       { time: 14, type: 'bucket' },
@@ -268,6 +268,137 @@ export const LEVEL_CATALOG: LevelConfig[] = [
       { time: 100, type: 'gargantuar', lane: 3 },
       { time: 120, type: 'cyber_sprinter' },
       { time: 135, type: 'bucket' }
+    ])
+  },
+
+  // ==========================================
+  // MUNDO 2: PÂNTANO BIOLUMINESCENTE
+  // ==========================================
+
+  // NÍVEL 2-1: O Pântano das Névoas
+  // Introdução do Zumbi Isolador Emborrachado (rubber_hazard). Imune a Junco Tesla!
+  {
+    id: 11,
+    world: 2,
+    stage: 1,
+    name: 'Fase 2-1: O Pântano das Névoas',
+    initialSun: 225,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 10, type: 'basic' },
+      { time: 22, type: 'rubber_hazard' },
+      { time: 36, type: 'cone' },
+      { time: 48, type: 'rubber_hazard' },
+      { time: 60, type: 'bucket' },
+      { time: 72, type: 'rubber_hazard' },
+      { time: 84, type: 'cyber_sprinter' },
+      { time: 96, type: 'rubber_hazard' },
+      { time: 108, type: 'cone' },
+      { time: 118, type: 'rubber_hazard' },
+      { time: 124, type: 'bucket' }
+    ])
+  },
+
+  // NÍVEL 2-2: Incêndio no Lodo
+  // Introdução do Zumbi Lança-Chamas de Sucata (pyro_scavenger). Queima plantas; use Aquashooter!
+  {
+    id: 12,
+    world: 2,
+    stage: 2,
+    name: 'Fase 2-2: Incêndio no Lodo',
+    initialSun: 225,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 10, type: 'basic' },
+      { time: 20, type: 'pyro_scavenger' },
+      { time: 34, type: 'cone' },
+      { time: 46, type: 'pyro_scavenger' },
+      { time: 58, type: 'bucket' },
+      { time: 70, type: 'pyro_scavenger' },
+      { time: 82, type: 'cyber_sprinter' },
+      { time: 94, type: 'pyro_scavenger' },
+      { time: 106, type: 'cone' },
+      { time: 116, type: 'pyro_scavenger' },
+      { time: 120, type: 'bucket' }
+    ])
+  },
+
+  // NÍVEL 2-3: Fogo e Borracha
+  // Ataque tático misto: Isoladores + Lança-chamas + Corredores.
+  {
+    id: 13,
+    world: 2,
+    stage: 3,
+    name: 'Fase 2-3: Fogo e Borracha',
+    initialSun: 250,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'rubber_hazard' },
+      { time: 18, type: 'pyro_scavenger' },
+      { time: 28, type: 'cyber_sprinter' },
+      { time: 40, type: 'rubber_hazard' },
+      { time: 50, type: 'pyro_scavenger' },
+      { time: 62, type: 'bucket' },
+      { time: 74, type: 'rubber_hazard' },
+      { time: 86, type: 'pyro_scavenger' },
+      { time: 96, type: 'cyber_sprinter' },
+      { time: 108, type: 'rubber_hazard' },
+      { time: 118, type: 'pyro_scavenger' },
+      { time: 124, type: 'bucket' }
+    ])
+  },
+
+  // NÍVEL 2-4: Esporos Densos
+  // Horda contínua através da lama do pântano.
+  {
+    id: 14,
+    world: 2,
+    stage: 4,
+    name: 'Fase 2-4: Esporos Densos',
+    initialSun: 250,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'cone' },
+      { time: 16, type: 'rubber_hazard' },
+      { time: 26, type: 'pyro_scavenger' },
+      { time: 38, type: 'cyber_sprinter' },
+      { time: 48, type: 'bucket' },
+      { time: 58, type: 'rubber_hazard' },
+      { time: 68, type: 'pyro_scavenger' },
+      { time: 78, type: 'cyber_sprinter' },
+      { time: 88, type: 'bucket' },
+      { time: 98, type: 'rubber_hazard' },
+      { time: 108, type: 'pyro_scavenger' },
+      { time: 118, type: 'cyber_sprinter' },
+      { time: 126, type: 'bucket' },
+      { time: 132, type: 'rubber_hazard' }
+    ])
+  },
+
+  // NÍVEL 2-5: O Cerco no Pântano
+  // Clímax do Mundo 2: Ataque combinado com Titãs Devoradores, Lança-chamas e Isoladores!
+  {
+    id: 15,
+    world: 2,
+    stage: 5,
+    name: 'Fase 2-5: O Cerco no Pântano',
+    initialSun: 325,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 6, type: 'rubber_hazard' },
+      { time: 16, type: 'pyro_scavenger' },
+      { time: 26, type: 'cyber_sprinter' },
+      { time: 38, type: 'bucket' },
+      { time: 50, type: 'gargantuar', lane: 2 },
+      { time: 66, type: 'rubber_hazard' },
+      { time: 76, type: 'pyro_scavenger' },
+      { time: 88, type: 'cyber_sprinter' },
+      { time: 98, type: 'bucket' },
+      { time: 108, type: 'gargantuar', lane: 3 },
+      { time: 120, type: 'pyro_scavenger' },
+      { time: 126, type: 'rubber_hazard' },
+      { time: 134, type: 'cyber_sprinter' },
+      { time: 142, type: 'bucket' }
     ])
   }
 ];
