@@ -3,6 +3,20 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261024-5 · README descreve o service worker como ele é hoje
+- Card: readme · Branch: claude/readme · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: o README avisa que a versão nova pode só aparecer na abertura seguinte do jogo, que é o que o
+  `public/sw.js` atual faz (cache primeiro, rede em segundo plano).
+- Por quê: documentação que promete atualização instantânea engana quem testa no celular.
+- Outras opções:
+  - A) Não falar do service worker — README mais curto / esconde um comportamento que confunde.
+  - B) Corrigir o service worker no mesmo card — resolve de vez / mistura documentação com mudança de
+    comportamento; ficou no card `sw-versao`.
+- Como trocar depois: editar a seção "Publicação e atualização no celular" do README.
+- Fácil de reverter? sim
+
 ### D-20261024-4 · Ordem da fila inicial
 - Card: todos · Branch: claude/quadro · Data: 2026-10-24
 - Regra de negócio? não
