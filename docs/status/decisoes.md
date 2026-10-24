@@ -3,6 +3,36 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261024-7 · Testes conferem o comportamento atual, não o desejado
+- Card: testes-unitarios · Branch: claude/testes-unitarios · Data: 2026-10-24
+- Regra de negócio? não (os testes não mudam nenhuma regra do jogo)
+- Muda decisão anterior? não
+- Escolha: os testes travam só o que o jogo já faz hoje e que é claramente certo (fase nova liberada,
+  planta sem duplicar, ervilha sempre presente, JSON quebrado volta ao padrão). Casos estranhos que hoje
+  passam (fase acima do catálogo, planta inexistente salva) ficam para o card `progresso-robusto`, que
+  vai corrigir e testar junto. O teste de linhas repete a regra de `getActiveLanes()` do motor.
+- Por quê: um teste que falha de propósito deixaria a branch vermelha e misturaria correção com rede de
+  segurança.
+- Outras opções:
+  - A) Já escrever os testes dos casos estranhos marcados como `todo` — lembra o que falta / ruído na saída.
+  - B) Exportar a regra de linhas do motor para o teste usar — sem duplicar / mexe no `engine.ts` neste card.
+- Como trocar depois: editar `tests/levels.test.ts` e `tests/progression.test.ts`.
+- Fácil de reverter? sim
+
+### D-20261024-6 · Vitest com localStorage em memória
+- Card: testes-unitarios · Branch: claude/testes-unitarios · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: Vitest 2 (usa o mesmo Vite 5 do projeto) e um `localStorage` falso em memória
+  (`tests/memoryStorage.ts`); testes em `tests/`, conferidos pelo `tsc` do `npm run build`.
+- Por quê: zero configuração extra, roda em menos de 1 s, e o progresso só precisa de get/set.
+- Outras opções:
+  - A) `node:test` nativo — nenhuma dependência / não entende TypeScript com imports do Vite sem ajuste.
+  - B) Vitest + jsdom — navegador simulado completo / dependência pesada que nada usa ainda.
+  - C) Jest — conhecido / precisa de Babel ou ts-jest; duplica a configuração do Vite.
+- Como trocar depois: `npm uninstall vitest`, trocar o script `test` e adaptar os imports dos testes.
+- Fácil de reverter? sim
+
 ### D-20261024-5 · README descreve o service worker como ele é hoje
 - Card: readme · Branch: claude/readme · Data: 2026-10-24
 - Regra de negócio? não
