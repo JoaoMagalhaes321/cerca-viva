@@ -3,6 +3,67 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261024-9 · CI roda nas branches claude/** e nos pull requests para a main, sem deploy
+- Card: ci-branches · Branch: claude/ci-branches · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: workflow novo `.github/workflows/ci.yml` com `npm ci`, `npm run build` e `npm test` em push de
+  `claude/**`, em pull request para a `main` e no botão manual. Permissão só de leitura, sem deploy. O
+  `deploy.yml` não foi tocado.
+- Por quê: você faz o merge por pull request (#1 a #10); com o gatilho de pull request o ✅/❌ aparece na
+  própria tela do merge, inclusive para branches de outras sessões que não começam com `claude/`.
+  `npm ci` usa as versões exatas do `package-lock.json`, igual ao que o agente testa aqui.
+- Outras opções:
+  - A) Só push em `claude/**` (como o card pedia) — mais simples / branches com outro nome e PRs não
+    seriam conferidos.
+  - B) Também rodar os testes dentro do `deploy.yml` antes de publicar — bloquearia publicar código
+    quebrado / mexe no fluxo que publica o jogo; melhor como card separado se você quiser.
+  - C) CI em toda branch (`'**'`) — cobre tudo / roda à toa em branches de rascunho.
+- Como trocar depois: editar a seção `on:` de `.github/workflows/ci.yml` (ou apagar o arquivo).
+- Fácil de reverter? sim
+
+### D-20261024-8 · Fluxo de patch .zip continua (decisão do João)
+- Card: ota-patches · Branch: — · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: manter `gerar-patch.ps1` e `patches/update.json` como estão. O João confirmou numa sessão que o
+  repositório jvpm3/pvz-evolution-releases é dele (outra conta) e que ele ainda usa o patch .zip.
+- Por quê: resposta do João ao card "Fluxo de patch .zip aponta para outra conta", que estava em
+  "Precisa de você".
+- Outras opções:
+  - A) Trocar o fluxo por documentação e deixar só a atualização pelo GitHub Pages — menos coisa para manter /
+    tira um fluxo que o João usa.
+- Como trocar depois: pedir numa sessão ou comentar no card `ota-patches`.
+### D-20261024-7 · Testes conferem o comportamento atual, não o desejado
+- Card: testes-unitarios · Branch: claude/testes-unitarios · Data: 2026-10-24
+- Regra de negócio? não (os testes não mudam nenhuma regra do jogo)
+- Muda decisão anterior? não
+- Escolha: os testes travam só o que o jogo já faz hoje e que é claramente certo (fase nova liberada,
+  planta sem duplicar, ervilha sempre presente, JSON quebrado volta ao padrão). Casos estranhos que hoje
+  passam (fase acima do catálogo, planta inexistente salva) ficam para o card `progresso-robusto`, que
+  vai corrigir e testar junto. O teste de linhas repete a regra de `getActiveLanes()` do motor.
+- Por quê: um teste que falha de propósito deixaria a branch vermelha e misturaria correção com rede de
+  segurança.
+- Outras opções:
+  - A) Já escrever os testes dos casos estranhos marcados como `todo` — lembra o que falta / ruído na saída.
+  - B) Exportar a regra de linhas do motor para o teste usar — sem duplicar / mexe no `engine.ts` neste card.
+- Como trocar depois: editar `tests/levels.test.ts` e `tests/progression.test.ts`.
+- Fácil de reverter? sim
+
+### D-20261024-6 · Vitest com localStorage em memória
+- Card: testes-unitarios · Branch: claude/testes-unitarios · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: Vitest 2 (usa o mesmo Vite 5 do projeto) e um `localStorage` falso em memória
+  (`tests/memoryStorage.ts`); testes em `tests/`, conferidos pelo `tsc` do `npm run build`.
+- Por quê: zero configuração extra, roda em menos de 1 s, e o progresso só precisa de get/set.
+- Outras opções:
+  - A) `node:test` nativo — nenhuma dependência / não entende TypeScript com imports do Vite sem ajuste.
+  - B) Vitest + jsdom — navegador simulado completo / dependência pesada que nada usa ainda.
+  - C) Jest — conhecido / precisa de Babel ou ts-jest; duplica a configuração do Vite.
+- Como trocar depois: `npm uninstall vitest`, trocar o script `test` e adaptar os imports dos testes.
+- Fácil de reverter? sim
+
 ### D-20261024-5 · README descreve o service worker como ele é hoje
 - Card: readme · Branch: claude/readme · Data: 2026-10-24
 - Regra de negócio? não
