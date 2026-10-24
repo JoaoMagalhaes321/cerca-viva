@@ -853,7 +853,7 @@ export class GameEngine {
         p.hp = Math.min(p.maxHp, p.hp + regenRate * dt);
       }
 
-      // Potato Mine Arming & Proximity Detonation ("SPUDOW!!")
+      // Ouriço-Mina: arma sob a terra e explode quando um zumbi pisa
       if (p.def.id === 'plasma_mine') {
         if (!p.armed) {
           p.armTimer -= dt;
@@ -871,7 +871,7 @@ export class GameEngine {
             sound.playSynergyCombo('thermal');
             this.spawnParticles(p.col + 0.5, p.row + 0.5, '#ef4444', 32);
             this.spawnParticles(p.col + 0.5, p.row + 0.5, '#facc15', 20);
-            this.spawnFloatingText('💥 SPUDOW!!', p.col + 0.5, p.row, '#fef08a', 1.45);
+            this.spawnFloatingText('💥 BUM!', p.col + 0.5, p.row, '#fef08a', 1.45);
             for (const z of this.zombies) {
               if (z.row === p.row && Math.abs(z.x - (p.col + 0.5)) <= 1.25) {
                 this.applyElementalDamage(z, p.def.damage, 'explosive');
@@ -1582,7 +1582,7 @@ export class GameEngine {
     }
 
     let variant: ZombieVariant = 'basic';
-    let name = 'Zumbi de Jardim';
+    let name = 'Zumbi Comum';
     let emoji = '🧟';
     let hp = 190;
     let speed = 0.28;
@@ -1590,39 +1590,39 @@ export class GameEngine {
 
     if (type === 'cone') {
       variant = 'cone';
-      name = 'Zumbi Cabeça-de-Cone';
-      emoji = '⚠️';
+      name = 'Zumbi Operário';
+      emoji = '👷';
       hp = 390;
       speed = 0.29;
     } else if (type === 'cyber_sprinter') {
       variant = 'cyber_sprinter';
-      name = 'Zumbi Corredor Turbo';
+      name = 'Corredor Cibernético';
       emoji = '🏃‍♂️';
       hp = 260;
       speed = 0.52;
     } else if (type === 'bucket') {
       variant = 'bucket';
-      name = 'Zumbi Blindado';
-      emoji = '🪣';
+      name = 'Zumbi Motoqueiro';
+      emoji = '🏍️';
       hp = 680;
       speed = 0.25;
     } else if (type === 'gargantuar') {
       variant = 'gargantuar';
-      name = 'Titã Devorador';
+      name = 'Colosso do Ferro-Velho';
       emoji = '👹';
       hp = 1450;
       speed = 0.19;
       damage = 95;
     } else if (type === 'rubber_hazard') {
       variant = 'rubber_hazard';
-      name = 'Zumbi Isolador';
+      name = 'Zumbi Isolante';
       emoji = '⚡';
       hp = 440;
       speed = 0.26;
       damage = 32;
     } else if (type === 'pyro_scavenger') {
       variant = 'pyro_scavenger';
-      name = 'Zumbi Lança-Chamas';
+      name = 'Saqueador Piro';
       emoji = '🔥';
       hp = 490;
       speed = 0.27;
@@ -1659,14 +1659,14 @@ export class GameEngine {
     sound.bossMode = true;
     sound.playBossSiren();
     this.lightningFlash = 0.65;
-    this.onToast('💀 ALERTA DE CHEFE FINAL: DR. ZOMBOSS MECHA-TITÃ ENTROU NO JARDIM!');
-    this.spawnFloatingText('💀 DR. ZOMBOSS MECHA-TITÃ!', 7.5, 1.5, '#ef4444', 1.5);
+    this.onToast('💀 ALERTA DE CHEFE FINAL: A COLHEITADEIRA Z ENTROU NO JARDIM!');
+    this.spawnFloatingText('💀 COLHEITADEIRA Z!', 7.5, 1.5, '#ef4444', 1.5);
 
     this.zombies.push({
       id: this.nextEntityId++,
       variant: 'zomboss_mech',
-      name: 'Dr. Zomboss Mecha-Titã',
-      emoji: '🤖',
+      name: 'Colheitadeira Z',
+      emoji: '🚜',
       row: 2,
       x: GRID_COLS - 0.15,
       hp: 3600,
@@ -1717,7 +1717,7 @@ export class GameEngine {
         this.zombies.push({
           id: this.nextEntityId++,
           variant: 'cyber_sprinter',
-          name: 'Zumbi Corredor Turbo',
+          name: 'Corredor Cibernético',
           emoji: '🏃‍♂️',
           row: r,
           x: Math.min(GRID_COLS + 0.2, boss.x + 0.4),
@@ -1755,7 +1755,7 @@ export class GameEngine {
     const roll = Math.random();
 
     let variant: ZombieVariant = 'basic';
-    let name = 'Zumbi de Jardim';
+    let name = 'Zumbi Comum';
     let emoji = '🧟';
     let hp = 190;
     let speed = 0.28;
@@ -1763,28 +1763,28 @@ export class GameEngine {
 
     if (this.wave >= 2 && roll > 0.45) {
       variant = 'cone';
-      name = 'Zumbi Cabeça-de-Cone';
-      emoji = '⚠️';
+      name = 'Zumbi Operário';
+      emoji = '👷';
       hp = 390;
       speed = 0.29;
     }
     if (this.wave >= 3 && roll > 0.68) {
       variant = 'cyber_sprinter';
-      name = 'Zumbi Corredor Turbo';
+      name = 'Corredor Cibernético';
       emoji = '🏃‍♂️';
       hp = 260;
       speed = 0.52;
     }
     if (this.wave >= 4 && roll > 0.76) {
       variant = 'bucket';
-      name = 'Zumbi Blindado';
-      emoji = '🪣';
+      name = 'Zumbi Motoqueiro';
+      emoji = '🏍️';
       hp = 680;
       speed = 0.25;
     }
     if (this.wave >= 5 && roll > 0.86) {
       variant = 'gargantuar';
-      name = 'Titã Devorador';
+      name = 'Colosso do Ferro-Velho';
       emoji = '👹';
       hp = 1450;
       speed = 0.19;
@@ -1995,6 +1995,7 @@ export class GameEngine {
     }
 
     // 4. Draw Plants
+    const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog';
     for (const p of this.plants) {
       const cx = this.boardLeft + (p.col + 0.5) * this.cellW;
       const cy = this.boardTop + (p.row + 0.54) * this.cellH;
@@ -2006,14 +2007,14 @@ export class GameEngine {
         cy,
         this.cellW,
         this.cellH,
-        this.weather === 'night_storm'
+        isNightScene
       );
 
       if (p.hp < p.maxHp) {
         const bw = this.cellW * 0.56;
         const bh = 5;
         const bx = cx - bw / 2;
-        const by = cy - this.cellH * 0.38;
+        const by = cy - this.cellH * 0.5;
         ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
         ctx.fillRect(bx, by, bw, bh);
         ctx.fillStyle = '#4ade80';
@@ -2026,7 +2027,7 @@ export class GameEngine {
       const zx = this.boardLeft + z.x * this.cellW;
       const zy = this.boardTop + (z.row + 0.52) * this.cellH;
 
-      CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH);
+      CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH, isNightScene);
 
       // Zombie HP bar - accurately positioned above head based on variant scale
       const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech';
@@ -2034,7 +2035,7 @@ export class GameEngine {
         const bw = Math.min(this.cellW * 0.44, 38);
         const bh = 4;
         const bx = zx - bw / 2;
-        const by = zy - this.cellH * 0.42;
+        const by = zy - this.cellH * 0.56;
         ctx.fillStyle = '#090e17';
         ctx.fillRect(bx, by, bw, bh);
         ctx.fillStyle =
@@ -2049,7 +2050,7 @@ export class GameEngine {
       }
     }
 
-    // 6. Draw PvZ 1 Ragdoll Debris (Falling Arms, Cones, Buckets, Heads)
+    // 6. Pedaços que caem (braços, capacetes, cabeças)
     for (const d of this.debris) {
       CharacterRenderer.drawDebris(ctx, d, this.boardLeft, this.boardTop, this.cellW, this.cellH);
     }
@@ -2187,7 +2188,7 @@ export class GameEngine {
       ctx.restore();
     }
 
-    // 13. Top Boss Health Bar Overlay when Dr. Zomboss Mecha-Titan is active!
+    // 13. Barra de vida do chefe final (Colheitadeira Z)
     const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech');
     if (zomboss) {
       const barW = Math.min(440, width * 0.65);
@@ -2208,7 +2209,7 @@ export class GameEngine {
       ctx.fillStyle = '#fca5a5';
       ctx.textAlign = 'center';
       ctx.fillText(
-        `💀 CHEFE FINAL: DR. ZOMBOSS MECHA-TITÃ (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
+        `💀 CHEFE FINAL: COLHEITADEIRA Z (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
         width / 2,
         by + 7
       );
