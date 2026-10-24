@@ -1,5 +1,6 @@
 import { GameEngine, ZombieVariant } from './engine';
 import { CharacterRenderer } from './renderer';
+import { preloadSprites } from './sprites';
 import { sound } from './audio';
 import { LiveUpdater } from './updater';
 import {
@@ -453,59 +454,59 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
     }[] = [
       {
         variant: 'basic',
-        name: 'Zumbi de Jardim',
+        name: 'Zumbi Comum',
         hp: 190,
         speedText: 'Normal',
-        desc: 'Invasor comum de gravata vermelha. Perde o braço aos 35% de HP e a cabeça ao cair.'
+        desc: 'O grosso da horda, de moletom rasgado. Perde o braço aos 35% de HP e a cabeça ao cair.'
       },
       {
         variant: 'cone',
-        name: 'Zumbi Cabeça-de-Cone',
+        name: 'Zumbi Operário',
         hp: 390,
         speedText: 'Normal',
-        desc: 'Cone de tráfego dobra sua resistência. O cone voa quando perde metade da vida!'
+        desc: 'O capacete de obra dobra sua resistência. O capacete voa quando ele perde metade da vida!'
       },
       {
         variant: 'cyber_sprinter',
-        name: 'Zumbi Corredor Turbo',
+        name: 'Corredor Cibernético',
         hp: 260,
         speedText: 'Muito Rápido',
-        desc: 'Equipado com visor neon. Use Gelo (❄️), Vento (💨) ou Noz Blindada para freá-lo!'
+        desc: 'Equipado com visor neon. Use Gelo (❄️), Vento (💨) ou o Cacto-Muralha para freá-lo!'
       },
       {
         variant: 'bucket',
-        name: 'Zumbi Blindado (Balde)',
+        name: 'Zumbi Motoqueiro',
         hp: 680,
         speedText: 'Lento',
-        desc: 'Balde de ferro ultra resistente. Nepentes Ácida (☣️) derrete sua armadura 2x mais rápido!'
+        desc: 'Capacete de moto ultra resistente. A Nepentes Ácida (☣️) derrete o capacete 2x mais rápido!'
       },
       {
         variant: 'rubber_hazard',
-        name: 'Zumbi Isolador Emborrachado',
+        name: 'Zumbi Isolante',
         hp: 440,
         speedText: 'Normal (Lama: 85%)',
         desc: '⚡ IMUNE A RAIOS! Traje de borracha dissipa choques elétricos (0 dano). VULNERÁVEL: ☣️ Ácido (+160% de dano) e 🔥 Fogo derretem a borracha!'
       },
       {
         variant: 'pyro_scavenger',
-        name: 'Zumbi Lança-Chamas de Sucata',
+        name: 'Saqueador Piro',
         hp: 490,
         speedText: 'Normal',
         desc: '🔥 Dispara jatos térmicos que incineram plantas de Natureza com dano duplo! CONTRA-ATAQUE: 💧 Água apaga o maçarico e atordoa por 2.8s!'
       },
       {
         variant: 'gargantuar',
-        name: 'Titã Devorador (Sub-Chefe)',
+        name: 'Colosso do Ferro-Velho (Sub-Chefe)',
         hp: 1450,
         speedText: 'Pesado',
-        desc: 'Colosso com elmo viking e clava elétrica. Combine reações elementais e Adubo Supremo!'
+        desc: 'Gigante com garra de sucata e muita vida. Combine reações elementais e Adubo Supremo!'
       },
       {
         variant: 'zomboss_mech',
-        name: 'Dr. Zomboss Mecha-Titã (Chefe Final)',
+        name: 'Colheitadeira Z (Chefe Final)',
         hp: 3600,
         speedText: 'Salto Propulsor',
-        desc: 'Robô gigante pilotado pelo Dr. Zomboss! Salta entre linhas, bombardeia o jardim com plasma/ácido e invoca Corredores Turbo!'
+        desc: 'Colheitadeira gigante pilotada por um zumbi fazendeiro! Salta entre linhas, bombardeia o jardim com plasma/ácido e chama Corredores Cibernéticos!'
       }
     ];
 
@@ -522,6 +523,8 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
       `;
       const c = card.querySelector('canvas') as HTMLCanvasElement;
       const zCtx = c.getContext('2d');
+      const almanacScale =
+        zInfo.variant === 'zomboss_mech' ? 0.42 : zInfo.variant === 'gargantuar' ? 0.72 : 1;
       if (zCtx) {
         CharacterRenderer.drawZombie(
           zCtx,
@@ -549,9 +552,9 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
             lostArm: false
           },
           34,
-          44,
-          56,
-          64
+          60 - 64 * almanacScale * 0.24,
+          56 * almanacScale,
+          64 * almanacScale
         );
       }
       almanacContentEl.appendChild(card);
@@ -961,6 +964,8 @@ updateMenuStageInfo();
 // Initialize & Start Game Loop
 LiveUpdater.init();
 buildSeedPackets();
+// Redesenha os retratos das sementes quando os sprites terminarem de carregar
+preloadSprites().then(() => buildSeedPackets());
 syncHud();
 showToast(`🌱 Modo Aventura: ${currentLevel.name}! Toque em INICIAR JOGO.`);
 

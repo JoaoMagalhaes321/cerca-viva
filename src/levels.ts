@@ -14,7 +14,7 @@ function createSpawns(
 export const LEVEL_CATALOG: LevelConfig[] = [
   // NÍVEL 1-1: O Início do Jardim
   // 1 linha central (lane 2), apenas zumbis comuns lentos.
-  // Recompensa: Girassol Prisma (sunflower)
+  // Recompensa: Lírio Prisma (sunflower)
   {
     id: 1,
     world: 1,
@@ -35,13 +35,13 @@ export const LEVEL_CATALOG: LevelConfig[] = [
   },
 
   // NÍVEL 1-2: Expandindo o Gramado
-  // 3 linhas centrais (lanes 1, 2, 3), introdução do Zumbi Cone (cone).
-  // Recompensa: Noz Blindada (wallnut)
+  // 3 linhas centrais (lanes 1, 2, 3), introdução do Zumbi Operário (cone).
+  // Recompensa: Cacto-Muralha (wallnut)
   {
     id: 2,
     world: 1,
     stage: 2,
-    name: 'Fase 1-2: Ameaça com Cone',
+    name: 'Fase 1-2: Turno da Obra',
     initialSun: 150,
     availableLanes: 3,
     unlockedPlantOnClear: 'wallnut',
@@ -58,8 +58,8 @@ export const LEVEL_CATALOG: LevelConfig[] = [
   },
 
   // NÍVEL 1-3: O Quintal Completo
-  // 5 linhas abertas! Mais zumbis cones.
-  // Recompensa: Batata-Mina (plasma_mine)
+  // 5 linhas abertas! Mais operários.
+  // Recompensa: Ouriço-Mina (plasma_mine)
   {
     id: 3,
     world: 1,
@@ -84,13 +84,13 @@ export const LEVEL_CATALOG: LevelConfig[] = [
   },
 
   // NÍVEL 1-4: Blindagem Pesada
-  // Introdução do Zumbi Balde (bucket)! Armadura muito resistente.
+  // Introdução do Zumbi Motoqueiro (bucket)! Capacete muito resistente.
   // Recompensa: Hidro-Brotos (aquashooter)
   {
     id: 4,
     world: 1,
     stage: 4,
-    name: 'Fase 1-4: Cabeças de Balde',
+    name: 'Fase 1-4: Motoqueiros na Rua',
     initialSun: 200,
     availableLanes: 5,
     unlockedPlantOnClear: 'aquashooter',
@@ -192,8 +192,8 @@ export const LEVEL_CATALOG: LevelConfig[] = [
   },
 
   // NÍVEL 1-8: Tempestade e Ventos
-  // Horda intensa com velocistas e baldes.
-  // Recompensa: Trevo Ventania (gale_clover)
+  // Horda intensa com velocistas e motoqueiros.
+  // Recompensa: Flor Catavento (gale_clover)
   {
     id: 8,
     world: 1,
@@ -221,7 +221,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
   },
 
   // NÍVEL 1-9: A Véspera do Titã
-  // Introdução do Zumbi Gargantuar (gargantuar)!
+  // Introdução do Colosso do Ferro-Velho (gargantuar)!
   // Recompensa: Nepentes Ácida (venom_pitcher)
   {
     id: 9,
@@ -248,12 +248,12 @@ export const LEVEL_CATALOG: LevelConfig[] = [
   },
 
   // NÍVEL 1-10: O Confronto Final
-  // Batalha contra o Chefe Dr. Zomboss Mecha-Titã!
+  // Batalha contra o chefe final: a Colheitadeira Z!
   {
     id: 10,
     world: 1,
     stage: 10,
-    name: 'Fase 1-10: Dr. Zomboss Mecha-Titã',
+    name: 'Fase 1-10: A Colheitadeira Z',
     initialSun: 350,
     availableLanes: 5,
     unlockedPlantOnClear: undefined, // Vitória do Mundo 1!

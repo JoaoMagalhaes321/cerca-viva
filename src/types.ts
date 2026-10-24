@@ -136,7 +136,7 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     puddlesCount: 2,
     toxicCount: 4,
     zombiePreviews: ['cone', 'cyber_sprinter', 'bucket', 'gargantuar'],
-    description: 'Noite de tempestade com resíduos bioquímicos no solo. Queda de Sol reduzida; use Girassóis e Fogo!'
+    description: 'Noite de tempestade com resíduos bioquímicos no solo. Queda de Sol reduzida; use Lírios Prisma e Fogo!'
   },
   {
     id: 'bioluminescent_swamp',
@@ -192,15 +192,15 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     badges: '💨 Vento + (🔥/☣️/❄️/💧)',
     comboText: '💨 VENDAVAL ELEMENTAL!',
     color: '#2dd4bf',
-    description: 'O Trevo Ventania empurra os zumbis para trás e espalha qualquer status elemental ativo no alvo para toda a fila atrás dele!'
+    description: 'A Flor Catavento empurra os zumbis para trás e espalha qualquer status elemental ativo no alvo para toda a fila atrás dele!'
   }
 ];
 
 export const PLANT_CATALOG: PlantDefinition[] = [
   {
     id: 'sunflower',
-    name: 'Girassol Prisma',
-    emoji: '🌻',
+    name: 'Lírio Prisma',
+    emoji: '🌷',
     element: 'solar',
     elementBadge: '☀️',
     cost: 50,
@@ -214,7 +214,7 @@ export const PLANT_CATALOG: PlantDefinition[] = [
   },
   {
     id: 'peashooter',
-    name: 'Disparervilha',
+    name: 'Quiabo Atirador',
     emoji: '🌱',
     element: 'nature',
     elementBadge: '🍃',
@@ -223,8 +223,8 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     maxHp: 320,
     attackInterval: 1.4,
     damage: 26,
-    description: 'Dispara ervilhas táticas de alta velocidade na linha.',
-    overdriveDesc: 'Metralhadora de 25 ervilhas gigantes em 2 segundos!',
+    description: 'Dispara sementes de alta velocidade na linha.',
+    overdriveDesc: 'Metralhadora de 25 sementes gigantes em 2 segundos!',
     color: '#4ade80'
   },
   {
@@ -289,8 +289,8 @@ export const PLANT_CATALOG: PlantDefinition[] = [
   },
   {
     id: 'gale_clover',
-    name: 'Trevo Ventania',
-    emoji: '🍀',
+    name: 'Flor Catavento',
+    emoji: '🌀',
     element: 'wind',
     elementBadge: '💨',
     cost: 125,
@@ -313,13 +313,13 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     maxHp: 320,
     attackInterval: 1.85,
     damage: 20,
-    description: 'Cospe ácido corrosivo que derrete armaduras (Cone/Balde) e cria poças tóxicas. SINERGIA com Fogo: Explosão Bioquímica!',
+    description: 'Cospe ácido corrosivo que derrete capacetes (Operário/Motoqueiro) e cria poças tóxicas. SINERGIA com Fogo: Explosão Bioquímica!',
     overdriveDesc: 'Chuva Ácida que intoxica todos os zumbis e destrói armaduras!',
     color: '#a3e635'
   },
   {
     id: 'plasma_mine',
-    name: 'Batata-Mina',
+    name: 'Ouriço-Mina',
     emoji: '💣',
     element: 'explosive',
     elementBadge: '💥',
@@ -328,14 +328,14 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     maxHp: 280,
     attackInterval: 0,
     damage: 550,
-    description: 'Precisa de 4.5s para armar sob a terra. Quando um zumbi pisa, detona em área (SPUDOW!!).',
-    overdriveDesc: 'Arma instantaneamente e lança 2 Batatas-Minas extras no jardim!',
+    description: 'Precisa de 4.5s para armar sob a terra. Quando um zumbi pisa, detona em área (BUM!).',
+    overdriveDesc: 'Arma instantaneamente e lança 2 Ouriços-Mina extras no jardim!',
     color: '#ef4444'
   },
   {
     id: 'wallnut',
-    name: 'Noz Blindada',
-    emoji: '🥜',
+    name: 'Cacto-Muralha',
+    emoji: '🌵',
     element: 'nature',
     elementBadge: '🛡️',
     cost: 50,
@@ -355,7 +355,7 @@ export const MUTATION_CATALOG: MutationDefinition[] = [
     name: 'Fotossíntese Explosiva',
     icon: '🌞',
     rarity: 'Épico',
-    description: 'Girassóis geram +10 de Sol extra e emitem uma onda térmica que queima zumbis próximos.'
+    description: 'Lírios Prisma geram +10 de Sol extra e emitem uma onda térmica que queima zumbis próximos.'
   },
   {
     id: 'superconductor',
@@ -383,13 +383,13 @@ export const MUTATION_CATALOG: MutationDefinition[] = [
     name: 'Casca Espinhosa Viva',
     icon: '🛡️',
     rarity: 'Raro',
-    description: 'Todas as plantas regeneram 18 HP/s e Nozes Blindadas devolvem 35 de dano ao serem mordidas.'
+    description: 'Todas as plantas regeneram 18 HP/s e Cactos-Muralha devolvem 35 de dano ao serem mordidas.'
   },
   {
     id: 'overclock_roots',
     name: 'Raízes Hiperativas',
     icon: '🧬',
     rarity: 'Épico',
-    description: 'Todas as plantas atacam 25% mais rápido e Batatas-Minas armam em metade do tempo.'
+    description: 'Todas as plantas atacam 25% mais rápido e Ouriços-Mina armam em metade do tempo.'
   }
 ];
