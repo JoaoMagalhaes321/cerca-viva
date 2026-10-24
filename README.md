@@ -21,6 +21,7 @@ npm run dev        # abre em http://localhost:5180 (também acessível pela rede
 | `npm run dev` | Servidor de desenvolvimento com recarga automática (porta 5180) |
 | `npm run build` | Confere os tipos (`tsc`) e gera o site em `dist/` |
 | `npm run preview` | Serve o `dist/` gerado, para testar o build final |
+| `npm test` | Roda os testes automáticos (Vitest) de `tests/`: progresso salvo e catálogo de fases |
 | `npm run mobile:sync` | Build + copia o site para o projeto Android (`npx cap sync android`) |
 | `npm run mobile:apk` | Gera o APK de debug no Windows (`gerar-apk.ps1`, precisa do Android SDK) |
 | `npm run mobile:patch` | Gera um patch `.zip` do site em `patches/` (`gerar-patch.ps1`) |
@@ -60,6 +61,11 @@ npm run dev        # abre em http://localhost:5180 (também acessível pela rede
 - **Fases, ondas e planta liberada por fase:** `src/levels.ts` (`LEVEL_CATALOG`).
 - **Plantas, custo, dano, biomas, sinergias e mutações:** catálogos em `src/types.ts`.
 - **Progresso inicial e desbloqueios:** `src/progression.ts` (`DEFAULT_PLAYER_PROGRESS`).
+
+Depois de mexer nessas regras, rode `npm test`: os testes de `tests/levels.test.ts` conferem que as fases
+seguem em sequência, que toda planta liberada existe, que nenhuma é liberada duas vezes e que os zumbis
+e as linhas das ondas são válidos. Zumbi novo no motor (`ZombieVariant` em `src/engine.ts`) precisa
+entrar também em `KNOWN_ZOMBIES` no teste.
 
 ## Quadro do projeto
 
