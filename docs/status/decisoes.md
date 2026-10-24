@@ -3,6 +3,20 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261024-6 · Fluxo de patch .zip continua (decisão do João)
+- Card: ota-patches · Branch: — · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: manter `gerar-patch.ps1` e `patches/update.json` como estão. O João confirmou numa sessão que o
+  repositório jvpm3/pvz-evolution-releases é dele (outra conta) e que ele ainda usa o patch .zip.
+- Por quê: resposta do João ao card "Fluxo de patch .zip aponta para outra conta", que estava em
+  "Precisa de você".
+- Outras opções:
+  - A) Trocar o fluxo por documentação e deixar só a atualização pelo GitHub Pages — menos coisa para manter /
+    tira um fluxo que o João usa.
+- Como trocar depois: pedir numa sessão ou comentar no card `ota-patches`.
+- Fácil de reverter? sim
+
 ### D-20261024-5 · README descreve o service worker como ele é hoje
 - Card: readme · Branch: claude/readme · Data: 2026-10-24
 - Regra de negócio? não

@@ -85,18 +85,15 @@ window.BOARD = {
       links: [{ label: 'levels.ts', path: 'src/levels.ts' }, { label: 'types.ts', path: 'src/types.ts' }],
     },
 
-    // ── Precisa de você ───────────────────────────────────────
+    // ── Na main ───────────────────────────────────────────────
     {
       id: 'ota-patches',
-      title: 'Fluxo de patch .zip aponta para outra conta',
-      domain: 'infra', column: 'blocked', env: 'main', updated: '2026-10-23',
-      blockedBy: 'Confirme se o repositório jvpm3/pvz-evolution-releases é seu e se ainda usa o patch .zip (gerar-patch.ps1). Se não usa, o agente troca por documentação e deixa só a atualização pelo GitHub Pages.',
-      summary: 'patches/update.json e gerar-patch.ps1 publicam o patch em github.com/jvpm3/pvz-evolution-releases, conta diferente da do projeto. Nenhum código do jogo lê esse update.json: o app carrega o site do GitHub Pages (capacitor.config.json, server.url).',
-      delivered: ['Scripts no commit inicial (2cc79d0, 23/10)'],
+      title: 'Fluxo de patch .zip (releases em jvpm3)',
+      domain: 'infra', column: 'prod', env: 'main', updated: '2026-10-24',
+      summary: 'gerar-patch.ps1 e patches/update.json publicam o patch .zip em github.com/jvpm3/pvz-evolution-releases. O João confirmou em 24/10 que esse repositório é dele e que continua usando o fluxo, então ele fica como está (D-20261024-6). Nenhum código do jogo lê esse update.json: o app carrega o site do GitHub Pages (capacitor.config.json, server.url).',
+      delivered: ['Scripts no commit inicial (2cc79d0, 23/10)', 'João confirmou que o repositório de releases é dele e que o fluxo continua (24/10)'],
       links: [{ label: 'gerar-patch.ps1', path: 'gerar-patch.ps1' }, { label: 'update.json', path: 'patches/update.json' }],
     },
-
-    // ── Na main ───────────────────────────────────────────────
     {
       id: 'mundo2',
       title: 'Mundo 2 · Pântano Bioluminescente',
