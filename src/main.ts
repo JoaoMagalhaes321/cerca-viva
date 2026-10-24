@@ -4,6 +4,7 @@ import { preloadSprites } from './sprites';
 import { confete, vibrar } from './feedback';
 import { sound } from './audio';
 import { Modos } from './modos';
+import { iniciarInstalacao } from './instalar';
 import { LiveUpdater } from './updater';
 import { iniciarLivroCombos, registrarCombo, renderLivroCombos } from './livro-combos';
 import {
@@ -1036,6 +1037,7 @@ iniciarLivroCombos({
   botoes: [almanacBtn, menuAlmanacBtn],
   aba: almanacModal.querySelector<HTMLElement>('.tab-btn[data-tab="synergies"]')
 });
+iniciarInstalacao((msg) => showToast(msg));
 buildSeedPackets();
 // Redesenha os retratos das sementes quando os sprites terminarem de carregar
 preloadSprites().then(() => buildSeedPackets());

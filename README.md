@@ -8,6 +8,17 @@ Roda no navegador e no Android (app Capacitor).
 - Jogar no navegador: https://joaomagalhaes321.github.io/pvz-evolution/
 - Tecnologia: TypeScript + Vite (canvas 2D, Web Audio), Capacitor 6 para Android.
 
+## Instalar no celular (para quem vai jogar)
+
+- **Pelo navegador (Android e PC):** abra o link do jogo no Chrome e toque em **📲 Instalar** no menu
+  (ou "Instalar app" no menu do Chrome). Ganha ícone na tela inicial, abre em tela cheia e funciona sem
+  internet. No iPhone: Compartilhar → "Adicionar à Tela de Início".
+- **APK para Android:** https://github.com/JoaoMagalhaes321/pvz-evolution/releases/download/android/cerca-viva.apk
+  — o deploy atualiza esse arquivo a cada push na `main`. Como não vem da Play Store, o Android pede para
+  permitir instalar apps dessa origem. O APK é assinado com uma chave fixa e pública
+  (`android/app/cerca-viva-debug.keystore`), para cada versão nova instalar por cima da anterior; para
+  publicar na Play Store será preciso uma chave privada.
+
 ## Rodar no PC
 
 Requer Node.js 20.
