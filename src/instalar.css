@@ -1,0 +1,6 @@
+/* Celular deitado: o rodapé com a versão some para o botão "Instalar" caber no menu sem rolagem */
+@media (max-height: 480px) {
+  .menu-footer-bar {
+    display: none;
+  }
+}
