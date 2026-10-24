@@ -6,6 +6,7 @@ import { PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engin
 import { getSprite } from './sprites';
 
 export class CharacterRenderer {
+  // Casa do gramado no estilo cartoon (dia/chuva) ou com a luz noturna (noite/pântano).
   public static drawLawnTileDetail(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -18,75 +19,127 @@ export class CharacterRenderer {
     isRain: boolean,
     isSwamp: boolean = false
   ): void {
-    const isEven = (row + col) % 2 === 0;
+    const even = (row + col) % 2 === 0;
+    const dark = isNight || isSwamp;
+    const pal = isSwamp
+      ? { a: '#123630', b: '#163f37', tuft: '#24604f', edge: 'rgba(45, 212, 191, 0.16)' }
+      : isNight
+        ? { a: '#14382f', b: '#184237', tuft: '#2a6352', edge: 'rgba(45, 212, 191, 0.12)' }
+        : isRain
+          ? { a: '#6fbf4f', b: '#64b246', tuft: '#4a8f33', edge: '' }
+          : { a: '#80cf4e', b: '#72c143', tuft: '#4f9d2e', edge: '' };
 
-    const grad = ctx.createLinearGradient(x, y, x, y + h);
-    if (isSwamp) {
-      grad.addColorStop(0, isEven ? '#042f2e' : '#022c22');
-      grad.addColorStop(1, isEven ? '#061c17' : '#031410');
-    } else if (isNight) {
-      grad.addColorStop(0, isEven ? '#163a30' : '#122f27');
-      grad.addColorStop(1, isEven ? '#0f2922' : '#0c211b');
-    } else if (isRain) {
-      grad.addColorStop(0, isEven ? '#1e5645' : '#184739');
-      grad.addColorStop(1, isEven ? '#153f32' : '#113328');
-    } else {
-      grad.addColorStop(0, isEven ? '#287a4e' : '#216641');
-      grad.addColorStop(1, isEven ? '#1e5e3b' : '#184d30');
-    }
-
-    ctx.fillStyle = grad;
+    ctx.save();
+    ctx.fillStyle = even ? pal.a : pal.b;
     ctx.fillRect(x, y, w, h);
 
-    ctx.strokeStyle = isSwamp ? 'rgba(45, 212, 191, 0.15)' : 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    // Faixa clara no topo e sombra na base de cada casa
+    ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.09)';
+    ctx.fillRect(x, y, w, Math.max(3, h * 0.08));
+    ctx.fillStyle = dark ? 'rgba(0, 0, 0, 0.24)' : 'rgba(42, 36, 22, 0.13)';
+    ctx.fillRect(x, y + h - 4, w, 4);
 
-    const seed = (row * 17 + col * 31) % 10;
-    ctx.save();
-    ctx.strokeStyle = isSwamp
-      ? 'rgba(45, 212, 191, 0.4)'
-      : isNight
-      ? 'rgba(52, 211, 153, 0.22)'
-      : 'rgba(134, 239, 172, 0.28)';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
-
-    const gx = x + w * (0.2 + (seed % 5) * 0.14);
-    const gy = y + h * (0.25 + ((seed * 3) % 5) * 0.12);
-    ctx.beginPath();
-    ctx.moveTo(gx, gy);
-    ctx.quadraticCurveTo(gx - 4, gy - 7, gx - 6, gy - 10);
-    ctx.moveTo(gx, gy);
-    ctx.quadraticCurveTo(gx + 3, gy - 8, gx + 5, gy - 11);
-    ctx.stroke();
-
-    // Swamp details: glowing mini mushroom sprouts or ripples
-    if (isSwamp) {
-      if (seed % 3 === 0) {
-        const mx = x + w * 0.72;
-        const my = y + h * 0.62;
-        ctx.fillStyle = 'rgba(20, 184, 166, 0.9)';
-        ctx.beginPath();
-        ctx.arc(mx, my - 4, 3.5, Math.PI, 0);
-        ctx.fill();
-        ctx.strokeStyle = '#99f6e4';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(mx, my - 4);
-        ctx.lineTo(mx, my);
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = 'rgba(20, 184, 166, 0.22)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(x + w * 0.5, y + h * 0.7, w * 0.26, 4, 0, 0, Math.PI * 2);
-        ctx.stroke();
-      }
+    if (pal.edge) {
+      ctx.strokeStyle = pal.edge;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 6);
+      ctx.stroke();
     }
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-    ctx.fillRect(x, y + h - 5, w, 5);
+    // Detalhes sempre iguais para a mesma casa (sem Math.random)
+    let seed = ((row + 1) * 73856093) ^ ((col + 1) * 19349663);
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+
+    ctx.strokeStyle = pal.tuft;
+    ctx.lineWidth = Math.max(1.6, w * 0.022);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < 3; i++) {
+      const tx = x + w * (0.15 + rnd() * 0.7);
+      const ty = y + h * (0.3 + rnd() * 0.55);
+      const k = w * 0.045;
+      ctx.beginPath();
+      ctx.moveTo(tx - k, ty - k * 1.2);
+      ctx.lineTo(tx, ty);
+      ctx.lineTo(tx + k * 0.9, ty - k * 1.5);
+      ctx.stroke();
+    }
+
+    if (rnd() < 0.3) {
+      const fx = x + w * (0.2 + rnd() * 0.6);
+      const fy = y + h * (0.25 + rnd() * 0.5);
+      const r = Math.max(2.2, w * 0.03);
+      if (dark) {
+        // Cogumelo que brilha
+        ctx.fillStyle = '#b9f5e2';
+        ctx.fillRect(fx - r * 0.25, fy - r * 0.2, r * 0.5, r * 1.4);
+        ctx.shadowColor = '#3cffc8';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#3cffc8';
+        ctx.beginPath();
+        ctx.arc(fx, fy, r, Math.PI, 0);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        // Florzinha
+        ctx.fillStyle = '#fff6c9';
+        ctx.strokeStyle = '#2a2416';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.arc(fx, fy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.fillStyle = '#ffb020';
+        ctx.beginPath();
+        ctx.arc(fx, fy, r * 0.42, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Casa de terra (linha fechada na fase): sulcos e pedrinhas, sem grama
+  public static drawDirtTile(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    row: number,
+    col: number,
+    isDark: boolean
+  ): void {
+    const even = (row + col) % 2 === 0;
+    ctx.save();
+    ctx.fillStyle = isDark ? (even ? '#0f1f21' : '#0d1b1d') : even ? '#c39466' : '#b98a5e';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(120, 82, 48, 0.45)';
+    ctx.lineWidth = Math.max(1.5, h * 0.025);
+    ctx.lineCap = 'round';
+    for (let i = 1; i <= 3; i++) {
+      const fy = y + (h * i) / 4;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.08, fy);
+      ctx.lineTo(x + w * 0.92, fy);
+      ctx.stroke();
+    }
+    let seed = ((row + 3) * 83492791) ^ ((col + 5) * 2654435761);
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(90, 62, 36, 0.55)';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(x + w * (0.1 + rnd() * 0.8), y + h * (0.1 + rnd() * 0.8), Math.max(1.5, w * 0.025), Math.max(1.2, w * 0.018), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.24)' : 'rgba(42, 36, 22, 0.13)';
+    ctx.fillRect(x, y + h - 4, w, 4);
     ctx.restore();
   }
 
