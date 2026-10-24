@@ -73,7 +73,7 @@ export interface ZombieEntity {
   hitFlash: number;
   walkPhase: number;
   isEating: boolean;
-  // PvZ 1 Dismemberment flags
+  // Marcas de desmembramento (capacete e braço caem)
   lostHeadgear: boolean;
   lostArm: boolean;
   // Special tactical abilities
@@ -1104,7 +1104,7 @@ export class GameEngine {
         }
       }
 
-      // Check PvZ 1 Dismemberment Thresholds!
+      // Confere os limites de desmembramento
       this.checkZombieDismemberment(z);
 
       if (z.hp <= 0) {
@@ -1287,7 +1287,7 @@ export class GameEngine {
       });
     }
 
-    // 2. Classic PvZ 1 Zombie Arm Pop-Off when HP drops below 35%
+    // 2. O braço do zumbi cai quando a vida passa de 35%
     if (!z.lostArm && ratio < 0.35) {
       z.lostArm = true;
       this.debris.push({
@@ -1563,7 +1563,7 @@ export class GameEngine {
     this.zombiesKilled++;
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
-    // Classic PvZ 1 Zombie Head Pop-Off on Death!
+    // A cabeça do zumbi cai quando ele é derrotado
     this.debris.push({
       kind: 'head',
       x: z.x,

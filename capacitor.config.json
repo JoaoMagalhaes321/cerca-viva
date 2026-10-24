@@ -1,6 +1,6 @@
 {
   "appId": "com.pvzevolution.game",
-  "appName": "PvZ: Evolution",
+  "appName": "Cerca Viva",
   "webDir": "dist",
   "server": {
     "url": "https://joaomagalhaes321.github.io/pvz-evolution/",
