@@ -283,7 +283,7 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     maxHp: 340,
     attackInterval: 1.9,
     damage: 42,
-    description: 'Bolas de fogo! Em alvos Congelados causaChoque Térmico; em Tóxicos causa Explosão Bioquímica!',
+    description: 'Bolas de fogo! Em alvos Congelados causa Choque Térmico; em Tóxicos causa Explosão Bioquímica!',
     overdriveDesc: 'Tapete de Magma que incendeia toda a linha por 6 segundos!',
     color: '#f97316'
   },
