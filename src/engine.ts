@@ -224,6 +224,10 @@ export class GameEngine {
 
   private nextEntityId = 1;
   private skySunTimer = 5.0;
+  /** Tutorial: segura o relógio das ondas enquanto o jogador aprende o básico. */
+  public holdWaves = false;
+  /** Quantos sóis o jogador já coletou nesta partida. */
+  public sunsCollected = 0;
   private zombieSpawnTimer = 4.0;
   private waveElapsed = 0;
 
@@ -368,6 +372,8 @@ export class GameEngine {
 
     this.waveElapsed = 0;
     this.zombieSpawnTimer = 3.5;
+    this.sunsCollected = 0;
+    this.holdWaves = false;
     this.boardCacheDirty = true;
     this.onUiUpdate();
   }
@@ -519,9 +525,20 @@ export class GameEngine {
     });
   }
 
+  /** Retângulo de uma casa do gramado, em pixels CSS relativos ao canvas. */
+  public getCellRect(row: number, col: number): { x: number; y: number; w: number; h: number } {
+    return {
+      x: this.boardLeft + col * this.cellW,
+      y: this.boardTop + row * this.cellH,
+      w: this.cellW,
+      h: this.cellH
+    };
+  }
+
   private collectSun(orb: SunOrb): void {
     orb.collected = true;
     this.sun += orb.value;
+    this.sunsCollected++;
     sound.playSunCollect();
     this.spawnFloatingText(`+${orb.value}☀️`, orb.x, orb.y, '#fef08a', 1.15);
     this.onUiUpdate();
@@ -1464,7 +1481,7 @@ export class GameEngine {
   }
 
   private updateWaveDirector(dt: number): void {
-    this.waveElapsed += dt;
+    if (!this.holdWaves) this.waveElapsed += dt;
 
     if (this.currentLevel) {
       // Level progression mode: spawn according to level spawnsQueue
