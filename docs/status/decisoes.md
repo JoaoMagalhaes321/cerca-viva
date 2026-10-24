@@ -3,6 +3,25 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261024-9 · CI roda nas branches claude/** e nos pull requests para a main, sem deploy
+- Card: ci-branches · Branch: claude/ci-branches · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: workflow novo `.github/workflows/ci.yml` com `npm ci`, `npm run build` e `npm test` em push de
+  `claude/**`, em pull request para a `main` e no botão manual. Permissão só de leitura, sem deploy. O
+  `deploy.yml` não foi tocado.
+- Por quê: você faz o merge por pull request (#1 a #10); com o gatilho de pull request o ✅/❌ aparece na
+  própria tela do merge, inclusive para branches de outras sessões que não começam com `claude/`.
+  `npm ci` usa as versões exatas do `package-lock.json`, igual ao que o agente testa aqui.
+- Outras opções:
+  - A) Só push em `claude/**` (como o card pedia) — mais simples / branches com outro nome e PRs não
+    seriam conferidos.
+  - B) Também rodar os testes dentro do `deploy.yml` antes de publicar — bloquearia publicar código
+    quebrado / mexe no fluxo que publica o jogo; melhor como card separado se você quiser.
+  - C) CI em toda branch (`'**'`) — cobre tudo / roda à toa em branches de rascunho.
+- Como trocar depois: editar a seção `on:` de `.github/workflows/ci.yml` (ou apagar o arquivo).
+- Fácil de reverter? sim
+
 ### D-20261024-8 · Fluxo de patch .zip continua (decisão do João)
 - Card: ota-patches · Branch: — · Data: 2026-10-24
 - Regra de negócio? não
