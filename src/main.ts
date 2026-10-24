@@ -15,6 +15,7 @@ import {
 } from './types';
 import { ProgressionManager } from './progression';
 import { LEVEL_CATALOG, getNextLevel } from './levels';
+import { Tutorial } from './tutorial';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -124,6 +125,13 @@ engine = new GameEngine(canvas, {
   onGameEnd: (won) => openGameOverModal(won),
   onToast: (msg) => showToast(msg)
 });
+
+const tutorial = new Tutorial(
+  engine,
+  document.getElementById('canvas-container') as HTMLElement,
+  canvas,
+  seedBarEl
+);
 
 function buildSeedPackets(): void {
   seedBarEl.innerHTML = '';
@@ -624,6 +632,7 @@ function startLevel(level: LevelConfig): void {
   updateMenuStageInfo();
   hideMainMenuAndPlay();
   showToast(`⚔️ Iniciando ${currentLevel.name}!`);
+  tutorial.iniciarSeFor(currentLevel.id);
 }
 
 function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): void {
@@ -935,6 +944,7 @@ restartBtn.addEventListener('click', () => {
 // Main Menu Controls
 function showMainMenu(): void {
   engine.paused = true;
+  tutorial.parar();
   updateMenuStageInfo();
   mainMenuScreen.classList.remove('hidden');
 }
@@ -1003,6 +1013,7 @@ function loop(now: number): void {
   // Throttle DOM tree updates to 10 FPS (every 100ms) to maximize canvas draw calls on mobile
   if (now - lastHudSync > 100) {
     updateCooldownOverlays();
+    tutorial.tick();
     lastHudSync = now;
   }
 
