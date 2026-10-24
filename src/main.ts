@@ -255,11 +255,18 @@ function updateCooldownOverlays(): void {
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
 }
 
+// Deck só com plantas já liberadas; se nenhuma do deck estiver liberada, usa as liberadas
+function unlockedDeck(ids: string[]): string[] {
+  const unlocked = ProgressionManager.getProgress().unlockedPlants;
+  const deck = ids.filter((id) => unlocked.includes(id));
+  return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+}
+
 // DECK BUILDER ("ESCOLHA SUAS SEMENTES") & BIOME SELECTOR
 function openDeckModal(): void {
   engine.paused = true;
   draftBiome = engine.currentBiome;
-  draftDeckIds = [...engine.activeDeckIds];
+  draftDeckIds = unlockedDeck(engine.activeDeckIds);
   renderDeckModalContents();
   deckModal.classList.remove('hidden');
 }
@@ -287,6 +294,8 @@ function renderDeckModalContents(): void {
   }
 
   // 2. Render Deck Count & Plants with lock status
+  // Planta bloqueada nunca aparece como "No deck" nem conta no total
+  draftDeckIds = unlockedDeck(draftDeckIds);
   deckCountEl.textContent = `${draftDeckIds.length}`;
   deckPlantGridEl.innerHTML = '';
   const progress = ProgressionManager.getProgress();
