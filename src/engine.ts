@@ -1382,7 +1382,23 @@ export class GameEngine {
       });
     }
 
-    // 1b. A canoa do Canoeiro afunda na metade da vida: ele segue nadando, bem mais devagar
+    // 2. Classic PvZ 1 Zombie Arm Pop-Off when HP drops below 35%
+    if (!z.lostArm && ratio < 0.35) {
+      z.lostArm = true;
+      this.debris.push({
+        kind: 'arm',
+        x: z.x - 0.1,
+        y: z.row + 0.4,
+        vx: -0.4 + Math.random() * 0.8,
+        vy: -1.8,
+        groundY: z.row + 0.82,
+        angle: 0,
+        vAngle: -8,
+        life: 2.0
+      });
+    }
+
+    // 3. A canoa do Canoeiro afunda na metade da vida: ele segue nadando, bem mais devagar
     if (!z.lostHeadgear && ratio < 0.5 && z.variant === 'canoeiro') {
       z.lostHeadgear = true;
       z.speed = 0.22;
@@ -1399,22 +1415,6 @@ export class GameEngine {
         angle: 0,
         vAngle: 4 + Math.random() * 3,
         life: 1.8
-      });
-    }
-
-    // 2. Classic PvZ 1 Zombie Arm Pop-Off when HP drops below 35%
-    if (!z.lostArm && ratio < 0.35) {
-      z.lostArm = true;
-      this.debris.push({
-        kind: 'arm',
-        x: z.x - 0.1,
-        y: z.row + 0.4,
-        vx: -0.4 + Math.random() * 0.8,
-        vy: -1.8,
-        groundY: z.row + 0.82,
-        angle: 0,
-        vAngle: -8,
-        life: 2.0
       });
     }
   }
