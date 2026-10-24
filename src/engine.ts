@@ -222,6 +222,15 @@ export class GameEngine {
   public mowers: LawnMower[] = [];
   /** Quando definido, substitui o diretor de ondas das fases (modo infinito e desafio do dia). */
   public waveDirector: { update(dt: number): void } | null = null;
+  /** Qualidade gráfica: começa alta e cai sozinha para "econômica" se o aparelho não aguentar. */
+  public qualidade: 'alta' | 'economica' = 'alta';
+  /** Maior densidade de pixels do canvas (1,5 na qualidade alta, 1 na econômica). */
+  public maxDpr = 1.5;
+  private maxParticulas = 160;
+  private quadroMedioMs = 16.7;
+  private tempoLento = 0;
+  private ultimoQuadro = 0;
+  private texturaSol: HTMLCanvasElement | null = null;
   /** Trava o clima atual (desafio do dia com noite ou chuva o tempo todo). */
   public weatherLocked = false;
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
@@ -401,7 +410,7 @@ export class GameEngine {
     const width = rect ? rect.width : window.innerWidth;
     const height = rect ? rect.height : window.innerHeight - 60;
 
-    this.dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+    this.dpr = Math.min(window.devicePixelRatio || 1, this.maxDpr);
     this.canvas.width = Math.floor(width * this.dpr);
     this.canvas.height = Math.floor(height * this.dpr);
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
@@ -2005,6 +2014,7 @@ export class GameEngine {
     color: string,
     scale = 1.0
   ): void {
+    if (this.floatingTexts.length >= 24) this.floatingTexts.shift();
     this.floatingTexts.push({
       text,
       x,
@@ -2016,7 +2026,60 @@ export class GameEngine {
     });
   }
 
+  /**
+   * Mede o tempo de cada quadro. Se o jogo ficar abaixo de ~38 quadros por segundo por 3 s seguidos,
+   * passa para a qualidade econômica: menos pixels no canvas, sem brilhos extras e menos partículas.
+   */
+  private medirDesempenho(agora: number): void {
+    const dtMs = this.ultimoQuadro ? agora - this.ultimoQuadro : 16.7;
+    this.ultimoQuadro = agora;
+    if (this.qualidade === 'economica' || dtMs > 250) return; // aba em segundo plano não conta
+    this.quadroMedioMs = this.quadroMedioMs * 0.94 + dtMs * 0.06;
+    if (this.quadroMedioMs > 26) {
+      this.tempoLento += dtMs / 1000;
+      if (this.tempoLento > 3) this.usarQualidadeEconomica(true);
+    } else {
+      this.tempoLento = Math.max(0, this.tempoLento - dtMs / 2000);
+    }
+  }
+
+  /** Liga a qualidade econômica (o jogo chama sozinho quando o aparelho está lento). */
+  public usarQualidadeEconomica(avisar = false): void {
+    if (this.qualidade === 'economica') return;
+    this.qualidade = 'economica';
+    this.maxDpr = 1;
+    this.maxParticulas = 60;
+    CharacterRenderer.efeitos = false;
+    if (this.particles.length > this.maxParticulas) this.particles.splice(0, this.particles.length - this.maxParticulas);
+    this.resize();
+    if (avisar) this.onToast('⚙️ Gráficos ajustados para o jogo rodar mais liso neste aparelho');
+  }
+
+  /** Sol coletável desenhado uma vez (o emoji em fillText a cada quadro é lento). */
+  private getTexturaSol(): HTMLCanvasElement {
+    if (!this.texturaSol) {
+      const c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d');
+      if (g) {
+        g.fillStyle = 'rgba(250, 204, 21, 0.28)';
+        g.beginPath();
+        g.arc(32, 32, 30, 0, Math.PI * 2);
+        g.fill();
+        g.font = '38px sans-serif';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('☀️', 32, 34);
+      }
+      this.texturaSol = c;
+    }
+    return this.texturaSol;
+  }
+
   private spawnParticles(x: number, y: number, color: string, count: number): void {
+    // Teto de partículas: numa luta cheia de combos elas passavam de 250 ao mesmo tempo
+    if (this.qualidade === 'economica') count = Math.ceil(count / 2);
+    count = Math.min(count, this.maxParticulas - this.particles.length);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
       const spd = 0.4 + Math.random() * 1.8;
@@ -2041,6 +2104,7 @@ export class GameEngine {
     ctx.clearRect(0, 0, width, height);
 
     const agora = performance.now();
+    this.medirDesempenho(agora);
     const tremendo = agora < this.shakeUntil;
     if (tremendo) {
       const total = Math.max(1, this.shakeUntil - this.shakeStart);
@@ -2252,33 +2316,45 @@ export class GameEngine {
       const px = this.boardLeft + proj.x * this.cellW;
       const py = this.boardTop + (proj.row + 0.45) * this.cellH + proj.yOffset;
 
+      // Brilho por textura pronta e rastro em dois traços: o shadowBlur e o degradê criado
+      // a cada quadro eram o que mais pesava nos combos e na chuva.
       ctx.save();
       if (proj.element === 'wind') {
-        // Crescent Wind Air-Slash Blade
-        ctx.strokeStyle = '#99f6e4';
-        ctx.lineWidth = 4;
-        ctx.shadowColor = '#2dd4bf';
-        ctx.shadowBlur = 12;
+        // Lâmina de vento em meia-lua
+        ctx.lineCap = 'round';
+        ctx.strokeStyle = '#2dd4bf';
+        ctx.globalAlpha = 0.35;
+        ctx.lineWidth = 10;
         ctx.beginPath();
         ctx.arc(px, py, 12, -0.45 * Math.PI, 0.45 * Math.PI);
         ctx.stroke();
+        ctx.globalAlpha = 1;
+        ctx.strokeStyle = '#99f6e4';
+        ctx.lineWidth = 4;
+        ctx.stroke();
       } else {
-        const trailGrad = ctx.createLinearGradient(px - 22, py, px, py);
-        trailGrad.addColorStop(0, 'transparent');
-        trailGrad.addColorStop(1, proj.color);
-        ctx.strokeStyle = trailGrad;
-        ctx.lineWidth = proj.radius * 1.3;
+        const r = proj.radius;
+        if (CharacterRenderer.efeitos) {
+          ctx.drawImage(CharacterRenderer.brilho(proj.color, 'aa'), px - r * 2.6, py - r * 2.6, r * 5.2, r * 5.2);
+        }
         ctx.lineCap = 'round';
+        ctx.strokeStyle = proj.color;
+        ctx.lineWidth = r * 1.3;
+        ctx.globalAlpha = 0.25;
         ctx.beginPath();
-        ctx.moveTo(px - 18, py);
+        ctx.moveTo(px - 22, py);
+        ctx.lineTo(px - 9, py);
+        ctx.stroke();
+        ctx.globalAlpha = 0.6;
+        ctx.beginPath();
+        ctx.moveTo(px - 10, py);
         ctx.lineTo(px, py);
         ctx.stroke();
+        ctx.globalAlpha = 1;
 
         ctx.beginPath();
-        ctx.arc(px, py, proj.radius, 0, Math.PI * 2);
+        ctx.arc(px, py, r, 0, Math.PI * 2);
         ctx.fillStyle = '#ffffff';
-        ctx.shadowColor = proj.color;
-        ctx.shadowBlur = 14;
         ctx.fill();
         ctx.lineWidth = 2.5;
         ctx.strokeStyle = proj.color;
@@ -2297,28 +2373,34 @@ export class GameEngine {
       const midY = (y1 + y2) / 2 + (Math.random() - 0.5) * 18;
 
       ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
       ctx.strokeStyle = arc.color;
-      ctx.lineWidth = 3.5;
-      ctx.shadowColor = arc.color;
-      ctx.shadowBlur = 14;
       ctx.beginPath();
       ctx.moveTo(x1, y1);
       ctx.lineTo(midX, midY);
       ctx.lineTo(x2, y2);
+      ctx.globalAlpha = 0.3;
+      ctx.lineWidth = 10;
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+      ctx.lineWidth = 3.5;
       ctx.stroke();
       ctx.restore();
     }
 
     // 9. Draw Particles
-    for (const pt of this.particles) {
-      const px = this.boardLeft + pt.x * this.cellW;
-      const py = this.boardTop + pt.y * this.cellH;
+    if (this.particles.length > 0) {
       ctx.save();
-      ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
-      ctx.fillStyle = pt.color;
-      ctx.beginPath();
-      ctx.arc(px, py, pt.size, 0, Math.PI * 2);
-      ctx.fill();
+      for (const pt of this.particles) {
+        const px = this.boardLeft + pt.x * this.cellW;
+        const py = this.boardTop + pt.y * this.cellH;
+        ctx.globalAlpha = Math.max(0, pt.life / pt.maxLife);
+        ctx.fillStyle = pt.color;
+        ctx.beginPath();
+        ctx.arc(px, py, pt.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
       ctx.restore();
     }
 
@@ -2327,17 +2409,7 @@ export class GameEngine {
       const sx = this.boardLeft + s.x * this.cellW;
       const sy = this.boardTop + s.y * this.cellH;
 
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(sx, sy, 20, 0, Math.PI * 2);
-      ctx.fillStyle = 'rgba(250, 204, 21, 0.28)';
-      ctx.fill();
-
-      ctx.font = '26px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('☀️', sx, sy);
-      ctx.restore();
+      ctx.drawImage(this.getTexturaSol(), sx - 21, sy - 21, 42, 42);
     }
 
     // 11. Weather Rain Drops & Lightning Flash Overlay
@@ -2346,14 +2418,14 @@ export class GameEngine {
       ctx.strokeStyle = 'rgba(125, 211, 252, 0.32)';
       ctx.lineWidth = 1.5;
       const timeOffset = performance.now() * 0.4;
+      ctx.beginPath();
       for (let i = 0; i < 38; i++) {
         const rx = (i * 97 + timeOffset) % width;
         const ry = (i * 61 + timeOffset * 1.7) % height;
-        ctx.beginPath();
         ctx.moveTo(rx, ry);
         ctx.lineTo(rx - 6, ry + 16);
-        ctx.stroke();
       }
+      ctx.stroke();
       ctx.restore();
     }
 
