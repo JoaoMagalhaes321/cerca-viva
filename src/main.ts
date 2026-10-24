@@ -187,6 +187,8 @@ function buildSeedPackets(): void {
 }
 
 function syncHud(): void {
+  // O tema do HUD muda com o clima (noite e névoa escurecem a faixa do topo)
+  document.body.dataset.weather = engine.weather;
   sunAmountEl.textContent = String(engine.sun);
   waveLabelEl.textContent = `ONDA ${engine.wave} / ${engine.maxWaves}`;
   if (currentLevel) {

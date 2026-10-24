@@ -388,7 +388,10 @@ export class GameEngine {
     this.ctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
 
     const usableW = width * 0.90;
-    const usableH = height - 64;
+    // Espaço da barra de poderes de baixo, medido de verdade (no celular deitado ela cobria a última linha)
+    const bottomBar = document.getElementById('hud-bottom');
+    const reserveBottom = bottomBar && bottomBar.offsetHeight > 0 ? bottomBar.offsetHeight + 10 : 46;
+    const usableH = height - reserveBottom - 18;
 
     this.cellW = Math.floor(Math.min(usableW / GRID_COLS, 112));
     this.cellH = Math.floor(Math.min(usableH / GRID_ROWS, 102));
@@ -397,7 +400,7 @@ export class GameEngine {
     const totalBoardH = this.cellH * GRID_ROWS;
 
     this.boardLeft = Math.floor((width - totalBoardW) / 2 + 18);
-    this.boardTop = Math.floor((height - 46 - totalBoardH) / 2 + 4);
+    this.boardTop = Math.floor((height - reserveBottom - totalBoardH) / 2 + 4);
     this.boardCacheDirty = true;
   }
 
@@ -413,22 +416,95 @@ export class GameEngine {
     const boardW = this.cellW * GRID_COLS;
     const boardH = this.cellH * GRID_ROWS;
 
-    // 1. Patio Frame & Street Sidewalk
-    bCtx.fillStyle = '#1e293b';
-    bCtx.beginPath();
-    bCtx.roundRect(this.boardLeft - 52, this.boardTop - 10, boardW + 78, boardH + 24, 14);
-    bCtx.fill();
+    // 1. Cenário em volta do gramado: céu, sebe, caminho de pedra e rua
+    const ink = '#2a2416';
+    const isDark =
+      this.weather === 'night_storm' ||
+      this.weather === 'spore_fog' ||
+      this.currentBiome.id === 'bioluminescent_swamp';
+    const isRainy = this.weather === 'rain';
+
+    const sky = bCtx.createLinearGradient(0, 0, 0, Math.max(1, this.boardTop));
+    if (isDark) {
+      sky.addColorStop(0, '#040c12');
+      sky.addColorStop(1, '#0c2427');
+    } else if (isRainy) {
+      sky.addColorStop(0, '#7d93a8');
+      sky.addColorStop(1, '#b4c4d1');
+    } else {
+      sky.addColorStop(0, '#7ccbff');
+      sky.addColorStop(1, '#cdeeff');
+    }
+    bCtx.fillStyle = sky;
+    bCtx.fillRect(0, 0, width, this.boardTop);
+    bCtx.fillStyle = isDark ? '#0a1f1c' : isRainy ? '#4f8f3a' : '#5fae38';
+    bCtx.fillRect(0, this.boardTop - 2, width, height - this.boardTop + 2);
+
+    // Sebe (dia) ou silhueta de mata (noite) ao longo do topo do gramado
+    const bumpR = Math.max(9, Math.min(24, this.boardTop * 0.42));
+    const bumpY = this.boardTop - bumpR * 0.3;
+    let bumpSeed = 7;
+    const bumpRnd = (): number => {
+      bumpSeed = (bumpSeed * 1103515245 + 12345) & 0x7fffffff;
+      return bumpSeed / 0x7fffffff;
+    };
+    bCtx.save();
+    bCtx.lineWidth = 2.5;
+    bCtx.strokeStyle = isDark ? '#04090c' : ink;
+    for (let bx = -bumpR; bx < width + bumpR; bx += bumpR * 1.3) {
+      const r = bumpR * (0.85 + bumpRnd() * 0.3);
+      bCtx.fillStyle = isDark ? '#06161a' : isRainy ? '#3f7a39' : '#3c8a36';
+      bCtx.beginPath();
+      bCtx.arc(bx, bumpY + (bumpRnd() - 0.5) * 4, r, 0, Math.PI * 2);
+      bCtx.fill();
+      if (!isDark) bCtx.stroke();
+    }
+    if (!isDark) {
+      for (let bx = -bumpR; bx < width + bumpR; bx += bumpR * 1.3) {
+        bCtx.fillStyle = isRainy ? '#4f8f45' : '#55a64a';
+        bCtx.beginPath();
+        bCtx.arc(bx + bumpR * 0.2, bumpY - bumpR * 0.35, bumpR * 0.38, 0, Math.PI * 2);
+        bCtx.fill();
+      }
+    } else {
+      // Esporos que brilham no ar
+      bCtx.fillStyle = '#9cffd9';
+      bCtx.shadowColor = '#3cffc8';
+      bCtx.shadowBlur = 6;
+      for (let i = 0; i < 22; i++) {
+        bCtx.globalAlpha = 0.35 + bumpRnd() * 0.5;
+        bCtx.beginPath();
+        bCtx.arc(bumpRnd() * width, bumpRnd() * height, 1.2 + bumpRnd() * 1.6, 0, Math.PI * 2);
+        bCtx.fill();
+      }
+      bCtx.globalAlpha = 1;
+      bCtx.shadowBlur = 0;
+    }
+    bCtx.restore();
+
+    // Caminho de pedra à esquerda, onde ficam os cortadores
+    const pathX = this.boardLeft - 48;
+    bCtx.fillStyle = isDark ? '#13292c' : '#d8c29c';
+    bCtx.fillRect(pathX, this.boardTop, 46, boardH);
     bCtx.lineWidth = 2;
-    bCtx.strokeStyle = 'rgba(148, 163, 184, 0.25)';
-    bCtx.stroke();
+    bCtx.strokeStyle = isDark ? '#04090c' : ink;
+    for (let r = 0; r < GRID_ROWS; r++) {
+      const ry = this.boardTop + r * this.cellH;
+      for (let k = 0; k < 2; k++) {
+        bCtx.fillStyle = isDark ? '#1a3438' : '#c2a97f';
+        bCtx.beginPath();
+        bCtx.roundRect(pathX + 6 + k * 4, ry + this.cellH * (0.12 + k * 0.48), 30, this.cellH * 0.34, 8);
+        bCtx.fill();
+        bCtx.stroke();
+      }
+    }
 
-    // Left House Porch Patio
-    bCtx.fillStyle = '#334155';
-    bCtx.fillRect(this.boardLeft - 44, this.boardTop, 40, boardH);
-
-    // Right Zombie Street Curb
-    bCtx.fillStyle = '#0f172a';
-    bCtx.fillRect(this.boardLeft + boardW + 4, this.boardTop, 18, boardH);
+    // Rua à direita, de onde vêm os zumbis
+    const streetX = this.boardLeft + boardW;
+    bCtx.fillStyle = isDark ? '#0b1416' : isRainy ? '#5d6670' : '#6b6f75';
+    bCtx.fillRect(streetX, this.boardTop - 2, width - streetX, boardH + 4);
+    bCtx.fillStyle = isDark ? '#2a3438' : '#d6d0c2';
+    bCtx.fillRect(streetX, this.boardTop - 2, 7, boardH + 4);
 
     // 2. Pre-render all 45 grass tiles once
     for (let r = 0; r < GRID_ROWS; r++) {
@@ -436,6 +512,11 @@ export class GameEngine {
       for (let c = 0; c < GRID_COLS; c++) {
         const x = this.boardLeft + c * this.cellW;
         const y = this.boardTop + r * this.cellH;
+        if (!isAvailable) {
+          // Linha fechada nesta fase: terra sem grama
+          CharacterRenderer.drawDirtTile(bCtx, x, y, this.cellW, this.cellH, r, c, isDark);
+          continue;
+        }
         CharacterRenderer.drawLawnTileDetail(
           bCtx,
           x,
@@ -449,12 +530,12 @@ export class GameEngine {
           this.weather === 'spore_fog' || this.currentBiome.id === 'bioluminescent_swamp'
         );
 
-        if (!isAvailable) {
-          bCtx.fillStyle = 'rgba(15, 23, 42, 0.72)';
-          bCtx.fillRect(x, y, this.cellW, this.cellH);
-        }
       }
     }
+
+    bCtx.lineWidth = 3;
+    bCtx.strokeStyle = isDark ? '#04090c' : ink;
+    bCtx.strokeRect(this.boardLeft - 1.5, this.boardTop - 1.5, boardW + 3, boardH + 3);
     this.boardCacheDirty = false;
   }
 

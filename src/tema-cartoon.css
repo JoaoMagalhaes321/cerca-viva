@@ -1,0 +1,385 @@
+/* ==========================================================================
+   Tema cartoon (estilo A): cartões creme, contorno grosso e sombra chapada.
+   Carregado depois do style.css e só sobrescreve a aparência; o layout é o mesmo.
+   Nas fases escuras (tempestade e névoa) a faixa do topo escurece, com a luz da noite.
+   ========================================================================== */
+
+:root {
+  --ink: #2a2416;
+  --cream: #fff6e0;
+  --cream-2: #fff3c4;
+  --sand: #e9dcc0;
+  --sky-1: #7ccbff;
+  --sky-2: #cdeeff;
+  --sun: #ffd84a;
+  --leaf: #4caf3a;
+  --leaf-dark: #2f7d24;
+  --cartoon-font: 'Lilita One', 'Fredoka', system-ui, sans-serif;
+}
+
+/* ---------- Fundo do jogo ---------- */
+html,
+body {
+  background-color: #5fae38;
+}
+
+#canvas-container {
+  background: #5fae38;
+}
+
+body[data-weather='night_storm'],
+body[data-weather='spore_fog'],
+body[data-weather='night_storm'] #canvas-container,
+body[data-weather='spore_fog'] #canvas-container {
+  background: #0a1f1c;
+}
+
+body[data-weather='rain'] #canvas-container {
+  background: #4f8f3a;
+}
+
+/* ---------- Faixa do topo ---------- */
+#hud-top {
+  background: linear-gradient(180deg, var(--sky-1) 0%, var(--sky-2) 100%);
+  border-bottom: 3px solid var(--ink);
+}
+
+body[data-weather='rain'] #hud-top {
+  background: linear-gradient(180deg, #7d93a8 0%, #b4c4d1 100%);
+}
+
+body[data-weather='night_storm'] #hud-top,
+body[data-weather='spore_fog'] #hud-top {
+  background: linear-gradient(180deg, #040c12 0%, #0c2427 100%);
+  border-bottom-color: #04090c;
+}
+
+/* Peça cartoon: usada em todos os cartões e botões do HUD */
+.sun-counter,
+.seed-card,
+.tool-btn,
+.weather-badge,
+.wave-box,
+.icon-btn,
+#hud-bottom,
+.power-btn,
+.toast-banner {
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+  color: var(--ink);
+}
+
+/* Sol */
+.sun-counter {
+  background: var(--cream-2);
+  border-radius: 14px;
+  padding: 2px 10px 2px 6px;
+}
+
+#sun-amount {
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  font-size: 1.2rem;
+  color: var(--ink);
+}
+
+.sun-Text small {
+  color: var(--ink);
+  opacity: 0.7;
+}
+
+/* Cartões de semente */
+.seed-card {
+  background: var(--cream);
+  border-radius: 11px;
+  transition: transform 0.08s ease;
+}
+
+.seed-card.selected {
+  background: var(--sun);
+  border-color: var(--ink);
+  transform: translateY(-3px);
+  box-shadow: 0 5px 0 var(--ink);
+}
+
+.seed-card.disabled {
+  opacity: 0.55;
+  filter: grayscale(0.6);
+}
+
+.seed-card .seed-name {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.seed-card .seed-cost {
+  background: var(--cream-2);
+  border: 2px solid var(--ink);
+  color: var(--ink);
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+}
+
+.seed-card .cooldown-overlay {
+  background: rgba(42, 36, 22, 0.55);
+}
+
+/* Pá */
+.tool-btn {
+  background: var(--sand);
+  border-radius: 11px;
+}
+
+.tool-btn.active {
+  background: #ff9b8a;
+  border-color: var(--ink);
+}
+
+.tool-label {
+  color: var(--ink);
+}
+
+/* Clima, onda e combos */
+.weather-badge {
+  background: var(--cream);
+  border-radius: 12px;
+}
+
+.weather-info strong {
+  color: var(--ink);
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  font-size: 0.72rem;
+}
+
+.weather-info small {
+  color: #1f6fb0;
+  font-weight: 700;
+}
+
+.wave-box {
+  background: var(--cream);
+  border-radius: 12px;
+  padding: 3px 7px 5px;
+  width: 128px;
+}
+
+.wave-header {
+  color: var(--ink);
+}
+
+#wave-label {
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+}
+
+.stage-pill {
+  background: var(--sun);
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+
+.synergy-pill {
+  background: #c8f5ec;
+  color: var(--ink);
+  border: 2px solid var(--ink);
+}
+
+.wave-progress-bg {
+  height: 9px;
+  background: #8a6a45;
+  border: 2px solid var(--ink);
+}
+
+.wave-progress-fill {
+  background: #ff8a1f;
+}
+
+/* Botões do topo */
+.icon-btn {
+  background: var(--cream);
+  border-radius: 11px;
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  letter-spacing: 0.2px;
+}
+
+.icon-btn:active,
+.seed-card:active,
+.tool-btn:active,
+.power-btn:active {
+  transform: translateY(2px);
+  box-shadow: 0 1px 0 var(--ink);
+}
+
+/* ---------- Barra de poderes de baixo ---------- */
+#hud-bottom {
+  background: rgba(255, 246, 224, 0.96);
+  border-radius: 16px;
+}
+
+.guardian-avatar {
+  border-right: 2px solid rgba(42, 36, 22, 0.25);
+}
+
+.guardian-avatar small {
+  color: var(--ink);
+}
+
+.power-btn {
+  background: var(--cream-2);
+  border-width: 2.5px;
+  border-radius: 12px;
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.power-btn.active {
+  background: #e9d5ff;
+  border-color: var(--ink);
+}
+
+.power-meta strong {
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  font-size: 0.72rem;
+  color: var(--ink);
+}
+
+.power-meta small {
+  color: #1f6fb0;
+  font-weight: 700;
+}
+
+.active-mutations {
+  border-left: 2px solid rgba(42, 36, 22, 0.25);
+}
+
+.mut-label {
+  color: #7d1f52;
+}
+
+.mut-empty {
+  color: rgba(42, 36, 22, 0.65);
+}
+
+.mut-chip {
+  background: #f3e8ff;
+  border: 2px solid var(--ink);
+  color: var(--ink);
+}
+
+/* Aviso no topo da tela */
+.toast-banner {
+  background: var(--cream);
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  font-size: 0.82rem;
+  letter-spacing: 0.2px;
+}
+
+/* ---------- Tela inicial ---------- */
+.main-menu-overlay {
+  background:
+    radial-gradient(ellipse 120% 55% at 50% 118%, #5fae38 0 58%, transparent 59%),
+    radial-gradient(ellipse 80% 40% at 15% 108%, #4f9d2e 0 60%, transparent 61%),
+    linear-gradient(180deg, #7ccbff 0%, #cdeeff 70%);
+}
+
+.logo-badge {
+  background: var(--cream);
+  color: var(--ink);
+  border: 2.5px solid var(--ink);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.logo-title,
+.logo-subtitle {
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  color: #ffffff;
+  -webkit-text-stroke: 2px var(--ink);
+  paint-order: stroke fill;
+  text-shadow: 0 4px 0 var(--ink);
+  letter-spacing: 1px;
+}
+
+.logo-title {
+  font-size: 2.5rem;
+}
+
+.logo-title .vs-text {
+  color: var(--sun);
+}
+
+.logo-subtitle {
+  color: #b6f36b;
+}
+
+.menu-play-btn {
+  background: var(--leaf);
+  border: 3px solid var(--ink);
+  box-shadow: 0 5px 0 var(--ink);
+  color: #ffffff;
+}
+
+.menu-play-btn .btn-text strong {
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  font-size: 1.3rem;
+  -webkit-text-stroke: 1px var(--ink);
+  paint-order: stroke fill;
+}
+
+.menu-play-btn .btn-text small {
+  color: #f0ffe0;
+  font-weight: 700;
+}
+
+.menu-play-btn:active,
+.menu-sec-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 2px 0 var(--ink);
+}
+
+.menu-sec-btn {
+  background: var(--cream);
+  border: 3px solid var(--ink);
+  box-shadow: 0 3px 0 var(--ink);
+  color: var(--ink);
+  font-family: var(--cartoon-font);
+  font-weight: 400;
+  font-size: 0.82rem;
+}
+
+.menu-footer-bar {
+  color: rgba(42, 36, 22, 0.7);
+  font-weight: 700;
+}
+
+/* ---------- Tela baixa (celular deitado): barra de baixo compacta ---------- */
+@media (max-height: 480px) {
+  #hud-bottom {
+    padding: 2px 8px;
+    gap: 6px;
+  }
+
+  .guardian-avatar {
+    display: none;
+  }
+
+  .power-btn {
+    padding: 2px 7px;
+  }
+
+  .power-meta strong {
+    font-size: 0.62rem;
+  }
+
+  .power-meta small {
+    font-size: 0.5rem;
+  }
+
+  .power-icon {
+    font-size: 0.9rem;
+  }
+}
