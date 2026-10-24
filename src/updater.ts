@@ -1,4 +1,4 @@
-// Client-side Hot-Update & Cache Controller for PvZ: Evolution
+// Client-side Hot-Update & Cache Controller for Cerca Viva
 // Uses Service Worker / CacheStorage to check for live updates from any remote static host,
 // caching the entire game bundle offline and updating silently without reinstalling APK.
 

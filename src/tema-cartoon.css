@@ -356,6 +356,40 @@ body[data-weather='spore_fog'] #hud-top {
   font-weight: 700;
 }
 
+/* ---------- Marca: Cerca Viva ---------- */
+.logo-cerca-viva-box {
+  margin: 0;
+  line-height: 0;
+}
+
+.logo-cerca-viva {
+  display: block;
+  width: min(520px, 80vw);
+  height: auto;
+  max-height: 30vh;
+  margin: 0 auto;
+  filter: drop-shadow(0 5px 0 rgba(42, 36, 22, 0.22));
+}
+
+.logo-tagline {
+  margin: 4px 0 0;
+  font-family: var(--cartoon-font);
+  font-size: 1.05rem;
+  color: var(--ink);
+}
+
+@media (max-height: 480px) {
+  .title-logo-box {
+    margin-bottom: 8px;
+  }
+  .logo-cerca-viva {
+    max-height: 31vh;
+  }
+  .logo-tagline {
+    display: none;
+  }
+}
+
 /* ---------- Tela baixa (celular deitado): barra de baixo compacta ---------- */
 @media (max-height: 480px) {
   #hud-bottom {

@@ -1,7 +1,8 @@
-# PvZ: Evolution
+# Cerca Viva
 
-Tower defense 2.5D no estilo Plants vs. Zombies, com elementos (natureza, água, elétrico, fogo…),
-sinergias entre plantas, mutações roguelite, clima dinâmico e trilha sonora procedural.
+Tower defense 2.5D de plantas contra zumbis, com elementos (natureza, água, elétrico, fogo…),
+sinergias entre plantas, mutações roguelite, clima dinâmico e trilha sonora original.
+O jogo se chamava "PvZ: Evolution"; o repositório e o endereço do site continuam com o nome antigo.
 Roda no navegador e no Android (app Capacitor).
 
 - Jogar no navegador: https://joaomagalhaes321.github.io/pvz-evolution/
