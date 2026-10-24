@@ -215,6 +215,12 @@ export class GameEngine {
   public particles: Particle[] = [];
   public debris: PhysicsDebris[] = [];
   public mowers: LawnMower[] = [];
+  /** Quando definido, substitui o diretor de ondas das fases (modo infinito e desafio do dia). */
+  public waveDirector: { update(dt: number): void } | null = null;
+  /** Trava o clima atual (desafio do dia com noite ou chuva o tempo todo). */
+  public weatherLocked = false;
+  /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
+  public skySunScale = 1;
 
   public seedCooldowns: Record<string, number> = {};
   public unlockedMutations: Set<string> = new Set();
@@ -278,6 +284,9 @@ export class GameEngine {
   public initBoard(biome?: BiomeDefinition, deckIds?: string[], level?: LevelConfig): void {
     if (biome) this.currentBiome = biome;
     this.currentLevel = level || null;
+    this.waveDirector = null;
+    this.weatherLocked = false;
+    this.skySunScale = 1;
     if (deckIds && deckIds.length > 0) {
       this.activeDeckIds = [...deckIds];
       this.selectedPlantId = this.activeDeckIds[0];
@@ -794,7 +803,7 @@ export class GameEngine {
       }
     }
 
-    this.weatherTimer -= dt;
+    if (!this.weatherLocked) this.weatherTimer -= dt;
     if (this.weatherTimer <= 0) {
       this.weatherTimer = 42;
       this.cycleWeather();
@@ -804,7 +813,8 @@ export class GameEngine {
       this.lightningFlash = Math.max(0, this.lightningFlash - dt * 1.8);
     }
 
-    const sunInterval = this.weather === 'sunny' ? 6.5 : this.weather === 'rain' ? 9.5 : 11.5;
+    const sunInterval =
+      (this.weather === 'sunny' ? 6.5 : this.weather === 'rain' ? 9.5 : 11.5) * this.skySunScale;
     this.skySunTimer -= dt;
     if (this.skySunTimer <= 0) {
       this.skySunTimer = sunInterval;
@@ -1143,7 +1153,8 @@ export class GameEngine {
       if (pt.life <= 0) this.particles.splice(i, 1);
     }
 
-    this.updateWaveDirector(dt);
+    if (this.waveDirector) this.waveDirector.update(dt);
+    else this.updateWaveDirector(dt);
   }
 
   private checkZombieDismemberment(z: ZombieEntity): void {
@@ -1739,6 +1750,46 @@ export class GameEngine {
         });
       });
       this.spawnFloatingText('⚡ REFORÇOS!', boss.x, boss.row, '#c084fc', 1.25);
+    }
+  }
+
+  // ---------- Usados pelos modos sem fase (infinito e desafio do dia) ----------
+
+  /** Oferece a escolha de uma mutação, como nas bandeiras das fases. */
+  public offerMutation(): void {
+    this.triggerMutationModal();
+  }
+
+  /** Encerra a partida com vitória ou derrota. */
+  public finishGame(won: boolean): void {
+    if (this.gameOver) return;
+    sound.bossMode = false;
+    this.gameOver = true;
+    this.onGameEnd(won);
+  }
+
+  /** Pede para a interface se atualizar (onda, sol, etc.). */
+  public refreshUi(): void {
+    this.onUiUpdate();
+  }
+
+  /** Troca o clima na hora (sem o aviso do ciclo normal). */
+  public setWeather(weather: WeatherType): void {
+    if (this.weather === weather) return;
+    this.weather = weather;
+    this.boardCacheDirty = true;
+    this.onUiUpdate();
+  }
+
+  /** Habilidades da Colheitadeira Z quando ela está em campo. */
+  public updateBossSkills(dt: number): void {
+    const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
+    if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
+      this.bossSkillTimer -= dt;
+      if (this.bossSkillTimer <= 0) {
+        this.bossSkillTimer = 5.2;
+        this.executeZombossSkill(activeBoss);
+      }
     }
   }
 
