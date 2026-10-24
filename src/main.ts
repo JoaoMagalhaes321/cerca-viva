@@ -196,6 +196,8 @@ function buildSeedPackets(): void {
   }
 }
 
+let ultimasMutacoes: string | null = null;
+
 function syncHud(): void {
   // O tema do HUD muda com o clima (noite e névoa escurecem a faixa do topo)
   document.body.dataset.weather = engine.weather;
@@ -241,6 +243,10 @@ function syncHud(): void {
   powerRainBtn.classList.toggle('active', engine.activePower === 'raincloud');
   powerSolarBtn.classList.toggle('active', engine.activePower === 'solarbeam');
 
+  // A lista de mutações só é refeita quando muda (o HUD é atualizado várias vezes por segundo na luta)
+  const assinaturaMutacoes = [...engine.unlockedMutations].join(',');
+  if (assinaturaMutacoes === ultimasMutacoes) return;
+  ultimasMutacoes = assinaturaMutacoes;
   if (engine.unlockedMutations.size === 0) {
     mutListEl.innerHTML = `<span class="mut-empty">Sobreviva até a 🚩 para evoluir</span>`;
   } else {

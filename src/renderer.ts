@@ -3,9 +3,36 @@
 // O gramado e o cortador continuam desenhados em código.
 
 import { PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engine';
-import { getSprite } from './sprites';
+import { getSprite, SpriteImage } from './sprites';
+
+// Brilho redondo (degradê radial) desenhado uma vez por cor e reaproveitado: criar o degradê
+// a cada quadro para cada planta e projétil custava caro no celular.
+const brilhos = new Map<string, HTMLCanvasElement>();
 
 export class CharacterRenderer {
+  /** Efeitos extras (brilhos das plantas). O motor desliga quando o aparelho não aguenta. */
+  public static efeitos = true;
+
+  /** Textura de brilho na cor pedida (alfa em hexa, ex.: '44'), pronta para drawImage. */
+  public static brilho(cor: string, alfa = '66'): HTMLCanvasElement {
+    const chave = cor + alfa;
+    let c = brilhos.get(chave);
+    if (!c) {
+      c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d');
+      if (g) {
+        const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+        grad.addColorStop(0, cor + alfa);
+        grad.addColorStop(1, cor + '00');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 64, 64);
+      }
+      brilhos.set(chave, c);
+    }
+    return c;
+  }
+
   // Casa do gramado no estilo cartoon (dia/chuva) ou com a luz noturna (noite/pântano).
   public static drawLawnTileDetail(
     ctx: CanvasRenderingContext2D,
@@ -236,22 +263,24 @@ export class CharacterRenderer {
 
     ctx.save();
 
-    // Brilho elemental (supremo, noite, elétrico, fogo e mina armada)
+    // Brilho elemental (supremo, noite, elétrico, fogo e mina armada).
+    // No modo econômico só o brilho do supremo continua.
     if (
       p.overdriveTimer > 0 ||
-      isNight ||
-      p.def.element === 'electric' ||
-      p.def.element === 'fire' ||
-      (p.def.id === 'plasma_mine' && p.armed)
+      (this.efeitos &&
+        (isNight ||
+          p.def.element === 'electric' ||
+          p.def.element === 'fire' ||
+          (p.def.id === 'plasma_mine' && p.armed)))
     ) {
       const radius = p.overdriveTimer > 0 ? cellW * 0.68 : cellW * 0.48;
-      const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, radius);
-      grad.addColorStop(0, p.def.color + (p.overdriveTimer > 0 ? '88' : '44'));
-      grad.addColorStop(1, 'transparent');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.drawImage(
+        this.brilho(p.def.color, p.overdriveTimer > 0 ? '88' : '44'),
+        cx - radius,
+        cy - radius,
+        radius * 2,
+        radius * 2
+      );
     }
 
     ctx.translate(cx, cy + cellH * 0.18);
@@ -272,12 +301,11 @@ export class CharacterRenderer {
       }
 
       if (p.def.id === 'wallnut' && p.armored) {
-        ctx.shadowColor = '#38bdf8';
-        ctx.shadowBlur = 16;
+        // Armadura de titânio: halo azul atrás do cacto (sem shadowBlur, que é caro)
+        ctx.drawImage(this.brilho('#38bdf8', 'cc'), -56, -84, 112, 112);
       }
 
       ctx.drawImage(img, -80 * k, 6 - 172 * k + dy, 160 * k, 180 * k);
-      ctx.shadowBlur = 0;
       ctx.globalAlpha = 1;
 
       if (p.def.id === 'wallnut') {
@@ -352,7 +380,7 @@ export class CharacterRenderer {
     ctx.translate(zx, zy + cellH * 0.24 + lift);
     ctx.scale(baseScale, baseScale);
 
-    const place = (img: HTMLImageElement): void => {
+    const place = (img: SpriteImage): void => {
       ctx.drawImage(img, -spec.ox * k, -spec.feet * k, spec.w * k, spec.h * k);
     };
     // Gira uma camada em torno de um ponto do desenho (coordenadas do SVG)

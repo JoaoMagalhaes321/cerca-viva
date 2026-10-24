@@ -43,6 +43,35 @@ export const SPRITE_NAMES = [...PLANT_IDS, ...ZOMBIE_LAYERS];
 
 const cache = new Map<string, HTMLImageElement>();
 
+/** Imagem pronta para desenhar no canvas: o SVG já rasterizado num bitmap. */
+export type SpriteImage = HTMLCanvasElement | HTMLImageElement;
+
+// Desenhar um SVG no canvas a cada quadro obriga o navegador a refazer o vetor (e os filtros de
+// brilho da noite) toda vez — era o que mais pesava no celular. Cada sprite vira um bitmap uma vez
+// só, na primeira vez que aparece, com folga de resolução para continuar nítido.
+const RASTER_ESCALA = 1.25;
+const rasters = new Map<string, SpriteImage>();
+
+function rasterizar(key: string, img: HTMLImageElement): SpriteImage {
+  const pronto = rasters.get(key);
+  if (pronto) return pronto;
+  let saida: SpriteImage = img;
+  try {
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(img.naturalWidth * RASTER_ESCALA));
+    c.height = Math.max(1, Math.round(img.naturalHeight * RASTER_ESCALA));
+    const ctx = c.getContext('2d');
+    if (ctx) {
+      ctx.drawImage(img, 0, 0, c.width, c.height);
+      saida = c;
+    }
+  } catch {
+    /* sem canvas: desenha o SVG direto, como antes */
+  }
+  rasters.set(key, saida);
+  return saida;
+}
+
 function load(mode: SpriteMode, name: string): HTMLImageElement {
   const key = `${mode}/${name}`;
   let img = cache.get(key);
@@ -60,12 +89,13 @@ function ready(img: HTMLImageElement): boolean {
 }
 
 /** Devolve o sprite pronto para desenhar, ou null enquanto ainda carrega. */
-export function getSprite(name: string, night = false): HTMLImageElement | null {
-  const img = load(night ? 'noite' : 'dia', name);
-  if (ready(img)) return img;
+export function getSprite(name: string, night = false): SpriteImage | null {
+  const mode: SpriteMode = night ? 'noite' : 'dia';
+  const img = load(mode, name);
+  if (ready(img)) return rasterizar(`${mode}/${name}`, img);
   if (night) {
     const day = load('dia', name);
-    if (ready(day)) return day;
+    if (ready(day)) return rasterizar(`dia/${name}`, day);
   }
   return null;
 }
