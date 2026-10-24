@@ -1,0 +1,41 @@
+# Conferência automática das branches de trabalho (sem publicar nada).
+# Roda o mesmo que um contribuidor roda no PC: tsc + build do Vite e os testes (Vitest).
+# O deploy para o GitHub Pages e o APK continuam só no deploy.yml, em push na main.
+name: CI (build e testes)
+
+on:
+  push:
+    branches: [ 'claude/**' ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-e-testes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Instalar dependências (exatas do package-lock.json)
+        run: npm ci
+
+      - name: Build (tsc + vite)
+        run: npm run build
+
+      - name: Testes
+        run: npm test

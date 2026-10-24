@@ -26,6 +26,12 @@ npm run dev        # abre em http://localhost:5180 (também acessível pela rede
 | `npm run mobile:apk` | Gera o APK de debug no Windows (`gerar-apk.ps1`, precisa do Android SDK) |
 | `npm run mobile:patch` | Gera um patch `.zip` do site em `patches/` (`gerar-patch.ps1`) |
 
+## Conferência automática (CI)
+
+O workflow `.github/workflows/ci.yml` roda `npm ci`, `npm run build` e `npm test` em todo push de
+branch `claude/**` e em todo pull request para a `main`. Ele não publica nada: só mostra ✅ ou ❌ na
+branch e no pull request, para você saber antes do merge se o build e os testes passam.
+
 ## Publicação e atualização no celular
 
 1. Todo push na `main` dispara o workflow `.github/workflows/deploy.yml`, que:
