@@ -220,6 +220,138 @@ export class CharacterRenderer {
 
   // ------------------------------------------------------------------ PLANTAS (sprites)
 
+  /** Voadeira (barquinho de alumínio com motor de popa): o "cortador" das linhas de rio. */
+  public static drawVoadeira(
+    ctx: CanvasRenderingContext2D,
+    mx: number,
+    my: number,
+    cellH: number,
+    active: boolean
+  ): void {
+    const s = cellH / 90;
+    const t = performance.now();
+    ctx.save();
+    ctx.translate(mx, my + Math.sin(t * (active ? 0.02 : 0.004)) * 1.5);
+    ctx.scale(s, s);
+    const ink = '#2a2416';
+
+    if (active) {
+      // Rastro de espuma atrás do motor
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      for (let i = 0; i < 4; i++) {
+        ctx.beginPath();
+        ctx.ellipse(-30 - i * 10, 12 + Math.sin(t * 0.03 + i) * 2, 7 - i, 3, 0, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Casco
+    ctx.lineWidth = 2.5;
+    ctx.strokeStyle = ink;
+    ctx.fillStyle = '#c9d0d8';
+    ctx.beginPath();
+    ctx.moveTo(-28, -2);
+    ctx.lineTo(30, -6);
+    ctx.quadraticCurveTo(26, 12, 12, 14);
+    ctx.lineTo(-24, 14);
+    ctx.quadraticCurveTo(-30, 8, -28, -2);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#8a939e';
+    ctx.fillRect(-25, 6, 46, 4);
+    ctx.fillStyle = '#e8553a';
+    ctx.fillRect(-26, 0, 50, 3);
+
+    // Motor de popa
+    ctx.fillStyle = '#ffd23a';
+    ctx.beginPath();
+    ctx.roundRect(-38, -16, 14, 16, 4);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3;
+    ctx.beginPath();
+    ctx.moveTo(-31, 0);
+    ctx.lineTo(-31, 14);
+    ctx.stroke();
+
+    // Água em volta
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 13, 34, 4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Casa de rio (Mundo 3), desenhada uma vez no cache do gramado. */
+  public static drawRiverTile(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    row: number,
+    col: number,
+    isDark: boolean
+  ): void {
+    const par = (row + col) % 2 === 0;
+    ctx.fillStyle = isDark ? (par ? '#0c3440' : '#0e3a47') : par ? '#3aaad8' : '#43b6e3';
+    ctx.fillRect(x, y, w, h);
+
+    let seed = row * 97 + col * 31 + 5;
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = isDark ? 'rgba(127, 245, 224, 0.22)' : 'rgba(255, 255, 255, 0.4)';
+    for (let k = 0; k < 2; k++) {
+      const x0 = x + w * (0.12 + rnd() * 0.55);
+      const y0 = y + h * (0.3 + rnd() * 0.45);
+      const l = w * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo(x0 + l * 0.5, y0 - 4, x0 + l, y0);
+      ctx.quadraticCurveTo(x0 + l * 1.5, y0 + 4, x0 + l * 2, y0);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Correnteza: traços claros descendo o rio (desenhado a cada quadro). */
+  public static drawRiverFlow(
+    ctx: CanvasRenderingContext2D,
+    x0: number,
+    x1: number,
+    top: number,
+    cellW: number,
+    cellH: number,
+    t: number,
+    isDark: boolean
+  ): void {
+    const span = x1 - x0;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = isDark ? 'rgb(160, 255, 235)' : '#ffffff';
+    for (let i = 0; i < 10; i++) {
+      const fase = (i * 0.618 + t * 0.00004) % 1;
+      const x = x1 - fase * span;
+      const y = top + cellH * (0.16 + ((i * 0.37) % 1) * 0.68);
+      const len = cellW * (0.22 + ((i * 0.53) % 1) * 0.2);
+      ctx.globalAlpha = Math.sin(fase * Math.PI) * (isDark ? 0.35 : 0.5);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + len, y);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   public static drawPlant(
     ctx: CanvasRenderingContext2D,
     p: PlantEntity,
@@ -325,9 +457,16 @@ export class CharacterRenderer {
     zy: number,
     _cellW: number,
     cellH: number,
-    isNight = false
+    isNight = false,
+    agua = false
   ): void {
     const isZomboss = z.variant === 'zomboss_mech';
+    const canoeiro = z.variant === 'canoeiro';
+    const nadando = canoeiro && z.lostHeadgear;
+    const naAgua = agua && !isZomboss;
+    // Linha d'água: quem anda no rio fica com a água na canela; a canoa flutua; quem nada afunda até o peito
+    const waterY = zy + cellH * 0.24 - (naAgua && !canoeiro ? cellH * 0.13 : 0);
+    const afunda = nadando ? cellH * 0.3 : 0;
     const isBoss = z.variant === 'gargantuar' || isZomboss;
     const baseScale = (cellH / 92) * (isZomboss ? 1.55 : isBoss ? 1.32 : 0.96);
     const walk = z.walkPhase;
@@ -343,13 +482,20 @@ export class CharacterRenderer {
     const k = spec.k;
 
     ctx.save();
+    if (naAgua) {
+      ctx.beginPath();
+      ctx.rect(zx - cellH * 3, zy - cellH * 4, cellH * 6, waterY - (zy - cellH * 4));
+      ctx.clip();
+    }
 
     const lift = isZomboss
       ? Math.sin(walk * 1.4) * 3
-      : z.isEating
-        ? 0
-        : Math.abs(Math.sin(walk)) * -4.5;
-    ctx.translate(zx, zy + cellH * 0.24 + lift);
+      : canoeiro
+        ? Math.sin(walk * 0.9) * 1.8
+        : z.isEating
+          ? 0
+          : Math.abs(Math.sin(walk)) * -4.5;
+    ctx.translate(zx, zy + cellH * 0.24 + lift + afunda);
     ctx.scale(baseScale, baseScale);
 
     const place = (img: HTMLImageElement): void => {
@@ -365,7 +511,11 @@ export class CharacterRenderer {
     };
 
     ctx.save();
-    ctx.rotate(bodyTilt + (z.isEating || isZomboss ? 0 : Math.sin(walk) * 0.03));
+    ctx.rotate(
+      canoeiro
+        ? Math.sin(walk * 0.9) * 0.025
+        : bodyTilt + (z.isEating || isZomboss ? 0 : Math.sin(walk) * 0.03)
+    );
 
     const body = getSprite(`${z.variant}--corpo`, isNight);
     if (body) place(body);
@@ -387,7 +537,8 @@ export class CharacterRenderer {
         const arm = getSprite(`${z.variant}--${doused ? 'braco-apagado' : 'braco'}`, isNight);
         if (arm) {
           ctx.save();
-          rotateAround(px, py, armBob * 0.02);
+          // O canoeiro rema: o remo vai e volta bem mais que o balanço do braço de quem anda
+          rotateAround(px, py, canoeiro ? Math.sin(walk * 1.1) * 0.28 : armBob * 0.02);
           place(arm);
           if (z.variant === 'pyro_scavenger' && !doused) {
             this.drawPilotFlame(ctx, (9 - spec.ox) * k, (114 - spec.feet) * k);
@@ -406,7 +557,7 @@ export class CharacterRenderer {
       }
     }
 
-    if ((z.variant === 'cone' || z.variant === 'bucket') && !z.lostHeadgear) {
+    if ((z.variant === 'cone' || z.variant === 'bucket' || canoeiro) && !z.lostHeadgear) {
       const gear = getSprite(`${z.variant}--capacete`, isNight);
       if (gear) place(gear);
     }
@@ -424,7 +575,7 @@ export class CharacterRenderer {
       ctx.roundRect(-spec.halfW, top - 4, spec.halfW * 2, -top + 6, 8);
       ctx.fill();
       ctx.stroke();
-    } else if (z.wetTimer > 0) {
+    } else if (z.wetTimer > 0 && !naAgua) {
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2;
       ctx.beginPath();
@@ -449,6 +600,27 @@ export class CharacterRenderer {
       ctx.fill();
     }
 
+    ctx.restore();
+
+    if (naAgua) {
+      const raio = spec.halfW * baseScale * (canoeiro && !nadando ? 2.1 : 1.15);
+      this.drawRipple(ctx, zx, waterY, raio, z.walkPhase);
+    }
+  }
+
+  /** Ondinha na linha d'água (zumbis no rio e plantas aquáticas). */
+  public static drawRipple(ctx: CanvasRenderingContext2D, x: number, y: number, raio: number, fase: number): void {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, raio, Math.max(2.5, raio * 0.16), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    const r2 = raio * (1.15 + Math.sin(fase * 1.3) * 0.08);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 1, r2, Math.max(3, r2 * 0.18), 0, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
     ctx.restore();
   }
 
@@ -496,6 +668,17 @@ export class CharacterRenderer {
         const k = 0.34;
         ctx.drawImage(gear, -gx * k, -gy * k, 170 * k, 230 * k);
       }
+    } else if (d.kind === 'canoa') {
+      // Tábua da canoa que afundou
+      ctx.fillStyle = '#b9824a';
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-16, -4, 32, 8, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e8553a';
+      ctx.fillRect(-14, -1, 28, 2.5);
     } else if (d.kind === 'arm') {
       ctx.strokeStyle = '#2a2416';
       ctx.lineWidth = 8;
@@ -552,5 +735,7 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   rubber_hazard: { w: 170, h: 230, ox: 82, feet: 215, head: 24, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#ffd23a' },
   pyro_scavenger: { w: 170, h: 230, ox: 86, feet: 215, head: 24, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#d9631e' },
   gargantuar: { w: 230, h: 280, ox: 124, feet: 262, head: 42, k: 0.36, halfW: 34, pivot: [84, 112], sleeve: '#a7bf8a' },
-  zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 12, k: 0.3, halfW: 52, sleeve: '#d9452b' }
+  zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 12, k: 0.3, halfW: 52, sleeve: '#d9452b' },
+  // Canoeiro: "feet" é a linha d'água do casco; o casco abaixo dela fica escondido pela água
+  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 30, k: 0.5, halfW: 30, pivot: [94, 120], sleeve: '#2c9c8f' }
 };
