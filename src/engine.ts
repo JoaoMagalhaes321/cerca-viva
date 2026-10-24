@@ -1495,7 +1495,7 @@ export class GameEngine {
         this.triggerMutationModal();
       }
 
-      // Active Zomboss Boss Abilities (Lane Shift + Elemental Hazard Orbs + Minion Drops)
+      // Habilidades do chefe (troca de linha, chuva de sucata, reforços)
       const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
       if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
         this.bossSkillTimer -= dt;
@@ -1537,12 +1537,12 @@ export class GameEngine {
         this.triggerMutationModal();
       }
 
-      // FINAL WAVE BOSS: DR. ZOMBOSS MECHA-TITAN AT 82% PROGRESS!
+      // Chefe final (Colheitadeira Z) aos 82% da onda
       if (this.waveProgress >= 82 && !this.bossSpawned) {
         this.spawnZombossFinalBoss();
       }
 
-      // Active Zomboss Boss Abilities (Lane Shift + Elemental Hazard Orbs + Minion Drops)
+      // Habilidades do chefe (troca de linha, chuva de sucata, reforços)
       const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
       if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
         this.bossSkillTimer -= dt;
@@ -1691,14 +1691,14 @@ export class GameEngine {
   private executeZombossSkill(boss: ZombieEntity): void {
     const roll = Math.random();
     if (roll < 0.38) {
-      // 1. Jetpack Thruster Lane Jump!
+      // 1. Troca de linha
       const newRow = Math.floor(Math.random() * GRID_ROWS);
       this.spawnParticles(boss.x, boss.row + 0.5, '#38bdf8', 20);
       boss.row = newRow;
       this.spawnParticles(boss.x, boss.row + 0.5, '#f97316', 24);
-      this.spawnFloatingText('🚀 SALTO PROPULSOR!', boss.x, boss.row + 0.2, '#38bdf8', 1.25);
+      this.spawnFloatingText('🚜 TROCA DE LINHA!', boss.x, boss.row + 0.2, '#38bdf8', 1.25);
     } else if (roll < 0.72) {
-      // 2. Plasma & Fireball Bombardment on random tiles
+      // 2. Chuva de sucata: deixa casas queimadas ou tóxicas
       sound.playSynergyCombo('thermal');
       for (let i = 0; i < 2; i++) {
         const r = Math.floor(Math.random() * GRID_ROWS);
@@ -1707,9 +1707,9 @@ export class GameEngine {
         this.tiles[r][c].hazardTimer = 10;
         this.spawnParticles(c + 0.5, r + 0.5, '#ef4444', 18);
       }
-      this.spawnFloatingText('☄️ BOMBARDEIO ZOMBOT!', boss.x - 1, boss.row, '#fb923c', 1.3);
+      this.spawnFloatingText('☄️ CHUVA DE SUCATA!', boss.x - 1, boss.row, '#fb923c', 1.3);
     } else {
-      // 3. Summon Cyber Sprinter Escorts
+      // 3. Chama Corredores Cibernéticos nas linhas vizinhas
       sound.playBossSiren();
       const r1 = Math.max(0, boss.row - 1);
       const r2 = Math.min(GRID_ROWS - 1, boss.row + 1);
@@ -1738,7 +1738,7 @@ export class GameEngine {
           lostArm: false
         });
       });
-      this.spawnFloatingText('⚡ REFORÇOS ZOMBOT!', boss.x, boss.row, '#c084fc', 1.25);
+      this.spawnFloatingText('⚡ REFORÇOS!', boss.x, boss.row, '#c084fc', 1.25);
     }
   }
 

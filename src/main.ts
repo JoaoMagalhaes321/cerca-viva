@@ -505,8 +505,8 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         variant: 'zomboss_mech',
         name: 'Colheitadeira Z (Chefe Final)',
         hp: 3600,
-        speedText: 'Salto Propulsor',
-        desc: 'Colheitadeira gigante pilotada por um zumbi fazendeiro! Salta entre linhas, bombardeia o jardim com plasma/ácido e chama Corredores Cibernéticos!'
+        speedText: 'Troca de linha',
+        desc: 'Colheitadeira gigante pilotada por um zumbi fazendeiro! Troca de linha, joga sucata que deixa o chão queimado ou tóxico e chama Corredores Cibernéticos!'
       }
     ];
 
