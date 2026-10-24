@@ -28,6 +28,13 @@ export class ProgressionManager {
           if (!parsed.unlockedPlants.includes('peashooter')) {
             parsed.unlockedPlants.unshift('peashooter');
           }
+          // Livro de combos: descarta o campo se vier corrompido, sem perder o resto do progresso
+          if (parsed.discoveredCombos !== undefined) {
+            const ok =
+              Array.isArray(parsed.discoveredCombos) &&
+              parsed.discoveredCombos.every((id) => typeof id === 'string');
+            if (!ok) delete parsed.discoveredCombos;
+          }
           this.cachedProgress = parsed;
           return this.cachedProgress;
         }
@@ -99,6 +106,21 @@ export class ProgressionManager {
       unlockedPlantId,
       isNewUnlock
     };
+  }
+
+  /** Combos que o jogador já descobriu (fez pelo menos uma vez). */
+  public static getDiscoveredCombos(): string[] {
+    return this.getProgress().discoveredCombos ?? [];
+  }
+
+  /** Marca o combo como descoberto. Devolve true só na primeira vez. */
+  public static discoverCombo(synergyId: string): boolean {
+    const progress = this.getProgress();
+    const known = progress.discoveredCombos ?? [];
+    if (known.includes(synergyId)) return false;
+    progress.discoveredCombos = [...known, synergyId];
+    this.saveProgress(progress);
+    return true;
   }
 
   public static resetProgress(): PlayerProgress {
