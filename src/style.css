@@ -1027,3 +1027,320 @@ html, body {
     font-size: 0.62rem;
   }
 }
+
+/* STAGE PILL IN HUD */
+.stage-pill {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fbbf24;
+  border: 1px solid rgba(245, 158, 11, 0.5);
+  padding: 1px 6px;
+  border-radius: 6px;
+  font-weight: 800;
+  font-size: 0.62rem;
+  letter-spacing: 0.5px;
+}
+
+/* CLASSIC RETRO VICTORY PARCHMENT & WOOD MODAL */
+.pvz-parchment-modal {
+  position: relative;
+  background: radial-gradient(circle at center, #fffbeb 0%, #fef3c7 65%, #fde68a 100%);
+  border: 8px solid #5c2c16;
+  outline: 4px solid #b45309;
+  border-radius: 20px;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.85), inset 0 0 18px rgba(120, 53, 15, 0.35);
+  max-width: 580px;
+  width: 95vw;
+  text-align: center;
+  padding: 0;
+  overflow: hidden;
+  animation: popInParchment 0.35s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes popInParchment {
+  0% { transform: scale(0.7); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.wood-banner {
+  background: linear-gradient(180deg, #92400e 0%, #78350f 50%, #451a03 100%);
+  border-bottom: 4px solid #b45309;
+  padding: 10px 16px;
+  box-shadow: inset 0 2px 0 rgba(251, 191, 36, 0.4), 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.wood-banner-title {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: #fef08a;
+  letter-spacing: 1.5px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8), 0 0 12px rgba(234, 179, 8, 0.6);
+}
+
+.parchment-body {
+  padding: 16px 20px 12px 20px;
+  color: #451a03;
+}
+
+.parchment-body h2 {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.35rem;
+  color: #78350f;
+  margin-bottom: 12px;
+  text-shadow: 0 1px 1px rgba(255, 255, 255, 0.8);
+}
+
+.reward-plant-showcase {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  background: rgba(254, 243, 199, 0.7);
+  border: 2px dashed #b45309;
+  border-radius: 16px;
+  padding: 12px 16px;
+  margin-bottom: 14px;
+}
+
+.sunburst-ring {
+  position: absolute;
+  left: 20px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 140px;
+  height: 140px;
+  background: radial-gradient(circle, rgba(250, 204, 21, 0.5) 0%, rgba(250, 204, 21, 0) 70%);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: pulseSunburst 2s infinite ease-in-out;
+}
+
+@keyframes pulseSunburst {
+  0%, 100% { transform: translateY(-50%) scale(0.95); opacity: 0.6; }
+  50% { transform: translateY(-50%) scale(1.15); opacity: 0.95; }
+}
+
+#reward-plant-canvas {
+  position: relative;
+  z-index: 2;
+  filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.35));
+  flex-shrink: 0;
+}
+
+.reward-plant-details {
+  position: relative;
+  z-index: 2;
+  text-align: left;
+  flex: 1;
+}
+
+.reward-meta-row {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.reward-meta-row .element-badge {
+  background: #78350f;
+  color: #fef08a;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.reward-meta-row .cost-badge {
+  background: #facc15;
+  color: #78350f;
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 2px 8px;
+  border-radius: 99px;
+}
+
+.reward-plant-details h3 {
+  font-family: 'Fredoka', sans-serif;
+  font-size: 1.25rem;
+  color: #1e293b;
+  margin-bottom: 4px;
+}
+
+.reward-plant-details p {
+  font-size: 0.78rem;
+  line-height: 1.35;
+  color: #475569;
+  margin-bottom: 8px;
+}
+
+.reward-overdrive-box {
+  background: rgba(245, 158, 11, 0.15);
+  border-left: 3px solid #d97706;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  color: #78350f;
+}
+
+.reward-overdrive-box strong {
+  display: block;
+  font-size: 0.68rem;
+  color: #92400e;
+  text-transform: uppercase;
+  margin-bottom: 2px;
+}
+
+.parchment-footer {
+  background: #fef08a;
+  border-top: 3px solid #b45309;
+  padding: 10px 16px;
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+}
+
+.wood-button {
+  border: none;
+  border-radius: 12px;
+  font-family: 'Fredoka', sans-serif;
+  font-weight: 800;
+  padding: 10px 22px;
+  cursor: pointer;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+
+.primary-wood-btn {
+  background: linear-gradient(180deg, #22c55e 0%, #15803d 100%);
+  color: #ffffff;
+  border: 2px solid #86efac;
+  box-shadow: 0 4px 0 #14532d, 0 6px 12px rgba(0,0,0,0.3);
+  font-size: 0.95rem;
+  letter-spacing: 0.5px;
+}
+
+.primary-wood-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #14532d;
+}
+
+.secondary-wood-btn {
+  background: linear-gradient(180deg, #94a3b8 0%, #475569 100%);
+  color: #f8fafc;
+  border: 2px solid #cbd5e1;
+  box-shadow: 0 4px 0 #1e293b;
+  font-size: 0.85rem;
+}
+
+.secondary-wood-btn:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0 #1e293b;
+}
+
+/* LEVEL SELECTION GRID */
+.levels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 12px;
+  padding: 10px 0;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.level-card {
+  background: #1e293b;
+  border: 2px solid rgba(148, 163, 184, 0.25);
+  border-radius: 12px;
+  padding: 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  text-align: left;
+  transition: transform 0.15s, border-color 0.15s;
+}
+
+.level-card:hover:not(.locked) {
+  transform: translateY(-2px);
+  border-color: #38bdf8;
+  box-shadow: 0 6px 16px rgba(56, 189, 248, 0.25);
+}
+
+.level-card.current {
+  border-color: #f59e0b;
+  background: linear-gradient(145deg, #1e293b 0%, #312e81 100%);
+  box-shadow: 0 0 14px rgba(245, 158, 11, 0.35);
+}
+
+.level-card.locked {
+  opacity: 0.55;
+  filter: grayscale(0.85);
+  cursor: not-allowed;
+  border-color: rgba(100, 116, 139, 0.3);
+}
+
+.level-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.level-badge {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.2);
+  padding: 2px 6px;
+  border-radius: 6px;
+}
+
+.level-status-icon {
+  font-size: 0.9rem;
+}
+
+.level-card h4 {
+  font-size: 0.82rem;
+  color: #f8fafc;
+  line-height: 1.25;
+}
+
+.level-meta-preview {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: auto;
+  padding-top: 6px;
+  border-top: 1px solid rgba(148, 163, 184, 0.15);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+}
+
+.level-reward-tag {
+  color: #4ade80;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+/* DECK CARD LOCKED STATE */
+.deck-plant-card.locked {
+  opacity: 0.45;
+  filter: grayscale(1);
+  cursor: not-allowed;
+  position: relative;
+}
+
+.deck-plant-card.locked .locked-badge {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.88);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  font-size: 0.65rem;
+  color: #fbbf24;
+  font-weight: 800;
+  border-radius: 12px;
+  z-index: 5;
+}

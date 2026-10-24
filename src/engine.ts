@@ -2,12 +2,14 @@ import {
   BIOME_CATALOG,
   BiomeDefinition,
   ElementType,
+  LevelConfig,
   MUTATION_CATALOG,
   MutationDefinition,
   PLANT_CATALOG,
   PlantDefinition,
   TileHazard,
-  WeatherType
+  WeatherType,
+  ZombieSpawnEvent
 } from './types';
 import { sound } from './audio';
 import { CharacterRenderer } from './renderer';
@@ -168,6 +170,9 @@ export class GameEngine {
   public gameSpeed = 1;
   public paused = false;
   public gameOver = false;
+  public currentLevel: LevelConfig | null = null;
+  public spawnsQueue: ZombieSpawnEvent[] = [];
+  public totalLevelDuration = 120;
 
   // Weather
   public weather: WeatherType = 'sunny';
@@ -248,14 +253,43 @@ export class GameEngine {
     window.addEventListener('resize', () => this.resize());
   }
 
-  public initBoard(biome?: BiomeDefinition, deckIds?: string[]): void {
+  public getActiveLanes(): number[] {
+    if (!this.currentLevel || this.currentLevel.availableLanes >= 5) {
+      return [0, 1, 2, 3, 4];
+    }
+    if (this.currentLevel.availableLanes === 1) {
+      return [2];
+    }
+    if (this.currentLevel.availableLanes === 3) {
+      return [1, 2, 3];
+    }
+    return [0, 1, 2, 3, 4];
+  }
+
+  public isLaneAvailable(row: number): boolean {
+    return this.getActiveLanes().includes(row);
+  }
+
+  public initBoard(biome?: BiomeDefinition, deckIds?: string[], level?: LevelConfig): void {
     if (biome) this.currentBiome = biome;
+    this.currentLevel = level || null;
     if (deckIds && deckIds.length > 0) {
       this.activeDeckIds = [...deckIds];
       this.selectedPlantId = this.activeDeckIds[0];
+    } else if (this.activeDeckIds.length > 0) {
+      this.selectedPlantId = this.activeDeckIds[0];
     }
 
-    this.sun = this.currentBiome.startingSun;
+    if (this.currentLevel) {
+      this.sun = this.currentLevel.initialSun;
+      this.spawnsQueue = [...this.currentLevel.spawns].sort((a, b) => a.timeOffsetSec - b.timeOffsetSec);
+      this.totalLevelDuration = Math.max(75, (this.spawnsQueue[this.spawnsQueue.length - 1]?.timeOffsetSec || 60) + 18);
+    } else {
+      this.sun = this.currentBiome.startingSun;
+      this.spawnsQueue = [];
+      this.totalLevelDuration = 165;
+    }
+
     this.wave = 1;
     this.maxWaves = this.currentBiome.maxWaves;
     this.waveProgress = 0;
@@ -285,15 +319,16 @@ export class GameEngine {
       this.tiles.push(rowTiles);
     }
 
-    // Seed biome terrain hazards
+    // Seed biome terrain hazards only on available lanes
+    const activeLanes = this.getActiveLanes();
     for (let i = 0; i < this.currentBiome.puddlesCount; i++) {
-      const r = (i * 2 + 1) % GRID_ROWS;
+      const r = activeLanes[i % activeLanes.length];
       const c = 3 + ((i * 3) % 5);
       this.tiles[r][c].hazard = 'puddle';
       this.tiles[r][c].hazardTimer = 999;
     }
     for (let i = 0; i < this.currentBiome.toxicCount; i++) {
-      const r = (i * 3) % GRID_ROWS;
+      const r = activeLanes[(i + 1) % activeLanes.length];
       const c = 4 + ((i * 2) % 4);
       this.tiles[r][c].hazard = 'toxic_pool';
       this.tiles[r][c].hazardTimer = 999;
@@ -309,7 +344,7 @@ export class GameEngine {
     this.debris = [];
 
     this.mowers = [];
-    for (let r = 0; r < GRID_ROWS; r++) {
+    for (const r of activeLanes) {
       this.mowers.push({ row: r, x: -0.45, active: false, used: false });
     }
 
@@ -378,6 +413,7 @@ export class GameEngine {
 
     // 2. Pre-render all 45 grass tiles once
     for (let r = 0; r < GRID_ROWS; r++) {
+      const isAvailable = this.isLaneAvailable(r);
       for (let c = 0; c < GRID_COLS; c++) {
         const x = this.boardLeft + c * this.cellW;
         const y = this.boardTop + r * this.cellH;
@@ -392,6 +428,11 @@ export class GameEngine {
           this.weather === 'night_storm',
           this.weather === 'rain'
         );
+
+        if (!isAvailable) {
+          bCtx.fillStyle = 'rgba(15, 23, 42, 0.72)';
+          bCtx.fillRect(x, y, this.cellW, this.cellH);
+        }
       }
     }
     this.boardCacheDirty = false;
@@ -645,6 +686,11 @@ export class GameEngine {
   }
 
   private tryPlacePlant(plantId: string, row: number, col: number): void {
+    if (!this.isLaneAvailable(row)) {
+      this.onToast('🚫 Linha bloqueada nesta fase!');
+      return;
+    }
+
     const existing = this.plants.find((p) => p.row === row && p.col === col);
     if (existing) return;
 
@@ -1338,54 +1384,180 @@ export class GameEngine {
   }
 
   private updateWaveDirector(dt: number): void {
-    const totalLevelDuration = 165;
     this.waveElapsed += dt;
-    this.waveProgress = Math.min(100, (this.waveElapsed / totalLevelDuration) * 100);
 
-    const newWave = Math.min(
-      this.maxWaves,
-      Math.floor((this.waveProgress / 100) * this.maxWaves) + 1
-    );
-    if (newWave !== this.wave) {
-      this.wave = newWave;
-      this.onUiUpdate();
+    if (this.currentLevel) {
+      // Level progression mode: spawn according to level spawnsQueue
+      while (
+        this.spawnsQueue.length > 0 &&
+        this.waveElapsed >= this.spawnsQueue[0].timeOffsetSec
+      ) {
+        const nextSpawn = this.spawnsQueue.shift()!;
+        this.spawnZombieByType(nextSpawn.zombieType, nextSpawn.lane);
+      }
+
+      this.waveProgress = Math.min(100, (this.waveElapsed / this.totalLevelDuration) * 100);
+
+      const newWave = Math.min(
+        this.maxWaves,
+        Math.floor((this.waveProgress / 100) * this.maxWaves) + 1
+      );
+      if (newWave !== this.wave) {
+        this.wave = newWave;
+        this.onUiUpdate();
+      }
+
+      if (this.waveProgress >= 33 && !this.flagTriggeredWaves.has(1)) {
+        this.flagTriggeredWaves.add(1);
+        this.triggerMutationModal();
+      } else if (this.waveProgress >= 66 && !this.flagTriggeredWaves.has(2)) {
+        this.flagTriggeredWaves.add(2);
+        this.triggerMutationModal();
+      }
+
+      // Active Zomboss Boss Abilities (Lane Shift + Elemental Hazard Orbs + Minion Drops)
+      const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
+      if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
+        this.bossSkillTimer -= dt;
+        if (this.bossSkillTimer <= 0) {
+          this.bossSkillTimer = 5.2;
+          this.executeZombossSkill(activeBoss);
+        }
+      }
+
+      // Victory Condition for Level: All spawns dispatched, all zombies dead, level elapsed at least 15s
+      if (
+        this.spawnsQueue.length === 0 &&
+        this.zombies.length === 0 &&
+        !this.gameOver &&
+        this.waveElapsed >= 15
+      ) {
+        sound.bossMode = false;
+        this.gameOver = true;
+        this.onGameEnd(true);
+      }
+    } else {
+      const totalLevelDuration = 165;
+      this.waveProgress = Math.min(100, (this.waveElapsed / totalLevelDuration) * 100);
+
+      const newWave = Math.min(
+        this.maxWaves,
+        Math.floor((this.waveProgress / 100) * this.maxWaves) + 1
+      );
+      if (newWave !== this.wave) {
+        this.wave = newWave;
+        this.onUiUpdate();
+      }
+
+      if (this.waveProgress >= 33 && !this.flagTriggeredWaves.has(1)) {
+        this.flagTriggeredWaves.add(1);
+        this.triggerMutationModal();
+      } else if (this.waveProgress >= 66 && !this.flagTriggeredWaves.has(2)) {
+        this.flagTriggeredWaves.add(2);
+        this.triggerMutationModal();
+      }
+
+      // FINAL WAVE BOSS: DR. ZOMBOSS MECHA-TITAN AT 82% PROGRESS!
+      if (this.waveProgress >= 82 && !this.bossSpawned) {
+        this.spawnZombossFinalBoss();
+      }
+
+      // Active Zomboss Boss Abilities (Lane Shift + Elemental Hazard Orbs + Minion Drops)
+      const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
+      if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
+        this.bossSkillTimer -= dt;
+        if (this.bossSkillTimer <= 0) {
+          this.bossSkillTimer = 5.2;
+          this.executeZombossSkill(activeBoss);
+        }
+      }
+
+      if (this.waveProgress < 98) {
+        this.zombieSpawnTimer -= dt;
+        if (this.zombieSpawnTimer <= 0) {
+          const interval = Math.max(1.8, 5.8 - this.wave * 0.68);
+          this.zombieSpawnTimer = interval;
+          this.spawnZombieForCurrentWave();
+        }
+      } else if (this.zombies.length === 0 && !this.gameOver) {
+        sound.bossMode = false;
+        this.gameOver = true;
+        this.onGameEnd(true);
+      }
+    }
+  }
+
+  public spawnZombieByType(type: string, targetLane?: number): void {
+    let row: number;
+    const activeLanes = this.getActiveLanes();
+    if (typeof targetLane === 'number') {
+      row = Math.max(0, Math.min(GRID_ROWS - 1, targetLane));
+    } else {
+      row = activeLanes[Math.floor(Math.random() * activeLanes.length)];
     }
 
-    if (this.waveProgress >= 33 && !this.flagTriggeredWaves.has(1)) {
-      this.flagTriggeredWaves.add(1);
-      this.triggerMutationModal();
-    } else if (this.waveProgress >= 66 && !this.flagTriggeredWaves.has(2)) {
-      this.flagTriggeredWaves.add(2);
-      this.triggerMutationModal();
-    }
-
-    // FINAL WAVE BOSS: DR. ZOMBOSS MECHA-TITAN AT 82% PROGRESS!
-    if (this.waveProgress >= 82 && !this.bossSpawned) {
+    if (type === 'zomboss_mech') {
       this.spawnZombossFinalBoss();
+      return;
     }
 
-    // Active Zomboss Boss Abilities (Lane Shift + Elemental Hazard Orbs + Minion Drops)
-    const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
-    if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
-      this.bossSkillTimer -= dt;
-      if (this.bossSkillTimer <= 0) {
-        this.bossSkillTimer = 5.2;
-        this.executeZombossSkill(activeBoss);
-      }
+    let variant: ZombieVariant = 'basic';
+    let name = 'Zumbi de Jardim';
+    let emoji = '🧟';
+    let hp = 190;
+    let speed = 0.28;
+    let damage = 32;
+
+    if (type === 'cone') {
+      variant = 'cone';
+      name = 'Zumbi Cabeça-de-Cone';
+      emoji = '⚠️';
+      hp = 390;
+      speed = 0.29;
+    } else if (type === 'cyber_sprinter') {
+      variant = 'cyber_sprinter';
+      name = 'Zumbi Corredor Turbo';
+      emoji = '🏃‍♂️';
+      hp = 260;
+      speed = 0.52;
+    } else if (type === 'bucket') {
+      variant = 'bucket';
+      name = 'Zumbi Blindado';
+      emoji = '🪣';
+      hp = 680;
+      speed = 0.25;
+    } else if (type === 'gargantuar') {
+      variant = 'gargantuar';
+      name = 'Titã Devorador';
+      emoji = '👹';
+      hp = 1450;
+      speed = 0.19;
+      damage = 95;
     }
 
-    if (this.waveProgress < 98) {
-      this.zombieSpawnTimer -= dt;
-      if (this.zombieSpawnTimer <= 0) {
-        const interval = Math.max(1.8, 5.8 - this.wave * 0.68);
-        this.zombieSpawnTimer = interval;
-        this.spawnZombieForCurrentWave();
-      }
-    } else if (this.zombies.length === 0 && !this.gameOver) {
-      sound.bossMode = false;
-      this.gameOver = true;
-      this.onGameEnd(true);
-    }
+    this.zombies.push({
+      id: this.nextEntityId++,
+      variant,
+      name,
+      emoji,
+      row,
+      x: GRID_COLS + 0.35,
+      hp,
+      maxHp: hp,
+      speed,
+      damagePerSec: damage,
+      wetTimer: 0,
+      chilledTimer: 0,
+      frozenTimer: 0,
+      burnTimer: 0,
+      poisonTimer: 0,
+      stunTimer: 0,
+      hitFlash: 0,
+      walkPhase: Math.random() * 6,
+      isEating: false,
+      lostHeadgear: false,
+      lostArm: false
+    });
   }
 
   public spawnZombossFinalBoss(): void {
@@ -1664,13 +1836,19 @@ export class GameEngine {
 
         if (r === this.hoverRow && c === this.hoverCol && !this.paused) {
           ctx.save();
-          ctx.strokeStyle = this.shovelActive
-            ? '#f87171'
-            : this.activePower
-              ? '#c084fc'
-              : 'rgba(74, 222, 128, 0.85)';
-          ctx.lineWidth = 3;
-          ctx.strokeRect(x + 3, y + 3, this.cellW - 6, this.cellH - 6);
+          if (!this.isLaneAvailable(r)) {
+            ctx.strokeStyle = 'rgba(239, 68, 68, 0.7)';
+            ctx.lineWidth = 2;
+            ctx.strokeRect(x + 3, y + 3, this.cellW - 6, this.cellH - 6);
+          } else {
+            ctx.strokeStyle = this.shovelActive
+              ? '#f87171'
+              : this.activePower
+                ? '#c084fc'
+                : 'rgba(74, 222, 128, 0.85)';
+            ctx.lineWidth = 3;
+            ctx.strokeRect(x + 3, y + 3, this.cellW - 6, this.cellH - 6);
+          }
           ctx.restore();
         }
       }

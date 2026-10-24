@@ -5,11 +5,14 @@ import { LiveUpdater } from './updater';
 import {
   BIOME_CATALOG,
   BiomeDefinition,
+  LevelConfig,
   MUTATION_CATALOG,
   MutationDefinition,
   PLANT_CATALOG,
   SYNERGY_RECIPES
 } from './types';
+import { ProgressionManager } from './progression';
+import { LEVEL_CATALOG, getNextLevel } from './levels';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -19,6 +22,7 @@ const weatherIconEl = document.getElementById('weather-icon') as HTMLElement;
 const weatherNameEl = document.getElementById('weather-name') as HTMLElement;
 const weatherDescEl = document.getElementById('weather-desc') as HTMLElement;
 const waveLabelEl = document.getElementById('wave-label') as HTMLElement;
+const stageBadgeEl = document.getElementById('stage-badge') as HTMLElement;
 const synergyCounterEl = document.getElementById('synergy-counter') as HTMLElement;
 const waveProgressFillEl = document.getElementById('wave-progress-fill') as HTMLElement;
 
@@ -61,9 +65,29 @@ const resultSubtitleEl = document.getElementById('result-subtitle') as HTMLEleme
 const resultStatsEl = document.getElementById('result-stats') as HTMLElement;
 const changeDeckBtn = document.getElementById('change-deck-btn') as HTMLButtonElement;
 const restartBtn = document.getElementById('restart-btn') as HTMLButtonElement;
+const gameOverNextBtn = document.getElementById('game-over-next-btn') as HTMLButtonElement;
+
+// Level Select & Reward Modal
+const levelSelectModal = document.getElementById('level-select-modal') as HTMLElement;
+const closeLevelSelectBtn = document.getElementById('close-level-select-btn') as HTMLButtonElement;
+const levelsGridEl = document.getElementById('levels-grid') as HTMLElement;
+
+const plantRewardModal = document.getElementById('plant-reward-modal') as HTMLElement;
+const rewardBannerTitle = document.getElementById('reward-banner-title') as HTMLElement;
+const rewardDialogHeading = document.getElementById('reward-dialog-heading') as HTMLElement;
+const rewardPlantCanvas = document.getElementById('reward-plant-canvas') as HTMLCanvasElement;
+const rewardPlantBadge = document.getElementById('reward-plant-badge') as HTMLElement;
+const rewardPlantCost = document.getElementById('reward-plant-cost') as HTMLElement;
+const rewardPlantName = document.getElementById('reward-plant-name') as HTMLElement;
+const rewardPlantDesc = document.getElementById('reward-plant-desc') as HTMLElement;
+const rewardPlantOverdrive = document.getElementById('reward-plant-overdrive') as HTMLElement;
+const nextLevelBtn = document.getElementById('next-level-btn') as HTMLButtonElement;
+const rewardMenuBtn = document.getElementById('reward-menu-btn') as HTMLButtonElement;
 
 const mainMenuScreen = document.getElementById('main-menu-screen') as HTMLElement;
 const menuPlayBtn = document.getElementById('menu-play-btn') as HTMLButtonElement;
+const menuStageInfoEl = document.getElementById('menu-stage-info') as HTMLElement;
+const menuLevelsBtn = document.getElementById('menu-levels-btn') as HTMLButtonElement;
 const menuDeckBtn = document.getElementById('menu-deck-btn') as HTMLButtonElement;
 const menuAlmanacBtn = document.getElementById('menu-almanac-btn') as HTMLButtonElement;
 const menuSoundBtn = document.getElementById('menu-sound-btn') as HTMLButtonElement;
@@ -71,17 +95,13 @@ const menuSoundBtn = document.getElementById('menu-sound-btn') as HTMLButtonElem
 let toastTimeout: number | null = null;
 let almanacReturnTo: 'main-menu' | 'deck' | 'hud' = 'main-menu';
 const MAX_DECK_SIZE = 8;
+const playerProgress = ProgressionManager.getProgress();
+let currentLevel: LevelConfig = ProgressionManager.getCurrentLevel();
 let draftBiome: BiomeDefinition = BIOME_CATALOG[0];
-let draftDeckIds: string[] = [
-  'sunflower',
-  'peashooter',
-  'aquashooter',
-  'volt_reed',
-  'frost_shroom',
-  'pyro_pepper',
-  'gale_clover',
-  'venom_pitcher'
-];
+let draftDeckIds: string[] = playerProgress.unlockedPlants.slice(0, MAX_DECK_SIZE);
+if (draftDeckIds.length === 0) {
+  draftDeckIds = ['peashooter'];
+}
 
 function showToast(msg: string): void {
   toastBanner.textContent = msg;
@@ -105,7 +125,10 @@ engine = new GameEngine(canvas, {
 
 function buildSeedPackets(): void {
   seedBarEl.innerHTML = '';
-  const activePlants = PLANT_CATALOG.filter((p) => engine.activeDeckIds.includes(p.id));
+  const progress = ProgressionManager.getProgress();
+  const activePlants = PLANT_CATALOG.filter(
+    (p) => engine.activeDeckIds.includes(p.id) && progress.unlockedPlants.includes(p.id)
+  );
 
   for (const plant of activePlants) {
     const card = document.createElement('div');
@@ -164,6 +187,9 @@ function buildSeedPackets(): void {
 function syncHud(): void {
   sunAmountEl.textContent = String(engine.sun);
   waveLabelEl.textContent = `ONDA ${engine.wave} / ${engine.maxWaves}`;
+  if (currentLevel) {
+    stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
+  }
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
   waveProgressFillEl.style.width = `${engine.waveProgress}%`;
 
@@ -259,14 +285,19 @@ function renderDeckModalContents(): void {
     biomeSelectorEl.appendChild(bCard);
   }
 
-  // 2. Render Deck Count & All 10 Plants
+  // 2. Render Deck Count & Plants with lock status
   deckCountEl.textContent = `${draftDeckIds.length}`;
   deckPlantGridEl.innerHTML = '';
+  const progress = ProgressionManager.getProgress();
 
   for (const plant of PLANT_CATALOG) {
+    const isUnlocked = progress.unlockedPlants.includes(plant.id);
     const inDeck = draftDeckIds.includes(plant.id);
+    const unlockLevel = LEVEL_CATALOG.find((l) => l.unlockedPlantOnClear === plant.id);
+    const unlockHint = unlockLevel ? `Fase ${unlockLevel.world}-${unlockLevel.stage}` : 'Aventura';
+
     const item = document.createElement('div');
-    item.className = `deck-plant-item ${inDeck ? 'in-deck' : ''}`;
+    item.className = `deck-plant-item ${inDeck ? 'in-deck' : ''} ${!isUnlocked ? 'locked' : ''}`;
     item.dataset.plantId = plant.id;
     item.innerHTML = `
       <span class="deck-check">${inDeck ? '✔ NO DECK' : ''}</span>
@@ -274,6 +305,17 @@ function renderDeckModalContents(): void {
       <canvas width="56" height="48"></canvas>
       <h4>${plant.elementBadge} ${plant.name}</h4>
       <p>${plant.description}</p>
+      ${
+        !isUnlocked
+          ? `
+        <div class="locked-badge">
+          <span>🔒</span>
+          <small>Bloqueada</small>
+          <small>${unlockHint}</small>
+        </div>
+      `
+          : ''
+      }
     `;
 
     const c = item.querySelector('canvas') as HTMLCanvasElement;
@@ -305,9 +347,13 @@ function renderDeckModalContents(): void {
     }
 
     item.addEventListener('click', () => {
+      if (!isUnlocked) {
+        showToast(`🔒 ${plant.name} será desbloqueada ao vencer a ${unlockHint}!`);
+        return;
+      }
       if (draftDeckIds.includes(plant.id)) {
-        if (draftDeckIds.length <= 2) {
-          showToast('Escolha pelo menos 2 plantas para o seu Deck!');
+        if (draftDeckIds.length <= 1) {
+          showToast('Escolha pelo menos 1 planta para o seu Deck!');
           return;
         }
         draftDeckIds = draftDeckIds.filter((id) => id !== plant.id);
@@ -519,12 +565,162 @@ function openMutationModal(choices: MutationDefinition[]): void {
   mutationModal.classList.remove('hidden');
 }
 
+function updateMenuStageInfo(): void {
+  if (menuStageInfoEl && currentLevel) {
+    menuStageInfoEl.textContent = `Aventura: ${currentLevel.name}`;
+  }
+}
+
+function startLevel(level: LevelConfig): void {
+  currentLevel = level;
+  ProgressionManager.setCurrentLevel(level.id);
+
+  const progress = ProgressionManager.getProgress();
+  draftDeckIds = draftDeckIds.filter((id) => progress.unlockedPlants.includes(id));
+  if (draftDeckIds.length === 0) {
+    draftDeckIds = [...progress.unlockedPlants].slice(0, MAX_DECK_SIZE);
+  }
+
+  engine.initBoard(draftBiome, draftDeckIds, currentLevel);
+  buildSeedPackets();
+  syncHud();
+  updateMenuStageInfo();
+  hideMainMenuAndPlay();
+  showToast(`⚔️ Iniciando ${currentLevel.name}!`);
+}
+
+function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): void {
+  const plant = PLANT_CATALOG.find((p) => p.id === plantId);
+  if (!plant) return;
+
+  rewardBannerTitle.textContent = 'NOVA SEMENTE DESBLOQUEADA!';
+  rewardDialogHeading.textContent = 'Você obteve uma nova planta!';
+  rewardPlantBadge.textContent = `${plant.elementBadge} ${plant.element.toUpperCase()}`;
+  rewardPlantCost.textContent = `☀️ ${plant.cost} Sol`;
+  rewardPlantName.textContent = plant.name;
+  rewardPlantDesc.textContent = plant.description;
+  rewardPlantOverdrive.textContent = plant.overdriveDesc;
+
+  // Draw 2.5D Plant on reward canvas
+  const ctx = rewardPlantCanvas.getContext('2d');
+  if (ctx) {
+    ctx.clearRect(0, 0, rewardPlantCanvas.width, rewardPlantCanvas.height);
+    CharacterRenderer.drawPlant(
+      ctx,
+      {
+        id: 0,
+        def: plant,
+        row: 0,
+        col: 0,
+        hp: plant.maxHp,
+        maxHp: plant.maxHp,
+        attackTimer: 0,
+        overdriveTimer: 0,
+        animPhase: 0.5,
+        scaleKick: 0.35,
+        armored: false,
+        armTimer: 0,
+        armed: true
+      },
+      65,
+      68,
+      110,
+      115,
+      false
+    );
+  }
+
+  if (nextLevel) {
+    nextLevelBtn.style.display = 'inline-block';
+    nextLevelBtn.innerHTML = `<span>AVANÇAR PARA A FASE ${nextLevel.world}-${nextLevel.stage} ➔</span>`;
+    nextLevelBtn.onclick = () => {
+      plantRewardModal.classList.add('hidden');
+      startLevel(nextLevel);
+    };
+  } else {
+    nextLevelBtn.innerHTML = `<span>🏆 MODO AVENTURA CONCLUÍDO! ➔</span>`;
+    nextLevelBtn.onclick = () => {
+      plantRewardModal.classList.add('hidden');
+      showMainMenu();
+    };
+  }
+
+  rewardMenuBtn.onclick = () => {
+    plantRewardModal.classList.add('hidden');
+    showMainMenu();
+  };
+
+  sound.playSunCollect();
+  plantRewardModal.classList.remove('hidden');
+}
+
+function renderLevelsGrid(): void {
+  const progress = ProgressionManager.getProgress();
+  levelsGridEl.innerHTML = '';
+
+  for (const lvl of LEVEL_CATALOG) {
+    const isUnlocked = lvl.id <= progress.maxUnlockedLevelId;
+    const isCurrent = lvl.id === currentLevel.id;
+    const card = document.createElement('div');
+    card.className = `level-card ${isCurrent ? 'current' : ''} ${!isUnlocked ? 'locked' : ''}`;
+
+    const rewardPlant = lvl.unlockedPlantOnClear
+      ? PLANT_CATALOG.find((p) => p.id === lvl.unlockedPlantOnClear)
+      : null;
+
+    card.innerHTML = `
+      <div class="level-card-header">
+        <span class="level-badge">Fase ${lvl.world}-${lvl.stage}</span>
+        <span class="level-status-icon">${!isUnlocked ? '🔒' : isCurrent ? '⭐' : '✔'}</span>
+      </div>
+      <h4>${lvl.name}</h4>
+      <div class="level-meta-preview">
+        <span>${lvl.availableLanes} ${lvl.availableLanes === 1 ? 'linha' : 'linhas'} • ${lvl.initialSun}☀️</span>
+        ${rewardPlant ? `<span class="level-reward-tag">${rewardPlant.emoji} ${rewardPlant.name}</span>` : '<span>🏆 Troféu</span>'}
+      </div>
+    `;
+
+    if (isUnlocked) {
+      card.addEventListener('click', () => {
+        levelSelectModal.classList.add('hidden');
+        startLevel(lvl);
+      });
+    }
+
+    levelsGridEl.appendChild(card);
+  }
+}
+
 function openGameOverModal(won: boolean): void {
+  if (won && currentLevel) {
+    const result = ProgressionManager.completeLevel(currentLevel.id);
+    updateMenuStageInfo();
+
+    if (result.isNewUnlock && result.unlockedPlantId) {
+      showPlantRewardModal(result.unlockedPlantId, result.nextLevel);
+      return;
+    }
+  }
+
   resultIconEl.textContent = won ? '🏆' : '🧠';
-  resultTitleEl.textContent = won ? 'Jardim Evoluído e Defendido!' : 'Os Zumbis Invadiram!';
+  resultTitleEl.textContent = won
+    ? (currentLevel ? `${currentLevel.name} Concluída!` : 'Jardim Evoluído e Defendido!')
+    : 'Os Zumbis Invadiram!';
   resultSubtitleEl.textContent = won
-    ? `Vitória em ${engine.currentBiome.name}! Você dominou as reações elementais!`
+    ? (currentLevel ? 'Parabéns! Você defendeu seu jardim com maestria tática!' : `Vitória em ${engine.currentBiome.name}!`)
     : 'Experimente ajustar seu Deck de Sementes ou consultar o Guia de Sinergias!';
+
+  const nextLvl = currentLevel ? getNextLevel(currentLevel.id) : null;
+  if (won && nextLvl) {
+    gameOverNextBtn.style.display = 'inline-block';
+    gameOverNextBtn.textContent = `▶️ Próxima Fase (${nextLvl.world}-${nextLvl.stage})`;
+    gameOverNextBtn.onclick = () => {
+      gameOverModal.classList.add('hidden');
+      startLevel(nextLvl);
+    };
+  } else {
+    gameOverNextBtn.style.display = 'none';
+  }
 
   resultStatsEl.innerHTML = `
     <div class="stat-item">
@@ -540,8 +736,8 @@ function openGameOverModal(won: boolean): void {
       <strong>🧬 ${engine.unlockedMutations.size}</strong>
     </div>
     <div class="stat-item">
-      <small>Bioma</small>
-      <strong>${engine.currentBiome.icon} ${engine.currentBiome.name}</strong>
+      <small>Fase / Bioma</small>
+      <strong>${currentLevel ? `🗺️ Fase ${currentLevel.world}-${currentLevel.stage}` : `${engine.currentBiome.icon} ${engine.currentBiome.name}`}</strong>
     </div>
   `;
   gameOverModal.classList.remove('hidden');
@@ -561,11 +757,7 @@ closeDeckBtn.addEventListener('click', () => {
 
 startBattleBtn.addEventListener('click', () => {
   deckModal.classList.add('hidden');
-  hideMainMenuAndPlay();
-  engine.initBoard(draftBiome, draftDeckIds);
-  buildSeedPackets();
-  syncHud();
-  showToast(`${draftBiome.icon} Partida iniciada em ${draftBiome.name}!`);
+  startLevel(currentLevel);
 });
 
 openAlmanacFromDeckBtn.addEventListener('click', () => {
@@ -664,14 +856,13 @@ pauseBtn.addEventListener('click', () => {
 
 restartBtn.addEventListener('click', () => {
   gameOverModal.classList.add('hidden');
-  engine.initBoard();
-  buildSeedPackets();
-  syncHud();
+  startLevel(currentLevel);
 });
 
 // Main Menu Controls
 function showMainMenu(): void {
   engine.paused = true;
+  updateMenuStageInfo();
   mainMenuScreen.classList.remove('hidden');
 }
 
@@ -683,7 +874,16 @@ function hideMainMenuAndPlay(): void {
 }
 
 menuPlayBtn.addEventListener('click', () => {
-  hideMainMenuAndPlay();
+  startLevel(currentLevel);
+});
+
+menuLevelsBtn.addEventListener('click', () => {
+  renderLevelsGrid();
+  levelSelectModal.classList.remove('hidden');
+});
+
+closeLevelSelectBtn.addEventListener('click', () => {
+  levelSelectModal.classList.add('hidden');
 });
 
 menuDeckBtn.addEventListener('click', () => {
@@ -706,14 +906,15 @@ menuHomeBtn.addEventListener('click', () => {
   showMainMenu();
 });
 
-// Start on Main Menu
+// Start on Main Menu with Progression Info
 engine.paused = true;
+updateMenuStageInfo();
 
 // Initialize & Start Game Loop
 LiveUpdater.init();
 buildSeedPackets();
 syncHud();
-showToast('🌱 Dica: Use 🎒 Deck para escolher Biomas/Plantas ou 📖 Guia para ver o Almanaque 2.5D!');
+showToast(`🌱 Modo Aventura: ${currentLevel.name}! Toque em INICIAR JOGO.`);
 
 let lastTime = performance.now();
 let lastHudSync = 0;

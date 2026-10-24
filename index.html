@@ -46,6 +46,7 @@
 
           <div class="wave-box">
             <div class="wave-header">
+              <span id="stage-badge" class="stage-pill">Fase 1-1</span>
               <span id="wave-label">ONDA 1 / 6</span>
               <span id="synergy-counter" class="synergy-pill">⚡ 0 Combos</span>
             </div>
@@ -131,11 +132,14 @@
               <span class="btn-icon">▶️</span>
               <div class="btn-text">
                 <strong>INICIAR JOGO</strong>
-                <small>Modo Aventura & Sinergias</small>
+                <small id="menu-stage-info">Modo Aventura: Fase 1-1</small>
               </div>
             </button>
 
             <div class="menu-secondary-row">
+              <button class="menu-sec-btn" id="menu-levels-btn">
+                <span>🗺️</span> Fases
+              </button>
               <button class="menu-sec-btn" id="menu-deck-btn">
                 <span>🎒</span> Deck & Biomas
               </button>
@@ -215,6 +219,60 @@
         </div>
       </div>
 
+      <!-- Classic Retro Victory & Plant Unlock Modal ("Você obteve uma nova planta!") -->
+      <div id="plant-reward-modal" class="modal-overlay hidden">
+        <div class="pvz-parchment-modal">
+          <div class="wood-banner">
+            <span class="wood-banner-title" id="reward-banner-title">NOVA SEMENTE DESBLOQUEADA!</span>
+          </div>
+
+          <div class="parchment-body">
+            <h2 id="reward-dialog-heading">Você obteve uma nova planta!</h2>
+
+            <div class="reward-plant-showcase">
+              <div class="sunburst-ring"></div>
+              <canvas id="reward-plant-canvas" width="130" height="130"></canvas>
+
+              <div class="reward-plant-details">
+                <div class="reward-meta-row">
+                  <span id="reward-plant-badge" class="element-badge">☀️ Solar</span>
+                  <span id="reward-plant-cost" class="cost-badge">☀️ 50 Sol</span>
+                </div>
+                <h3 id="reward-plant-name">Girassol Prisma</h3>
+                <p id="reward-plant-desc">Gera +25 Sol periodicamente para expandir suas defesas.</p>
+                <div class="reward-overdrive-box">
+                  <strong>Poder de Adubo:</strong>
+                  <span id="reward-plant-overdrive">Erupção de +150 Sol imediato!</span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div class="parchment-footer">
+            <button class="wood-button primary-wood-btn" id="next-level-btn">
+              <span>AVANÇAR PARA A PRÓXIMA FASE ➔</span>
+            </button>
+            <button class="wood-button secondary-wood-btn" id="reward-menu-btn">
+              <span>🏠 Menu Principal</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Level Selection Modal ("Mapa de Fases") -->
+      <div id="level-select-modal" class="modal-overlay hidden">
+        <div class="modal-card wide-modal">
+          <div class="modal-header-row">
+            <div>
+              <div class="modal-badge">🗺️ MODO AVENTURA — MAPA DE FASES</div>
+              <h2>Selecione uma Fase Desbloqueada</h2>
+            </div>
+            <button class="close-btn" id="close-level-select-btn">✕</button>
+          </div>
+          <div class="levels-grid" id="levels-grid"></div>
+        </div>
+      </div>
+
       <!-- Game Over / Victory Modal -->
       <div id="game-over-modal" class="modal-overlay hidden">
         <div class="modal-card result-card">
@@ -222,9 +280,10 @@
           <h2 id="result-title">Jardim Defendido!</h2>
           <p id="result-subtitle">Você dominou as sinergias elementais!</p>
           <div class="result-stats" id="result-stats"></div>
-          <div class="modal-footer-row" style="justify-content: center; gap: 12px;">
-            <button class="secondary-btn" id="change-deck-btn">🎒 Trocar Deck / Bioma</button>
-            <button class="primary-btn" id="restart-btn">🔄 Jogar Novamente</button>
+          <div class="modal-footer-row" style="justify-content: center; gap: 10px; flex-wrap: wrap;">
+            <button class="primary-btn" id="game-over-next-btn">▶️ Próxima Fase</button>
+            <button class="secondary-btn" id="change-deck-btn">🎒 Deck / Bioma</button>
+            <button class="secondary-btn" id="restart-btn">🔄 Jogar Novamente</button>
           </div>
         </div>
       </div>

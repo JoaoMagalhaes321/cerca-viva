@@ -66,6 +66,29 @@ export interface SynergyRecipe {
   description: string;
 }
 
+export interface ZombieSpawnEvent {
+  timeOffsetSec: number;
+  zombieType: string;
+  lane?: number;
+}
+
+export interface LevelConfig {
+  id: number;
+  world: number;
+  stage: number;
+  name: string;
+  initialSun: number;
+  availableLanes: number;
+  unlockedPlantOnClear?: string;
+  spawns: ZombieSpawnEvent[];
+}
+
+export interface PlayerProgress {
+  currentLevelId: number;
+  maxUnlockedLevelId: number;
+  unlockedPlants: string[];
+}
+
 export const BIOME_CATALOG: BiomeDefinition[] = [
   {
     id: 'front_yard',
