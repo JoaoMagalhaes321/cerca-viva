@@ -2187,6 +2187,7 @@ export class GameEngine {
 
     // 4. Draw Plants
     const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog';
+    sound.night = isNightScene; // a trilha troca para o tema da noite
     for (const p of this.plants) {
       const cx = this.boardLeft + (p.col + 0.5) * this.cellW;
       const cy = this.boardTop + (p.row + 0.54) * this.cellH;
