@@ -1,0 +1,108 @@
+/* Modo Infinito e Desafio do Dia: botões do menu e tela de regras.
+   Os botões usam também a classe .menu-sec-btn, então seguem o tema que estiver ativo. */
+
+.menu-modes-row {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+  flex-wrap: wrap;
+}
+
+.menu-sec-btn.menu-mode-btn {
+  min-width: 190px;
+  padding: 6px 14px 6px 10px;
+  gap: 8px;
+  text-align: left;
+}
+
+.menu-mode-btn .mode-icon {
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.menu-mode-btn .mode-text {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  line-height: 1.1;
+}
+
+.menu-mode-btn .mode-text small {
+  max-width: 210px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: 'Nunito', system-ui, sans-serif;
+  font-size: 0.62rem;
+  font-weight: 800;
+  opacity: 0.75;
+}
+
+.menu-mode-btn.bloqueado {
+  opacity: 0.6;
+  filter: grayscale(0.6);
+}
+
+.menu-mode-btn.feito .mode-text small {
+  color: #16a34a;
+  opacity: 1;
+}
+
+/* ---------- Tela de regras ---------- */
+.modo-card {
+  max-width: 460px;
+}
+
+.modo-regras {
+  margin: 10px 0 8px;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 0.8rem;
+  line-height: 1.35;
+  color: #e2e8f0;
+}
+
+.modo-regras b {
+  color: #fde68a;
+}
+
+.modo-placar {
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.modo-deck {
+  margin-top: 8px;
+  font-size: 0.7rem !important;
+  color: #94a3b8 !important;
+}
+
+.modo-botoes {
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+@media (max-height: 480px) {
+  .menu-sec-btn.menu-mode-btn {
+    min-width: 160px;
+    padding: 4px 10px 4px 8px;
+  }
+  .menu-mode-btn .mode-icon {
+    font-size: 1.1rem;
+  }
+  .modo-regras {
+    margin: 6px 0;
+    font-size: 0.72rem;
+    gap: 3px;
+  }
+}

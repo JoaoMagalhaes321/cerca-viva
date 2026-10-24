@@ -3,6 +3,7 @@ import { CharacterRenderer } from './renderer';
 import { preloadSprites } from './sprites';
 import { confete, vibrar } from './feedback';
 import { sound } from './audio';
+import { Modos } from './modos';
 import { LiveUpdater } from './updater';
 import { iniciarLivroCombos, registrarCombo, renderLivroCombos } from './livro-combos';
 import {
@@ -199,8 +200,11 @@ function syncHud(): void {
   // O tema do HUD muda com o clima (noite e névoa escurecem a faixa do topo)
   document.body.dataset.weather = engine.weather;
   sunAmountEl.textContent = String(engine.sun);
-  waveLabelEl.textContent = `ONDA ${engine.wave} / ${engine.maxWaves}`;
-  if (currentLevel) {
+  waveLabelEl.textContent =
+    engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
+  if (modos.ativo()) {
+    stageBadgeEl.textContent = modos.rotulo();
+  } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
@@ -597,6 +601,7 @@ function updateMenuStageInfo(): void {
 }
 
 function startLevel(level: LevelConfig): void {
+  modos.sair();
   currentLevel = level;
   ProgressionManager.setCurrentLevel(level.id);
 
@@ -754,6 +759,10 @@ function renderLevelsGrid(): void {
 }
 
 function openGameOverModal(won: boolean): void {
+  if (modos.ativo()) {
+    modos.mostrarResultado(won);
+    return;
+  }
   if (won && currentLevel) {
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
@@ -827,7 +836,8 @@ closeDeckBtn.addEventListener('click', () => {
 
 startBattleBtn.addEventListener('click', () => {
   deckModal.classList.add('hidden');
-  startLevel(currentLevel);
+  if (modos.ativo()) modos.reiniciar();
+  else startLevel(currentLevel);
 });
 
 openAlmanacFromDeckBtn.addEventListener('click', () => {
@@ -926,7 +936,8 @@ pauseBtn.addEventListener('click', () => {
 
 restartBtn.addEventListener('click', () => {
   gameOverModal.classList.add('hidden');
-  startLevel(currentLevel);
+  if (modos.ativo()) modos.reiniciar();
+  else startLevel(currentLevel);
 });
 
 // Main Menu Controls
@@ -974,7 +985,24 @@ menuSoundBtn.addEventListener('click', () => {
 });
 
 menuHomeBtn.addEventListener('click', () => {
+  modos.sair();
   showMainMenu();
+});
+
+// Modo Infinito e Desafio do Dia
+const modos = new Modos({
+  engine,
+  deck: () => {
+    const unlocked = ProgressionManager.getProgress().unlockedPlants;
+    const deck = draftDeckIds.filter((id) => unlocked.includes(id));
+    return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+  },
+  prepararPartida: () => {
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  toast: (msg) => showToast(msg)
 });
 
 // Start on Main Menu with Progression Info
