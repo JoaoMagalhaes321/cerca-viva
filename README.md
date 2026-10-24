@@ -6,6 +6,8 @@ O jogo se chamava "PvZ: Evolution"; o repositório e o endereço do site continu
 Roda no navegador e no Android (app Capacitor).
 
 - Jogar no navegador: https://joaomagalhaes321.github.io/pvz-evolution/
+- Convite para mandar aos amigos (com prévia de link): https://joaomagalhaes321.github.io/pvz-evolution/convite/
+  — página estática em `public/convite/`.
 - Tecnologia: TypeScript + Vite (canvas 2D, Web Audio), Capacitor 6 para Android.
 
 ## Instalar no celular (para quem vai jogar)
