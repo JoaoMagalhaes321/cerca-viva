@@ -3,6 +3,44 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261024-11 · Página pela rede primeiro; recarga automática quando chega versão nova
+- Card: sw-versao · Branch: claude/sw-versao · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: no `public/sw.js`, o `index.html` vem da rede primeiro (cópia guardada só sem internet);
+  `assets/` (nome com hash) vem direto do cache; sprites e ícones vêm do cache e se atualizam em segundo
+  plano. O `src/updater.ts` recarrega a página uma vez quando o service worker novo assume
+  (`controllerchange`), e não na primeira visita. Caches antigos (inclusive `pvz-evolution-v1`) são
+  apagados ao ativar; o progresso no `localStorage` não é tocado.
+- Por quê: o app do celular carrega o site do GitHub Pages; com a página pela rede, a versão nova aparece
+  já na primeira abertura. Recarregar no `controllerchange` (e não no `installed`, como antes) evita a
+  página recarregada ainda ser servida pelo service worker antigo.
+- Outras opções:
+  - A) Mostrar um aviso "Versão nova, toque para atualizar" em vez de recarregar sozinho — o jogador
+    escolhe a hora / mais interface e a versão nova pode ficar esperando.
+  - B) Manter tudo cache primeiro e só versionar — abre mais rápido sem internet boa / a versão nova
+    continua só na 2ª abertura.
+- Como trocar depois: funções `redePrimeiro`, `cachePrimeiro` e `copiaEAtualiza` no fim do `public/sw.js`;
+  recarga em `src/updater.ts`.
+- Fácil de reverter? sim
+
+### D-20261024-10 · Versão do service worker = impressão digital do build
+- Card: sw-versao · Branch: claude/sw-versao · Data: 2026-10-24
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: plugin no `vite.config.ts` que, depois do build, calcula um hash (FNV-1a, 8 caracteres) de
+  nome + conteúdo de todos os arquivos de `dist/` e grava no `dist/sw.js` no lugar de
+  `__VERSAO_DO_BUILD__`. Regra em `src/sw-versao.ts`, com 5 testes. Se o marcador sumir, o build falha.
+- Por quê: muda sempre que o jogo muda e só nessa hora — rodar o build de novo sem mudar nada não força
+  atualização no celular. Não depende de ninguém lembrar de subir número.
+- Outras opções:
+  - A) Versão do `package.json` — legível / ninguém sobe o número (está em 0.1.0 desde o começo).
+  - B) Data e hora do build — simples / todo deploy força atualização, mesmo sem mudança.
+  - C) SHA do commit (`GITHUB_SHA`) — rastreável / commit só de docs também força atualização, e no PC
+    precisa de git.
+- Como trocar depois: `calcularVersao` em `src/sw-versao.ts` (ou o plugin em `vite.config.ts`).
+- Fácil de reverter? sim
+
 ### D-20261024-9 · CI roda nas branches claude/** e nos pull requests para a main, sem deploy
 - Card: ci-branches · Branch: claude/ci-branches · Data: 2026-10-24
 - Regra de negócio? não
