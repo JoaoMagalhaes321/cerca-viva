@@ -231,6 +231,7 @@ export class GameEngine {
   private onMutationPrompt: (choices: MutationDefinition[]) => void;
   private onGameEnd: (won: boolean) => void;
   private onToast: (msg: string) => void;
+  private onCombo?: (synergyId: string) => void;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -239,6 +240,8 @@ export class GameEngine {
       onMutationPrompt: (choices: MutationDefinition[]) => void;
       onGameEnd: (won: boolean) => void;
       onToast: (msg: string) => void;
+      /** Chamado toda vez que um combo (sinergia) acontece, com o id da receita. */
+      onCombo?: (synergyId: string) => void;
     }
   ) {
     this.canvas = canvas;
@@ -251,6 +254,7 @@ export class GameEngine {
     this.onMutationPrompt = callbacks.onMutationPrompt;
     this.onGameEnd = callbacks.onGameEnd;
     this.onToast = callbacks.onToast;
+    this.onCombo = callbacks.onCombo;
 
     this.initBoard();
     this.setupInputs();
@@ -1304,7 +1308,7 @@ export class GameEngine {
         target.wetTimer > 0 ||
         target.chilledTimer > 0
       ) {
-        this.totalCombos++;
+        this.registerCombo('elemental_gale');
         this.spawnFloatingText('💨 VENDAVAL ELEMENTAL!', target.x, target.row + 0.15, '#2dd4bf', 1.15);
         for (const other of this.zombies) {
           if (other.row === target.row && other.id !== target.id && Math.abs(other.x - target.x) <= 2.4) {
@@ -1320,7 +1324,7 @@ export class GameEngine {
     // 4. SYNERGY: WATER + ELECTRIC = CHAIN LIGHTNING
     if (element === 'electric') {
       if (target.wetTimer > 0) {
-        this.totalCombos++;
+        this.registerCombo('electro_chain');
         sound.playSynergyCombo('electro');
         const bonusMult = this.unlockedMutations.has('superconductor') ? 1.45 : 1.0;
         finalDamage = Math.floor(baseDamage * 1.65 * bonusMult);
@@ -1372,7 +1376,7 @@ export class GameEngine {
     if (element === 'ice') {
       target.chilledTimer = 7.0;
       if (target.wetTimer > 0 && target.frozenTimer <= 0) {
-        this.totalCombos++;
+        this.registerCombo('flash_freeze');
         target.frozenTimer = 3.2;
         target.wetTimer = 0;
         finalDamage += 20;
@@ -1383,7 +1387,7 @@ export class GameEngine {
     // 6. SYNERGY: FIRE + ICE (Thermal Shock) OR FIRE + TOXIN (Bio-Combustion Explosion!)
     if (element === 'fire') {
       if (target.frozenTimer > 0 || target.chilledTimer > 0) {
-        this.totalCombos++;
+        this.registerCombo('thermal_shock');
         sound.playSynergyCombo('thermal');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.2 : 1.45;
         finalDamage = Math.floor(baseDamage * 2.1);
@@ -1404,7 +1408,7 @@ export class GameEngine {
           }
         }
       } else if (target.poisonTimer > 0) {
-        this.totalCombos++;
+        this.registerCombo('bio_blast');
         sound.playSynergyCombo('thermal');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.3 : 1.6;
         finalDamage = Math.floor(baseDamage * 2.3);
@@ -1814,6 +1818,11 @@ export class GameEngine {
       lostHeadgear: false,
       lostArm: false
     });
+  }
+
+  private registerCombo(synergyId: string): void {
+    this.totalCombos++;
+    this.onCombo?.(synergyId);
   }
 
   private spawnFloatingText(

@@ -89,3 +89,35 @@ describe('ProgressionManager', () => {
     expect(ProgressionManager.resetProgress()).toEqual({ currentLevelId: 1, maxUnlockedLevelId: 1, unlockedPlants: ['peashooter'] });
   });
 });
+
+describe('Livro de combos', () => {
+  it('jogador novo não conhece nenhum combo', () => {
+    expect(ProgressionManager.getDiscoveredCombos()).toEqual([]);
+  });
+
+  it('descobrir um combo vale só na primeira vez e fica salvo', () => {
+    expect(ProgressionManager.discoverCombo('electro_chain')).toBe(true);
+    expect(ProgressionManager.discoverCombo('electro_chain')).toBe(false);
+    resetManager();
+    expect(ProgressionManager.getDiscoveredCombos()).toEqual(['electro_chain']);
+    expect(JSON.parse(store.get(KEY)!).discoveredCombos).toEqual(['electro_chain']);
+  });
+
+  it('progresso antigo, sem o campo, continua carregando', () => {
+    store.set(KEY, JSON.stringify({ currentLevelId: 3, maxUnlockedLevelId: 3, unlockedPlants: ['peashooter'] }));
+    expect(ProgressionManager.getProgress().maxUnlockedLevelId).toBe(3);
+    expect(ProgressionManager.getDiscoveredCombos()).toEqual([]);
+  });
+
+  it('campo de combos corrompido é descartado sem perder as fases', () => {
+    store.set(KEY, JSON.stringify({ currentLevelId: 4, maxUnlockedLevelId: 4, unlockedPlants: ['peashooter'], discoveredCombos: 'x' }));
+    expect(ProgressionManager.getProgress().maxUnlockedLevelId).toBe(4);
+    expect(ProgressionManager.getDiscoveredCombos()).toEqual([]);
+  });
+
+  it('resetProgress apaga os combos descobertos', () => {
+    ProgressionManager.discoverCombo('bio_blast');
+    ProgressionManager.resetProgress();
+    expect(ProgressionManager.getDiscoveredCombos()).toEqual([]);
+  });
+});

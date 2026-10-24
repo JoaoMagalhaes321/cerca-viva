@@ -3,14 +3,14 @@ import { CharacterRenderer } from './renderer';
 import { preloadSprites } from './sprites';
 import { sound } from './audio';
 import { LiveUpdater } from './updater';
+import { iniciarLivroCombos, registrarCombo, renderLivroCombos } from './livro-combos';
 import {
   BIOME_CATALOG,
   BiomeDefinition,
   LevelConfig,
   MUTATION_CATALOG,
   MutationDefinition,
-  PLANT_CATALOG,
-  SYNERGY_RECIPES
+  PLANT_CATALOG
 } from './types';
 import { ProgressionManager } from './progression';
 import { LEVEL_CATALOG, getNextLevel } from './levels';
@@ -116,6 +116,7 @@ function showToast(msg: string): void {
 let engine!: GameEngine;
 
 engine = new GameEngine(canvas, {
+  onCombo: (id) => registrarCombo(id),
   onUiUpdate: () => {
     if (engine) syncHud();
   },
@@ -388,20 +389,7 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
   almanacContentEl.innerHTML = '';
 
   if (tab === 'synergies') {
-    for (const syn of SYNERGY_RECIPES) {
-      const card = document.createElement('div');
-      card.className = 'almanac-card';
-      card.style.borderColor = syn.color + '66';
-      card.innerHTML = `
-        <div style="font-size: 2rem; min-width: 48px; text-align: center;">⚡</div>
-        <div class="almanac-card-info">
-          <span class="badge-pill" style="color:${syn.color};">${syn.badges}</span>
-          <h4>${syn.title}</h4>
-          <p>${syn.description}</p>
-        </div>
-      `;
-      almanacContentEl.appendChild(card);
-    }
+    renderLivroCombos(almanacContentEl);
   } else if (tab === 'plants') {
     for (const plant of PLANT_CATALOG) {
       const card = document.createElement('div');
@@ -963,6 +951,11 @@ updateMenuStageInfo();
 
 // Initialize & Start Game Loop
 LiveUpdater.init();
+iniciarLivroCombos({
+  palco: document.getElementById('canvas-container') as HTMLElement,
+  botoes: [almanacBtn, menuAlmanacBtn],
+  aba: almanacModal.querySelector<HTMLElement>('.tab-btn[data-tab="synergies"]')
+});
 buildSeedPackets();
 // Redesenha os retratos das sementes quando os sprites terminarem de carregar
 preloadSprites().then(() => buildSeedPackets());

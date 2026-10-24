@@ -73,6 +73,8 @@ export interface SynergyRecipe {
   comboText: string;
   color: string;
   description: string;
+  /** Pista mostrada no Livro de Combos enquanto o combo ainda não foi descoberto. */
+  hint: string;
 }
 
 export interface ZombieSpawnEvent {
@@ -96,6 +98,8 @@ export interface PlayerProgress {
   currentLevelId: number;
   maxUnlockedLevelId: number;
   unlockedPlants: string[];
+  /** Combos (ids de SYNERGY_RECIPES) que o jogador já fez pelo menos uma vez. */
+  discoveredCombos?: string[];
 }
 
 export const BIOME_CATALOG: BiomeDefinition[] = [
@@ -160,7 +164,8 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     badges: '💧 Água + ⚡ Elétrico',
     comboText: '⚡ ELETROCUSSÃO!',
     color: '#c084fc',
-    description: 'Alvos Molhados (por Hidro-Brotos ou Chuva) atingidos pelo Junco Tesla disparam raios em cadeia para até 5 inimigos e eletrificam poças no chão!'
+    description: 'Alvos Molhados (por Hidro-Brotos ou Chuva) atingidos pelo Junco Tesla disparam raios em cadeia para até 5 inimigos e eletrificam poças no chão!',
+    hint: 'Água e eletricidade não combinam… para os zumbis.'
   },
   {
     id: 'flash_freeze',
@@ -168,7 +173,8 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     badges: '💧 Água + ❄️ Gelo',
     comboText: '❄️ CONGELAMENTO!',
     color: '#67e8f9',
-    description: 'Inimigos Molhados atingidos pelo Crio-Esporo congelam imediatamente num bloco de gelo sólido por 3.2 segundos.'
+    description: 'Inimigos Molhados atingidos pelo Crio-Esporo congelam imediatamente num bloco de gelo sólido por 3.2 segundos.',
+    hint: 'O que acontece com um zumbi encharcado quando bate um frio de repente?'
   },
   {
     id: 'thermal_shock',
@@ -176,7 +182,8 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     badges: '❄️ Gelo + 🔥 Fogo',
     comboText: '💥 CHOQUE TÉRMICO!',
     color: '#fb923c',
-    description: 'Atingir um zumbi Congelado ou Resfriado com a Draco-Pimenta causa uma explosão termodinâmica em área com 2.1x de dano!'
+    description: 'Atingir um zumbi Congelado ou Resfriado com a Draco-Pimenta causa uma explosão termodinâmica em área com 2.1x de dano!',
+    hint: 'Esquente de uma vez o que está gelado.'
   },
   {
     id: 'bio_blast',
@@ -184,7 +191,8 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     badges: '☣️ Veneno + 🔥 Fogo',
     comboText: '☣️ EXPLOSÃO BIOQUÍMICA!',
     color: '#a3e635',
-    description: 'O ácido da Nepentes Ácida derrete armaduras 2x mais rápido e, ao contato com Fogo, detona uma nuvem inflamável em área!'
+    description: 'O ácido da Nepentes Ácida derrete armaduras 2x mais rápido e, ao contato com Fogo, detona uma nuvem inflamável em área!',
+    hint: 'Ácido perto do fogo é uma péssima ideia (para os zumbis).'
   },
   {
     id: 'elemental_gale',
@@ -192,7 +200,8 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     badges: '💨 Vento + (🔥/☣️/❄️/💧)',
     comboText: '💨 VENDAVAL ELEMENTAL!',
     color: '#2dd4bf',
-    description: 'A Flor Catavento empurra os zumbis para trás e espalha qualquer status elemental ativo no alvo para toda a fila atrás dele!'
+    description: 'A Flor Catavento empurra os zumbis para trás e espalha qualquer status elemental ativo no alvo para toda a fila atrás dele!',
+    hint: 'O vento leva junto o que o zumbi estiver carregando.'
   }
 ];
 
