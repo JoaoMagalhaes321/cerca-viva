@@ -1,0 +1,98 @@
+/* Confete e entrada animada das telas de vitória (src/feedback.ts) */
+
+.confete-camada {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.confete {
+  position: absolute;
+  top: -16px;
+  width: 9px;
+  height: 14px;
+  border: 2px solid #2a2416;
+  border-radius: 2px;
+  animation-name: confete-cai;
+  animation-timing-function: cubic-bezier(0.25, 0.6, 0.4, 1);
+  animation-fill-mode: forwards;
+}
+
+@keyframes confete-cai {
+  0% {
+    transform: translate(0, 0) rotate(0deg);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translate(var(--deriva), 105vh) rotate(calc(var(--giro) * 720deg));
+    opacity: 0;
+  }
+}
+
+/* Troféu e título entram "pulando" na vitória */
+.vitoria .result-icon {
+  animation: trofeu-pula 0.7s cubic-bezier(0.2, 1.6, 0.4, 1) both;
+}
+
+.vitoria #result-title {
+  animation: titulo-entra 0.5s 0.15s ease-out both;
+}
+
+@keyframes trofeu-pula {
+  0% {
+    transform: scale(0.2) rotate(-25deg);
+    opacity: 0;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+@keyframes titulo-entra {
+  0% {
+    transform: translateY(12px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Derrota: o cartão dá uma tremidinha */
+.derrota .result-card {
+  animation: cartao-treme 0.45s ease-in-out;
+}
+
+@keyframes cartao-treme {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  20% {
+    transform: translateX(-10px);
+  }
+  40% {
+    transform: translateX(9px);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(4px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .vitoria .result-icon,
+  .vitoria #result-title,
+  .derrota .result-card {
+    animation: none;
+  }
+}

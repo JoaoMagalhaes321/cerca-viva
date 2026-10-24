@@ -1,6 +1,7 @@
 import { GameEngine, ZombieVariant } from './engine';
 import { CharacterRenderer } from './renderer';
 import { preloadSprites } from './sprites';
+import { confete, vibrar } from './feedback';
 import { sound } from './audio';
 import { LiveUpdater } from './updater';
 import {
@@ -677,6 +678,8 @@ function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): v
 
   sound.playSunCollect();
   plantRewardModal.classList.remove('hidden');
+  confete(plantRewardModal);
+  vibrar('medio');
 }
 
 function renderLevelsGrid(): void {
@@ -791,7 +794,15 @@ function openGameOverModal(won: boolean): void {
       <strong>${currentLevel ? `🗺️ Fase ${currentLevel.world}-${currentLevel.stage}` : `${engine.currentBiome.icon} ${engine.currentBiome.name}`}</strong>
     </div>
   `;
+  gameOverModal.classList.toggle('vitoria', won);
+  gameOverModal.classList.toggle('derrota', !won);
   gameOverModal.classList.remove('hidden');
+  if (won) {
+    confete(gameOverModal);
+    vibrar('medio');
+  } else {
+    vibrar('forte');
+  }
 }
 
 // Button Listeners

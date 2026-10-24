@@ -13,6 +13,7 @@ import {
 } from './types';
 import { sound } from './audio';
 import { CharacterRenderer } from './renderer';
+import { movimentoReduzido, Peso, vibrar } from './feedback';
 
 export const GRID_ROWS = 5;
 export const GRID_COLS = 9;
@@ -183,6 +184,10 @@ export class GameEngine {
   public weather: WeatherType = 'sunny';
   private weatherTimer = 38;
   private lightningFlash = 0;
+  // Tremida de tela (em tempo real, funciona até com o jogo pausado)
+  private shakeAmp = 0;
+  private shakeStart = 0;
+  private shakeUntil = 0;
 
   // Selection & Active Tools
   public currentBiome: BiomeDefinition = BIOME_CATALOG[0];
@@ -589,6 +594,7 @@ export class GameEngine {
       }
       this.spawnParticles(col + 0.5, row + 0.5, '#facc15', 32);
       this.spawnFloatingText('☄️ IMPACTO ORBITAL!', col + 0.5, row, '#facc15', 1.35);
+      this.sacudir(8, 0.4, 'medio');
       this.onUiUpdate();
     }
   }
@@ -667,6 +673,7 @@ export class GameEngine {
           }
         }
         this.spawnFloatingText('🌪️ CICLONE F5!', plant.col + 1.5, plant.row, '#2dd4bf', 1.35);
+        this.sacudir(4, 0.3, 'leve');
         break;
       case 'venom_pitcher':
         for (const z of this.zombies) {
@@ -872,6 +879,7 @@ export class GameEngine {
             this.spawnParticles(p.col + 0.5, p.row + 0.5, '#ef4444', 32);
             this.spawnParticles(p.col + 0.5, p.row + 0.5, '#facc15', 20);
             this.spawnFloatingText('💥 BUM!', p.col + 0.5, p.row, '#fef08a', 1.45);
+            this.sacudir(7, 0.35, 'medio');
             for (const z of this.zombies) {
               if (z.row === p.row && Math.abs(z.x - (p.col + 0.5)) <= 1.25) {
                 this.applyElementalDamage(z, p.def.damage, 'explosive');
@@ -1059,6 +1067,7 @@ export class GameEngine {
         if (!mower.used && !mower.active) {
           mower.active = true;
           sound.playSynergyCombo('thermal');
+          this.sacudir(5, 0.3, 'medio');
           this.onToast(`🚜 Cortador de Grama disparado na linha ${z.row + 1}!`);
         } else if (mower.used && z.x < -0.45) {
           this.gameOver = true;
@@ -1393,6 +1402,7 @@ export class GameEngine {
         this.spawnParticles(target.x, target.row + 0.5, '#f97316', 22);
         this.spawnParticles(target.x, target.row + 0.5, '#67e8f9', 16);
         this.spawnFloatingText('💥 CHOQUE TÉRMICO!', target.x, target.row + 0.1, '#fb923c', 1.3);
+        this.sacudir(5, 0.25, 'leve');
 
         for (const other of this.zombies) {
           if (other.id !== target.id) {
@@ -1414,6 +1424,7 @@ export class GameEngine {
         this.spawnParticles(target.x, target.row + 0.5, '#a3e635', 24);
         this.spawnParticles(target.x, target.row + 0.5, '#f97316', 18);
         this.spawnFloatingText('☣️ EXPLOSÃO BIOQUÍMICA!', target.x, target.row + 0.1, '#a3e635', 1.3);
+        this.sacudir(5, 0.25, 'leve');
 
         for (const other of this.zombies) {
           if (other.id !== target.id) {
@@ -1654,6 +1665,17 @@ export class GameEngine {
     });
   }
 
+  /** Treme a tela por um instante e, se pedido, vibra o celular. */
+  public sacudir(amplitude: number, duracao: number, peso?: Peso): void {
+    if (peso) vibrar(peso);
+    if (movimentoReduzido) return;
+    const agora = performance.now();
+    const restante = Math.max(0, this.shakeUntil - agora);
+    if (amplitude >= this.shakeAmp || restante <= 0) this.shakeAmp = amplitude;
+    this.shakeStart = agora;
+    this.shakeUntil = agora + Math.max(restante, duracao * 1000);
+  }
+
   public spawnZombossFinalBoss(): void {
     this.bossSpawned = true;
     sound.bossMode = true;
@@ -1661,6 +1683,7 @@ export class GameEngine {
     this.lightningFlash = 0.65;
     this.onToast('💀 ALERTA DE CHEFE FINAL: A COLHEITADEIRA Z ENTROU NO JARDIM!');
     this.spawnFloatingText('💀 COLHEITADEIRA Z!', 7.5, 1.5, '#ef4444', 1.5);
+    this.sacudir(10, 0.8, 'forte');
 
     this.zombies.push({
       id: this.nextEntityId++,
@@ -1708,6 +1731,7 @@ export class GameEngine {
         this.spawnParticles(c + 0.5, r + 0.5, '#ef4444', 18);
       }
       this.spawnFloatingText('☄️ CHUVA DE SUCATA!', boss.x - 1, boss.row, '#fb923c', 1.3);
+      this.sacudir(6, 0.35, 'medio');
     } else {
       // 3. Chama Corredores Cibernéticos nas linhas vizinhas
       sound.playBossSiren();
@@ -1857,6 +1881,15 @@ export class GameEngine {
     const height = this.canvas.height / this.dpr;
 
     ctx.clearRect(0, 0, width, height);
+
+    const agora = performance.now();
+    const tremendo = agora < this.shakeUntil;
+    if (tremendo) {
+      const total = Math.max(1, this.shakeUntil - this.shakeStart);
+      const forca = this.shakeAmp * ((this.shakeUntil - agora) / total);
+      ctx.save();
+      ctx.translate((Math.random() * 2 - 1) * forca, (Math.random() * 2 - 1) * forca);
+    }
 
     if (this.boardCacheDirty) {
       this.rebuildBoardCache(width, height);
@@ -2187,6 +2220,8 @@ export class GameEngine {
       ctx.fillText(ft.text, fx, fy);
       ctx.restore();
     }
+
+    if (tremendo) ctx.restore();
 
     // 13. Barra de vida do chefe final (Colheitadeira Z)
     const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech');
