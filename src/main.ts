@@ -15,7 +15,7 @@ import {
   PLANT_CATALOG
 } from './types';
 import { ProgressionManager } from './progression';
-import { LEVEL_CATALOG, getNextLevel } from './levels';
+import { LEVEL_CATALOG, biomaDoMundo, getNextLevel } from './levels';
 import { Tutorial } from './tutorial';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -513,6 +513,13 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         desc: '🔥 Dispara jatos térmicos que incineram plantas de Natureza com dano duplo! CONTRA-ATAQUE: 💧 Água apaga o maçarico e atordoa por 2.8s!'
       },
       {
+        variant: 'canoeiro',
+        name: 'Zumbi Canoeiro',
+        hp: 380,
+        speedText: 'Rápido na canoa · lento nadando',
+        desc: '🛶 Só aparece no rio do Mundo 3 e desce a correnteza depressa. Na metade da vida a canoa afunda e ele segue nadando, bem devagar. Sempre molhado: os raios do ⚡ Junco Tesla pulam até ele!'
+      },
+      {
         variant: 'gargantuar',
         name: 'Colosso do Ferro-Velho (Sub-Chefe)',
         hp: 1450,
@@ -611,13 +618,7 @@ function startLevel(level: LevelConfig): void {
   currentLevel = level;
   ProgressionManager.setCurrentLevel(level.id);
 
-  if (level.world === 2) {
-    const swamp = BIOME_CATALOG.find((b) => b.id === 'bioluminescent_swamp');
-    if (swamp) draftBiome = swamp;
-  } else {
-    const garden = BIOME_CATALOG.find((b) => b.id === 'sunny_garden') || BIOME_CATALOG[0];
-    draftBiome = garden;
-  }
+  draftBiome = BIOME_CATALOG.find((b) => b.id === biomaDoMundo(level.world)) || BIOME_CATALOG[0];
 
   const progress = ProgressionManager.getProgress();
   draftDeckIds = draftDeckIds.filter((id) => progress.unlockedPlants.includes(id));
@@ -701,6 +702,24 @@ function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): v
   vibrar('medio');
 }
 
+const MUNDOS: Record<number, { titulo: string; fundo: string; borda: string }> = {
+  1: {
+    titulo: '🏡 MUNDO 1: JARDIM DIURNO & FRONTAL',
+    fundo: 'linear-gradient(90deg, rgba(22, 101, 52, 0.85), rgba(20, 83, 45, 0.35))',
+    borda: '#4ade80'
+  },
+  2: {
+    titulo: '🍄 MUNDO 2: PÂNTANO BIOLUMINESCENTE',
+    fundo: 'linear-gradient(90deg, rgba(15, 118, 110, 0.85), rgba(13, 148, 136, 0.35))',
+    borda: '#2dd4bf'
+  },
+  3: {
+    titulo: '🛶 MUNDO 3: IGARAPÉ AMAZÔNICO',
+    fundo: 'linear-gradient(90deg, rgba(3, 105, 161, 0.85), rgba(14, 116, 144, 0.35))',
+    borda: '#38bdf8'
+  }
+};
+
 function renderLevelsGrid(): void {
   const progress = ProgressionManager.getProgress();
   levelsGridEl.innerHTML = '';
@@ -716,19 +735,14 @@ function renderLevelsGrid(): void {
       worldHeader.style.margin = '12px 0 6px 0';
       worldHeader.style.padding = '8px 14px';
       worldHeader.style.borderRadius = '8px';
-      worldHeader.style.background =
-        lvl.world === 1
-          ? 'linear-gradient(90deg, rgba(22, 101, 52, 0.85), rgba(20, 83, 45, 0.35))'
-          : 'linear-gradient(90deg, rgba(15, 118, 110, 0.85), rgba(13, 148, 136, 0.35))';
-      worldHeader.style.borderLeft = lvl.world === 1 ? '4px solid #4ade80' : '4px solid #2dd4bf';
+      const mundo = MUNDOS[lvl.world] ?? MUNDOS[1];
+      worldHeader.style.background = mundo.fundo;
+      worldHeader.style.borderLeft = `4px solid ${mundo.borda}`;
       worldHeader.style.fontWeight = 'bold';
       worldHeader.style.fontSize = '0.94rem';
       worldHeader.style.color = '#f0fdf4';
       worldHeader.style.letterSpacing = '0.5px';
-      worldHeader.innerHTML =
-        lvl.world === 1
-          ? '🏡 MUNDO 1: JARDIM DIURNO & FRONTAL'
-          : '🍄 MUNDO 2: PÂNTANO BIOLUMINESCENTE';
+      worldHeader.innerHTML = mundo.titulo;
       levelsGridEl.appendChild(worldHeader);
     }
 

@@ -34,6 +34,8 @@ export interface PlantDefinition {
   description: string;
   overdriveDesc: string;
   color: string;
+  /** Onde a planta pode ser plantada: terra (padrão), só na água do rio ou nos dois. */
+  habitat?: 'terra' | 'agua' | 'ambos';
 }
 
 export interface MutationDefinition {
@@ -62,8 +64,11 @@ export interface BiomeDefinition {
     | 'gargantuar'
     | 'rubber_hazard'
     | 'pyro_scavenger'
+    | 'canoeiro'
   )[];
   description: string;
+  /** Linhas que são rio (Mundo 3): só plantas aquáticas crescem nelas. */
+  riverRows?: number[];
 }
 
 export interface SynergyRecipe {
@@ -154,6 +159,20 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     toxicCount: 2,
     zombiePreviews: ['rubber_hazard', 'pyro_scavenger', 'cone', 'bucket'],
     description: 'Pântano sombrio repleto de névoa fluorescente e lodo denso. Zumbis com trajes isoladores e lança-chamas exigem contra-ataque de Ácido e Água!'
+  },
+  {
+    id: 'igarape',
+    name: '5. Igarapé Amazônico',
+    subtitle: 'Rios no Gramado & Canoas Zumbis',
+    icon: '🛶',
+    startingSun: 250,
+    maxWaves: 7,
+    defaultWeather: 'sunny',
+    puddlesCount: 0,
+    toxicCount: 0,
+    zombiePreviews: ['canoeiro', 'basic', 'cone', 'cyber_sprinter'],
+    description: 'Dois braços de rio cortam o quintal. Na água só crescem plantas aquáticas, os zumbis do rio estão sempre molhados e os canoeiros descem a correnteza. Na chuva, os raios do Junco Tesla pulam para dentro do rio!',
+    riverRows: [1, 3]
   }
 ];
 
@@ -247,9 +266,10 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     maxHp: 340,
     attackInterval: 1.65,
     damage: 20,
-    description: 'Encharca zumbis (Molhado) e cria poças condutoras no impacto.',
+    description: 'Encharca zumbis (Molhado) e cria poças condutoras no impacto. Cresce na terra e na água.',
     overdriveDesc: 'Tsunami na linha inteira que empurra e encharca todos!',
-    color: '#38bdf8'
+    color: '#38bdf8',
+    habitat: 'ambos'
   },
   {
     id: 'volt_reed',
@@ -355,6 +375,22 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     description: 'Barreira pesada de alta durabilidade para segurar a horda.',
     overdriveDesc: 'Ganha Armadura de Titânio (+2500 HP) e empurra zumbis!',
     color: '#d97706'
+  },
+  {
+    id: 'aguape',
+    name: 'Aguapé',
+    emoji: '🪷',
+    element: 'water',
+    elementBadge: '🌊',
+    cost: 75,
+    cooldown: 6.0,
+    maxHp: 300,
+    attackInterval: 1.5,
+    damage: 16,
+    description: 'Só cresce na água do rio. Atira bolhas que encharcam, e suas raízes prendem os zumbis à frente, que ficam bem mais lentos.',
+    overdriveDesc: 'Tapete de Aguapé: enrola todos os zumbis da linha, que ficam parados por 4 s.',
+    color: '#7dd3fc',
+    habitat: 'agua'
   }
 ];
 

@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { LEVEL_CATALOG, getLevelById, getNextLevel } from '../src/levels';
-import { PLANT_CATALOG } from '../src/types';
+import { LEVEL_CATALOG, biomaDoMundo, getLevelById, getNextLevel } from '../src/levels';
+import { BIOME_CATALOG, PLANT_CATALOG } from '../src/types';
 
 // Tipos de zumbi que o motor sabe criar (ZombieVariant em src/engine.ts).
 // Se um zumbi novo entrar no jogo, acrescente aqui também.
 const KNOWN_ZOMBIES = [
-  'basic', 'cone', 'bucket', 'cyber_sprinter', 'gargantuar', 'zomboss_mech', 'rubber_hazard', 'pyro_scavenger'
+  'basic', 'cone', 'bucket', 'cyber_sprinter', 'gargantuar', 'zomboss_mech', 'rubber_hazard', 'pyro_scavenger',
+  'canoeiro'
 ];
 const GRID_ROWS = 5;
 const plantIds = new Set(PLANT_CATALOG.map((p) => p.id));
@@ -76,5 +77,49 @@ describe('catálogo de fases', () => {
   it('getNextLevel avança um e devolve null na última fase', () => {
     expect(getNextLevel(1)?.id).toBe(2);
     expect(getNextLevel(LEVEL_CATALOG.length)).toBeNull();
+  });
+});
+
+describe('Mundo 3 · Igarapé', () => {
+  const rios = (world: number) => BIOME_CATALOG.find((b) => b.id === biomaDoMundo(world))?.riverRows ?? [];
+
+  it('todo mundo tem um bioma que existe', () => {
+    for (const l of LEVEL_CATALOG) {
+      expect(BIOME_CATALOG.map((b) => b.id), `fase ${l.id}`).toContain(biomaDoMundo(l.world));
+    }
+  });
+
+  it('o Mundo 3 tem 5 fases com rio', () => {
+    const m3 = LEVEL_CATALOG.filter((l) => l.world === 3);
+    expect(m3).toHaveLength(5);
+    expect(rios(3).length).toBeGreaterThan(0);
+  });
+
+  it('canoeiro só aparece em linha de rio, e só em mundo com rio', () => {
+    for (const l of LEVEL_CATALOG) {
+      for (const s of l.spawns) {
+        if (s.zombieType !== 'canoeiro') continue;
+        expect(s.lane, `fase ${l.id}`).toBeDefined();
+        expect(rios(l.world), `fase ${l.id}`).toContain(s.lane);
+      }
+    }
+  });
+
+  it('ao chegar numa fase com rio, o jogador já tem planta aquática', () => {
+    const liberadas = new Set(['peashooter']);
+    for (const l of LEVEL_CATALOG) {
+      if (rios(l.world).length > 0) {
+        const aquatica = PLANT_CATALOG.some((p) => liberadas.has(p.id) && (p.habitat ?? 'terra') !== 'terra');
+        expect(aquatica, `fase ${l.id}`).toBe(true);
+      }
+      if (l.unlockedPlantOnClear) liberadas.add(l.unlockedPlantOnClear);
+    }
+  });
+
+  it('planta só de água é liberada no Mundo 3', () => {
+    for (const p of PLANT_CATALOG.filter((x) => x.habitat === 'agua')) {
+      const fase = LEVEL_CATALOG.find((l) => l.unlockedPlantOnClear === p.id);
+      expect(fase?.world, p.id).toBe(3);
+    }
   });
 });

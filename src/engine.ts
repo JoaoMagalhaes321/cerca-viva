@@ -50,7 +50,8 @@ export type ZombieVariant =
   | 'gargantuar'
   | 'zomboss_mech'
   | 'rubber_hazard'
-  | 'pyro_scavenger';
+  | 'pyro_scavenger'
+  | 'canoeiro';
 
 export interface ZombieEntity {
   id: number;
@@ -82,7 +83,7 @@ export interface ZombieEntity {
 }
 
 export interface PhysicsDebris {
-  kind: 'cone' | 'bucket' | 'arm' | 'head';
+  kind: 'cone' | 'bucket' | 'arm' | 'head' | 'canoa';
   x: number;
   y: number;
   vx: number;
@@ -299,6 +300,11 @@ export class GameEngine {
     return [0, 1, 2, 3, 4];
   }
 
+  /** Linha de rio do bioma atual (Mundo 3): só plantas aquáticas, zumbis sempre molhados. */
+  public isRiverRow(row: number): boolean {
+    return (this.currentBiome.riverRows ?? []).includes(row);
+  }
+
   public isLaneAvailable(row: number): boolean {
     return this.getActiveLanes().includes(row);
   }
@@ -451,6 +457,8 @@ export class GameEngine {
       this.weather === 'spore_fog' ||
       this.currentBiome.id === 'bioluminescent_swamp';
     const isRainy = this.weather === 'rain';
+    const isJungle = this.currentBiome.id === 'igarape';
+    const rios = this.currentBiome.riverRows ?? [];
 
     const sky = bCtx.createLinearGradient(0, 0, 0, Math.max(1, this.boardTop));
     if (isDark) {
@@ -481,7 +489,7 @@ export class GameEngine {
     bCtx.strokeStyle = isDark ? '#04090c' : ink;
     for (let bx = -bumpR; bx < width + bumpR; bx += bumpR * 1.3) {
       const r = bumpR * (0.85 + bumpRnd() * 0.3);
-      bCtx.fillStyle = isDark ? '#06161a' : isRainy ? '#3f7a39' : '#3c8a36';
+      bCtx.fillStyle = isDark ? '#06161a' : isRainy ? '#3f7a39' : isJungle ? '#256b2c' : '#3c8a36';
       bCtx.beginPath();
       bCtx.arc(bx, bumpY + (bumpRnd() - 0.5) * 4, r, 0, Math.PI * 2);
       bCtx.fill();
@@ -489,7 +497,7 @@ export class GameEngine {
     }
     if (!isDark) {
       for (let bx = -bumpR; bx < width + bumpR; bx += bumpR * 1.3) {
-        bCtx.fillStyle = isRainy ? '#4f8f45' : '#55a64a';
+        bCtx.fillStyle = isRainy ? '#4f8f45' : isJungle ? '#3a8f3c' : '#55a64a';
         bCtx.beginPath();
         bCtx.arc(bx + bumpR * 0.2, bumpY - bumpR * 0.35, bumpR * 0.38, 0, Math.PI * 2);
         bCtx.fill();
@@ -527,12 +535,36 @@ export class GameEngine {
       }
     }
 
-    // Rua à direita, de onde vêm os zumbis
+    // Rua à direita, de onde vêm os zumbis (no Igarapé, chão de mata)
     const streetX = this.boardLeft + boardW;
-    bCtx.fillStyle = isDark ? '#0b1416' : isRainy ? '#5d6670' : '#6b6f75';
-    bCtx.fillRect(streetX, this.boardTop - 2, width - streetX, boardH + 4);
-    bCtx.fillStyle = isDark ? '#2a3438' : '#d6d0c2';
-    bCtx.fillRect(streetX, this.boardTop - 2, 7, boardH + 4);
+    if (isJungle) {
+      bCtx.fillStyle = isDark ? '#08201a' : '#3d7a2e';
+      bCtx.fillRect(streetX, this.boardTop - 2, width - streetX, boardH + 4);
+      bCtx.fillStyle = isDark ? '#0d2c22' : '#2f6b26';
+      for (let i = 0; i < 14; i++) {
+        bCtx.beginPath();
+        bCtx.arc(
+          streetX + 10 + bumpRnd() * Math.max(10, width - streetX - 10),
+          this.boardTop + bumpRnd() * boardH,
+          5 + bumpRnd() * 9,
+          0,
+          Math.PI * 2
+        );
+        bCtx.fill();
+      }
+    } else {
+      bCtx.fillStyle = isDark ? '#0b1416' : isRainy ? '#5d6670' : '#6b6f75';
+      bCtx.fillRect(streetX, this.boardTop - 2, width - streetX, boardH + 4);
+      bCtx.fillStyle = isDark ? '#2a3438' : '#d6d0c2';
+      bCtx.fillRect(streetX, this.boardTop - 2, 7, boardH + 4);
+    }
+
+    // Rios (Mundo 3): a água atravessa o caminho de pedra e sai da mata
+    for (const r of rios) {
+      const ry = this.boardTop + r * this.cellH;
+      bCtx.fillStyle = isDark ? '#0c3440' : '#3aaad8';
+      bCtx.fillRect(pathX, ry, width - pathX, this.cellH);
+    }
 
     // 2. Pre-render all 45 grass tiles once
     for (let r = 0; r < GRID_ROWS; r++) {
@@ -543,6 +575,10 @@ export class GameEngine {
         if (!isAvailable) {
           // Linha fechada nesta fase: terra sem grama
           CharacterRenderer.drawDirtTile(bCtx, x, y, this.cellW, this.cellH, r, c, isDark);
+          continue;
+        }
+        if (rios.includes(r)) {
+          CharacterRenderer.drawRiverTile(bCtx, x, y, this.cellW, this.cellH, r, c, isDark);
           continue;
         }
         CharacterRenderer.drawLawnTileDetail(
@@ -559,6 +595,23 @@ export class GameEngine {
         );
 
       }
+    }
+
+    // Barrancos de areia nas margens dos rios
+    for (const r of rios) {
+      const ry = this.boardTop + r * this.cellH;
+      const bank = Math.max(3, this.cellH * 0.06);
+      bCtx.fillStyle = isDark ? '#2a4a3f' : '#e2c48a';
+      bCtx.fillRect(pathX, ry, width - pathX, bank);
+      bCtx.fillRect(pathX, ry + this.cellH - bank, width - pathX, bank);
+      bCtx.strokeStyle = isDark ? '#04090c' : ink;
+      bCtx.lineWidth = 2;
+      bCtx.beginPath();
+      bCtx.moveTo(pathX, ry + bank);
+      bCtx.lineTo(width, ry + bank);
+      bCtx.moveTo(pathX, ry + this.cellH - bank);
+      bCtx.lineTo(width, ry + this.cellH - bank);
+      bCtx.stroke();
     }
 
     bCtx.lineWidth = 3;
@@ -754,6 +807,18 @@ export class GameEngine {
           }
         }
         break;
+      case 'aguape':
+        // Tapete de Aguapé: as raízes prendem todos os zumbis da linha
+        for (const z of this.zombies) {
+          if (z.row === plant.row) {
+            z.stunTimer = Math.max(z.stunTimer, 4);
+            z.wetTimer = Math.max(z.wetTimer, 10);
+            this.applyElementalDamage(z, 40, 'water');
+            this.spawnParticles(z.x, z.row + 0.7, '#4caf3a', 8);
+          }
+        }
+        this.spawnFloatingText('🪷 TAPETE DE AGUAPÉ!', plant.col + 1.5, plant.row + 0.1, '#7dd3fc', 1.2);
+        break;
       case 'volt_reed':
         for (const z of this.zombies) {
           this.arcs.push({
@@ -838,6 +903,19 @@ export class GameEngine {
 
     const def = PLANT_CATALOG.find((p) => p.id === plantId);
     if (!def) return;
+
+    const habitat = def.habitat ?? 'terra';
+    if (this.isRiverRow(row) && habitat === 'terra') {
+      const aquaticas = PLANT_CATALOG.filter((p) => (p.habitat ?? 'terra') !== 'terra')
+        .map((p) => p.name)
+        .join(' e ');
+      this.onToast(`🌊 No rio só crescem plantas aquáticas: ${aquaticas}.`);
+      return;
+    }
+    if (!this.isRiverRow(row) && habitat === 'agua') {
+      this.onToast(`🪷 ${def.name} só cresce na água do rio.`);
+      return;
+    }
 
     if (this.sun < def.cost) {
       this.onToast(`Sol insuficiente! Precisa de ${def.cost}☀️`);
@@ -1096,6 +1174,8 @@ export class GameEngine {
         z.hp -= 24 * dt;
       }
 
+      if (this.isRiverRow(z.row)) z.wetTimer = Math.max(z.wetTimer, 2.5);
+
       const zCol = Math.floor(z.x);
       if (zCol >= 0 && zCol < GRID_COLS) {
         const tile = this.tiles[z.row][zCol];
@@ -1135,6 +1215,17 @@ export class GameEngine {
           this.tiles[z.row][currentTileCol]?.hazard === 'swamp_mud'
         ) {
           mudSpeedMult = z.variant === 'rubber_hazard' ? 0.85 : 0.6;
+        }
+
+        // Rio: quem anda com água na canela vai mais devagar; o canoeiro desce a correnteza.
+        // As raízes do Aguapé prendem os zumbis logo à frente dele.
+        let riverMult = 1.0;
+        if (this.isRiverRow(z.row)) {
+          riverMult = z.variant === 'canoeiro' ? 1.0 : 0.85;
+          const raizes = this.plants.some(
+            (p) => p.row === z.row && p.def.id === 'aguape' && z.x - (p.col + 0.5) > 0 && z.x - (p.col + 0.5) <= 1.8
+          );
+          if (raizes) riverMult *= 0.55;
         }
 
         // Pyro Scavenger Flamethrower Attack
@@ -1178,7 +1269,7 @@ export class GameEngine {
             if (pIdx !== -1) this.plants.splice(pIdx, 1);
           }
         } else {
-          z.x -= z.speed * chillMult * mudSpeedMult * dt;
+          z.x -= z.speed * chillMult * mudSpeedMult * riverMult * dt;
           z.walkPhase += dt * (z.chilledTimer > 0 ? 3 : 6);
         }
       }
@@ -1189,7 +1280,11 @@ export class GameEngine {
           mower.active = true;
           sound.playSynergyCombo('thermal');
           this.sacudir(5, 0.3, 'medio');
-          this.onToast(`🚜 Cortador de Grama disparado na linha ${z.row + 1}!`);
+          this.onToast(
+            this.isRiverRow(z.row)
+              ? `🚤 Voadeira disparada na linha ${z.row + 1}!`
+              : `🚜 Cortador de Grama disparado na linha ${z.row + 1}!`
+          );
         } else if (mower.used && z.x < -0.45) {
           this.gameOver = true;
           this.onGameEnd(false);
@@ -1309,6 +1404,26 @@ export class GameEngine {
         angle: 0,
         vAngle: -8,
         life: 2.0
+      });
+    }
+
+    // 3. A canoa do Canoeiro afunda na metade da vida: ele segue nadando, bem mais devagar
+    if (!z.lostHeadgear && ratio < 0.5 && z.variant === 'canoeiro') {
+      z.lostHeadgear = true;
+      z.speed = 0.22;
+      this.spawnParticles(z.x, z.row + 0.75, '#38bdf8', 16);
+      this.spawnParticles(z.x, z.row + 0.75, '#b9824a', 10);
+      this.spawnFloatingText('🛶 CANOA AFUNDOU!', z.x, z.row + 0.1, '#7dd3fc', 1.1);
+      this.debris.push({
+        kind: 'canoa',
+        x: z.x,
+        y: z.row + 0.55,
+        vx: 0.8 + Math.random() * 0.6,
+        vy: -1.6,
+        groundY: z.row + 0.8,
+        angle: 0,
+        vAngle: 4 + Math.random() * 3,
+        life: 1.8
       });
     }
   }
@@ -1461,7 +1576,11 @@ export class GameEngine {
         }
 
         const col = Math.floor(target.x);
-        if (col >= 0 && col < GRID_COLS && this.tiles[target.row][col].hazard === 'puddle') {
+        if (
+          col >= 0 &&
+          col < GRID_COLS &&
+          (this.tiles[target.row][col].hazard === 'puddle' || this.isRiverRow(target.row))
+        ) {
           this.tiles[target.row][col].hazard = 'electrified_puddle';
           this.tiles[target.row][col].hazardTimer = 8.0;
         }
@@ -1714,6 +1833,13 @@ export class GameEngine {
       return;
     }
 
+    // Canoeiro só desce rio: escolhe uma linha de rio; sem rio no mapa, vira zumbi comum
+    const rios = this.currentBiome.riverRows ?? [];
+    if (type === 'canoeiro') {
+      if (rios.length === 0) type = 'basic';
+      else if (!rios.includes(row)) row = rios[Math.floor(Math.random() * rios.length)];
+    }
+
     let variant: ZombieVariant = 'basic';
     let name = 'Zumbi Comum';
     let emoji = '🧟';
@@ -1760,6 +1886,13 @@ export class GameEngine {
       hp = 490;
       speed = 0.27;
       damage = 45;
+    } else if (type === 'canoeiro') {
+      variant = 'canoeiro';
+      name = 'Zumbi Canoeiro';
+      emoji = '🛶';
+      hp = 380;
+      speed = 0.4;
+      damage = 30;
     }
 
     this.zombies.push({
@@ -2118,6 +2251,23 @@ export class GameEngine {
     }
     // 1. Draw cached board (1 ultra-fast drawImage call instead of 45 gradient allocations!)
     ctx.drawImage(this.boardCacheCanvas, 0, 0, width, height);
+    const riosNoMapa = this.currentBiome.riverRows ?? [];
+    if (riosNoMapa.length > 0) {
+      const escuro =
+        this.weather === 'night_storm' || this.weather === 'spore_fog';
+      for (const r of riosNoMapa) {
+        CharacterRenderer.drawRiverFlow(
+          ctx,
+          this.boardLeft - 48,
+          width,
+          this.boardTop + r * this.cellH,
+          this.cellW,
+          this.cellH,
+          agora,
+          escuro
+        );
+      }
+    }
 
     // 2. Draw Dynamic Terrain Hazards & Selection
     for (let r = 0; r < GRID_ROWS; r++) {
@@ -2126,7 +2276,7 @@ export class GameEngine {
         const y = this.boardTop + r * this.cellH;
 
         const tile = this.tiles[r][c];
-        if (tile.hazard === 'puddle' || tile.hazard === 'electrified_puddle') {
+        if ((tile.hazard === 'puddle' && !this.isRiverRow(r)) || tile.hazard === 'electrified_puddle') {
           ctx.save();
           ctx.beginPath();
           ctx.ellipse(
@@ -2246,7 +2396,8 @@ export class GameEngine {
       if (m.used) continue;
       const mx = this.boardLeft + m.x * this.cellW;
       const my = this.boardTop + (m.row + 0.55) * this.cellH;
-      CharacterRenderer.drawMower(ctx, mx, my, this.cellH, m.active);
+      if (this.isRiverRow(m.row)) CharacterRenderer.drawVoadeira(ctx, mx, my, this.cellH, m.active);
+      else CharacterRenderer.drawMower(ctx, mx, my, this.cellH, m.active);
     }
 
     // 4. Draw Plants
@@ -2255,6 +2406,10 @@ export class GameEngine {
     for (const p of this.plants) {
       const cx = this.boardLeft + (p.col + 0.5) * this.cellW;
       const cy = this.boardTop + (p.row + 0.54) * this.cellH;
+
+      if (this.isRiverRow(p.row)) {
+        CharacterRenderer.drawRipple(ctx, cx, cy + this.cellH * 0.36, this.cellW * 0.36, agora * 0.004 + p.col);
+      }
 
       CharacterRenderer.drawPlant(
         ctx,
@@ -2283,7 +2438,7 @@ export class GameEngine {
       const zx = this.boardLeft + z.x * this.cellW;
       const zy = this.boardTop + (z.row + 0.52) * this.cellH;
 
-      CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH, isNightScene);
+      CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH, isNightScene, this.isRiverRow(z.row));
 
       // Zombie HP bar - accurately positioned above head based on variant scale
       const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech';
