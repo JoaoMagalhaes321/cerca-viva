@@ -42,8 +42,15 @@ branch e no pull request, para você saber antes do merge se o build e os testes
    para o site do GitHub Pages. Por isso, depois de instalado uma vez, o app recebe toda versão nova
    publicada na `main`, sem reinstalar.
 3. O service worker (`public/sw.js`, registrado por `src/updater.ts`) guarda o jogo em cache para abrir
-   rápido: serve a cópia guardada e baixa a versão nova em segundo plano (por isso uma versão nova
-   pode só aparecer na abertura seguinte).
+   rápido e funcionar sem internet:
+   - a página (`index.html`) vem da rede primeiro, então a versão nova aparece já na primeira abertura;
+     sem internet, abre a cópia guardada;
+   - os arquivos de `assets/` (com hash no nome) vêm direto do cache; sprites e ícones vêm do cache e
+     se atualizam em segundo plano;
+   - a cada `npm run build` o `dist/sw.js` ganha uma versão nova (impressão digital do build, feita pelo
+     plugin do `vite.config.ts` com `src/sw-versao.ts`). O navegador instala o service worker novo, a
+     página recarrega uma vez sozinha e os caches antigos são apagados. O progresso salvo
+     (`localStorage`) não é tocado. No `npm run dev` a versão fica `__VERSAO_DO_BUILD__`.
 
 > `publicar-atualizacao.ps1` faz build, commit de **tudo** e push direto na `main`, ou seja, publica na
 > hora. Use só quando quiser mandar a versão para o celular.
@@ -60,7 +67,8 @@ branch e no pull request, para você saber antes do merge se o build e os testes
 | `src/types.ts` | Tipos e catálogos: plantas, biomas, sinergias, mutações |
 | `src/levels.ts` | Fases do modo aventura (Mundo 1: fases 1-1 a 1-10; Mundo 2: 2-1 a 2-5) e ondas |
 | `src/progression.ts` | Progresso do jogador salvo no `localStorage` (chave `pvz_player_progress_v1`) |
-| `src/updater.ts` | Registro do service worker |
+| `src/updater.ts` | Registro do service worker e recarga quando chega versão nova |
+| `src/sw-versao.ts` | Versão do service worker gerada no build |
 | `android/` | Projeto Android gerado pelo Capacitor |
 
 ## Regras do jogo: onde mudar
