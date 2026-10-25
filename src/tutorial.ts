@@ -40,7 +40,7 @@ const PASSOS: Passo[] = [
     concluido: (t) => t.engine.zombies.length > 0 || t.tempoNoPasso > 20
   },
   {
-    texto: 'Lá vem zumbi! Se algum chegar na casa, o <b>cortador 🚜</b> limpa a linha — mas só uma vez.',
+    texto: 'Lá vem zumbi! Se algum chegar na casa, a <b>cerca viva 🌿</b> segura ele. Se ela quebrar, toque nela para replantar.',
     concluido: (t) => t.tempoNoPasso > 7
   },
   {

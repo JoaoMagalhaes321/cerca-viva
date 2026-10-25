@@ -14,6 +14,17 @@ import {
 import { sound } from './audio';
 import { CharacterRenderer } from './renderer';
 import { movimentoReduzido, Peso, vibrar } from './feedback';
+import {
+  CERCA,
+  CercaViva,
+  atualizarCerca,
+  cercaDePe,
+  espinhosDaCerca,
+  freioDasRaizes,
+  morderCerca,
+  novaCerca,
+  replantarCerca
+} from './cerca';
 
 export const GRID_ROWS = 5;
 export const GRID_COLS = 9;
@@ -83,7 +94,7 @@ export interface ZombieEntity {
 }
 
 export interface PhysicsDebris {
-  kind: 'cone' | 'bucket' | 'arm' | 'head' | 'canoa';
+  kind: 'cone' | 'bucket' | 'arm' | 'head' | 'canoa' | 'galho';
   x: number;
   y: number;
   vx: number;
@@ -146,13 +157,6 @@ export interface Particle {
   size: number;
   life: number;
   maxLife: number;
-}
-
-export interface LawnMower {
-  row: number;
-  x: number;
-  active: boolean;
-  used: boolean;
 }
 
 export class GameEngine {
@@ -220,7 +224,8 @@ export class GameEngine {
   public arcs: LightningArc[] = [];
   public particles: Particle[] = [];
   public debris: PhysicsDebris[] = [];
-  public mowers: LawnMower[] = [];
+  /** A cerca viva de cada linha aberta (última defesa, no lugar do cortador de grama). */
+  public cercas: CercaViva[] = [];
   /** Quando definido, substitui o diretor de ondas das fases (modo infinito e desafio do dia). */
   public waveDirector: { update(dt: number): void } | null = null;
   /** Qualidade gráfica: começa alta e cai sozinha para "econômica" se o aparelho não aguentar. */
@@ -394,10 +399,8 @@ export class GameEngine {
     this.particles = [];
     this.debris = [];
 
-    this.mowers = [];
-    for (const r of activeLanes) {
-      this.mowers.push({ row: r, x: -0.45, active: false, used: false });
-    }
+    this.cercas = [];
+    for (const r of activeLanes) this.cercas.push(novaCerca(r));
 
     PLANT_CATALOG.forEach((p) => {
       this.seedCooldowns[p.id] = 0;
@@ -518,7 +521,7 @@ export class GameEngine {
     }
     bCtx.restore();
 
-    // Caminho de pedra à esquerda, onde ficam os cortadores
+    // Caminho de pedra à esquerda, onde fica a cerca viva
     const pathX = this.boardLeft - 48;
     bCtx.fillStyle = isDark ? '#13292c' : '#d8c29c';
     bCtx.fillRect(pathX, this.boardTop, 46, boardH);
@@ -661,6 +664,11 @@ export class GameEngine {
         }
       }
 
+      if (pos.gridRow >= 0 && pos.gridRow < GRID_ROWS && pos.gridCol === -1) {
+        this.tentarReplantarCerca(pos.gridRow);
+        return;
+      }
+
       if (
         pos.gridRow < 0 ||
         pos.gridRow >= GRID_ROWS ||
@@ -684,6 +692,37 @@ export class GameEngine {
         this.tryPlacePlant(this.selectedPlantId, pos.gridRow, pos.gridCol);
       }
     });
+  }
+
+  /** A cerca viva da linha (undefined em linha fechada nesta fase). */
+  public cercaDaLinha(row: number): CercaViva | undefined {
+    return this.cercas.find((c) => c.row === row);
+  }
+
+  /** Toque numa cerca quebrada: replanta uma muda, se houver sol. */
+  public tentarReplantarCerca(row: number): void {
+    const c = this.cercaDaLinha(row);
+    if (!c) return;
+    if (c.estagio !== 'quebrada') {
+      this.onToast(
+        c.estagio === 'florida'
+          ? '🌼 Cerca florida: espinhos ferem quem morde e as raízes freiam a horda.'
+          : c.estagio === 'muda'
+            ? '🌱 A muda está crescendo. Segure os zumbis até ela virar cerca!'
+            : '🌿 Cerca viva de pé. Se quebrar, toque nela para replantar.'
+      );
+      return;
+    }
+    const sobra = replantarCerca(c, this.sun);
+    if (sobra === null) {
+      this.onToast(`Sol insuficiente! Replantar a cerca custa ${CERCA.replantar}☀️`);
+      return;
+    }
+    this.sun = sobra;
+    sound.playPlantPlace();
+    this.spawnParticles(-0.3, row + 0.6, '#4ade80', 14);
+    this.spawnFloatingText('🌱 MUDA PLANTADA!', 0.4, row + 0.2, '#86efac', 1.1);
+    this.onUiUpdate();
   }
 
   /** Retângulo de uma casa do gramado, em pixels CSS relativos ao canvas. */
@@ -1254,8 +1293,17 @@ export class GameEngine {
         const targetPlant = this.plants.find(
           (p) => p.row === z.row && Math.abs(z.x - (p.col + 0.55)) < 0.38
         );
+        const cerca = this.cercaDaLinha(z.row);
+        const naCerca = z.x <= CERCA.xDaMordida && cercaDePe(cerca);
 
-        if (targetPlant) {
+        if (naCerca && cerca) {
+          // Morde a cerca viva: ela segura o zumbi enquanto aguentar
+          z.isEating = true;
+          z.x = Math.max(z.x, CERCA.xDaMordida);
+          const espinhos = espinhosDaCerca(cerca);
+          if (espinhos > 0) z.hp -= espinhos * dt;
+          if (morderCerca(cerca, z.damagePerSec * chillMult, dt) === 'quebrou') this.quebrarCerca(cerca);
+        } else if (targetPlant) {
           z.isEating = true;
           targetPlant.hp -= z.damagePerSec * chillMult * dt;
           if (
@@ -1269,27 +1317,28 @@ export class GameEngine {
             if (pIdx !== -1) this.plants.splice(pIdx, 1);
           }
         } else {
-          z.x -= z.speed * chillMult * mudSpeedMult * riverMult * dt;
+          z.x -= z.speed * chillMult * mudSpeedMult * riverMult * freioDasRaizes(cerca, z.x) * dt;
           z.walkPhase += dt * (z.chilledTimer > 0 ? 3 : 6);
         }
       }
 
-      if (z.x < 0.05) {
-        const mower = this.mowers[z.row];
-        if (!mower.used && !mower.active) {
-          mower.active = true;
-          sound.playSynergyCombo('thermal');
-          this.sacudir(5, 0.3, 'medio');
-          this.onToast(
-            this.isRiverRow(z.row)
-              ? `🚤 Voadeira disparada na linha ${z.row + 1}!`
-              : `🚜 Cortador de Grama disparado na linha ${z.row + 1}!`
-          );
-        } else if (mower.used && z.x < -0.45) {
-          this.gameOver = true;
-          this.onGameEnd(false);
-          return;
-        }
+      // Cerca quebrada (ou linha sem cerca): o zumbi entra na casa
+      if (z.x < CERCA.xDaCasa) {
+        this.gameOver = true;
+        this.onGameEnd(false);
+        return;
+      }
+    }
+
+    // Cercas vivas: crescem, regeneram e florescem
+    for (const c of this.cercas) {
+      const evento = atualizarCerca(c, dt);
+      if (evento === 'floresceu') {
+        this.spawnParticles(-0.3, c.row + 0.5, '#fde047', 12);
+        this.spawnFloatingText('🌼 FLORESCEU!', 0.5, c.row + 0.15, '#fde047', 1.1);
+      } else if (evento === 'cresceu') {
+        this.spawnParticles(-0.3, c.row + 0.5, '#4ade80', 10);
+        this.spawnFloatingText('🌿 CERCA DE PÉ!', 0.5, c.row + 0.15, '#86efac', 1.0);
       }
     }
 
@@ -1311,24 +1360,6 @@ export class GameEngine {
       d.life -= dt;
       if (d.life <= 0) {
         this.debris.splice(i, 1);
-      }
-    }
-
-    // Update Lawn Mowers
-    for (const m of this.mowers) {
-      if (m.active && !m.used) {
-        m.x += 5.5 * dt;
-        for (let i = this.zombies.length - 1; i >= 0; i--) {
-          const z = this.zombies[i];
-          if (z.row === m.row && Math.abs(z.x - m.x) < 0.55) {
-            this.spawnParticles(z.x, z.row + 0.5, '#ef4444', 18);
-            this.handleZombieDeath(z, i);
-          }
-        }
-        if (m.x > GRID_COLS + 0.8) {
-          m.active = false;
-          m.used = true;
-        }
       }
     }
 
@@ -1370,6 +1401,29 @@ export class GameEngine {
 
     if (this.waveDirector) this.waveDirector.update(dt);
     else this.updateWaveDirector(dt);
+  }
+
+  /** A cerca caiu: galhos voam, a tela treme e o jogador é avisado de que a linha está aberta. */
+  private quebrarCerca(c: CercaViva): void {
+    sound.playSynergyCombo('thermal');
+    this.sacudir(5, 0.3, 'medio');
+    this.spawnParticles(-0.3, c.row + 0.55, '#4ade80', 18);
+    this.spawnParticles(-0.3, c.row + 0.55, '#b9824a', 10);
+    for (let i = 0; i < 3; i++) {
+      this.debris.push({
+        kind: 'galho',
+        x: -0.3 + (Math.random() - 0.5) * 0.3,
+        y: c.row + 0.4,
+        vx: 0.5 + Math.random() * 1.2,
+        vy: -2.2 - Math.random(),
+        groundY: c.row + 0.8,
+        angle: Math.random() * 3,
+        vAngle: 6 + Math.random() * 6,
+        life: 2.0
+      });
+    }
+    this.spawnFloatingText('💥 CERCA QUEBROU!', 0.6, c.row + 0.1, '#fca5a5', 1.25);
+    this.onToast(`🌿 A cerca da linha ${c.row + 1} quebrou! Toque nela para replantar (${CERCA.replantar}☀️).`);
   }
 
   private checkZombieDismemberment(z: ZombieEntity): void {
@@ -2391,18 +2445,17 @@ export class GameEngine {
       }
     }
 
-    // 3. Draw Lawn Mowers
-    for (const m of this.mowers) {
-      if (m.used) continue;
-      const mx = this.boardLeft + m.x * this.cellW;
-      const my = this.boardTop + (m.row + 0.55) * this.cellH;
-      if (this.isRiverRow(m.row)) CharacterRenderer.drawVoadeira(ctx, mx, my, this.cellH, m.active);
-      else CharacterRenderer.drawMower(ctx, mx, my, this.cellH, m.active);
+    const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog';
+    sound.night = isNightScene; // a trilha troca para o tema da noite
+
+    // 3. Cercas vivas (uma por linha, no caminho de pedra)
+    for (const c of this.cercas) {
+      const cx = this.boardLeft - 25;
+      const cy = this.boardTop + (c.row + 0.5) * this.cellH;
+      CharacterRenderer.drawCerca(ctx, c, cx, cy, this.cellH, isNightScene, this.isRiverRow(c.row), this.sun >= CERCA.replantar);
     }
 
     // 4. Draw Plants
-    const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog';
-    sound.night = isNightScene; // a trilha troca para o tema da noite
     for (const p of this.plants) {
       const cx = this.boardLeft + (p.col + 0.5) * this.cellW;
       const cy = this.boardTop + (p.row + 0.54) * this.cellH;
