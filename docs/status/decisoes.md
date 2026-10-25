@@ -3,6 +3,60 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261025-3 · Cópia do progresso original antes de qualquer correção
+- Card: progresso-robusto · Branch: claude/progresso-robusto · Data: 2026-10-25
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: quando o progresso salvo precisa de conserto (ou é JSON quebrado), o texto original é gravado
+  em `pvz_player_progress_v1_antes_da_correcao` antes de regravar. Fica só a última cópia. Progresso
+  válido não é regravado nem copiado.
+- Por quê: a regra do projeto é nada apagar sem caminho de volta. Se a limpeza errar (por exemplo, uma
+  planta de uma versão mais nova do jogo aberta numa versão antiga), dá para restaurar copiando o valor.
+- Outras opções:
+  - A) Sem cópia — menos código / um erro na limpeza seria permanente.
+  - B) Guardar todas as cópias com data — histórico completo / cresce sem limite no localStorage.
+  - C) Não regravar nada, só limpar na memória — o salvo nunca muda / o próximo `saveProgress` regravaria
+    limpo do mesmo jeito, sem cópia.
+- Como trocar depois: `guardarCopiaDoOriginal` e `PROGRESS_BACKUP_KEY` em `src/progression.ts`.
+- Fácil de reverter? sim
+
+### D-20261025-2 · Fases já vencidas devolvem a planta delas se ela sumiu do progresso
+- Card: progresso-robusto · Branch: claude/progresso-robusto · Data: 2026-10-25
+- Regra de negócio? **sim** (regra do jogo: desbloqueio)
+- Muda decisão anterior? não
+- Escolha: ao carregar, toda fase com id menor que a fase máxima liberada conta como vencida, e a
+  `unlockedPlantOnClear` dela entra na lista de plantas se estiver faltando. O conserto só acrescenta;
+  nunca tira fase liberada válida. Efeito colateral aceito: quem editar o salvo para a fase 999 ganha
+  todas as plantas (a fase vai para a última e as anteriores contam como vencidas).
+- Por quê: fase liberada sem a planta que ela dá é um estado que o jogo nunca cria sozinho; o mais
+  provável é dado estragado, e o jogador já tinha direito à planta.
+- Outras opções:
+  - A) Não devolver nada, só limpar — mexe menos / o jogador pode ficar sem planta que ganhou.
+  - B) O contrário: baixar a fase máxima até bater com as plantas — "pune" o dado estranho / pode tirar
+    fases de um jogador de verdade.
+- Como trocar depois: o laço "Fases já vencidas" em `src/progresso-sanitizar.ts` (apagar o laço = opção A).
+- Fácil de reverter? sim
+
+### D-20261025-1 · Progresso carregado conferido campo por campo contra os catálogos
+- Card: progresso-robusto · Branch: claude/progresso-robusto · Data: 2026-10-25
+- Regra de negócio? **sim** (regra do jogo: progresso salvo)
+- Muda decisão anterior? não
+- Escolha: `src/progresso-sanitizar.ts` (função pura, com testes). Fase máxima vira inteiro dentro do
+  catálogo (acima → última fase; abaixo, NaN ou texto inválido → primeira; buraco → a anterior que existe;
+  "3" em texto é aproveitado). Fase atual tem que existir e estar liberada, senão vai para a máxima.
+  Plantas: só ids de `PLANT_CATALOG`, sem repetir, ervilha na frente se faltar. Combos: só ids de
+  `SYNERGY_RECIPES`, sem repetir. Um campo estragado não apaga os outros (antes, qualquer tipo errado
+  zerava o jogador). Campos desconhecidos são mantidos (podem ser de versão mais nova).
+- Por quê: planta inexistente entrava no deck (`main.ts`, `unlockedPlants.slice(0, MAX_DECK_SIZE)`) e
+  fase fora do catálogo caía silenciosamente na 1-1 (`getLevelById`). Campo por campo preserva o máximo
+  do progresso do jogador.
+- Outras opções:
+  - A) Tudo ou nada (como antes, mais estrito) — simples / zera o jogador por um campo errado.
+  - B) Manter plantas desconhecidas guardadas e só esconder no deck — sobrevive a voltar de versão /
+    toca em todos os lugares que usam `unlockedPlants`; a cópia da D-20261025-3 cobre esse caso.
+- Como trocar depois: `sanitizarProgresso` em `src/progresso-sanitizar.ts`.
+- Fácil de reverter? sim
+
 ### D-20261024-11 · Página pela rede primeiro; recarga automática quando chega versão nova
 - Card: sw-versao · Branch: claude/sw-versao · Data: 2026-10-24
 - Regra de negócio? não
