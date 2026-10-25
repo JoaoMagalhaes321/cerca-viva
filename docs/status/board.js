@@ -4,7 +4,7 @@
 window.BOARD = {
   title: 'Quadro do agente · Cerca Viva',
   subtitle: 'Cerca Viva (ex-PvZ: Evolution), tower defense 2.5D (Vite + TypeScript + Capacitor) · agente na nuvem, merge do João',
-  updatedAt: '2026-10-25 16:30',
+  updatedAt: '2026-10-25',
   repoUrl: 'https://github.com/JoaoMagalhaes321/pvz-evolution',
   defaultBranch: 'main',
   columns: [
