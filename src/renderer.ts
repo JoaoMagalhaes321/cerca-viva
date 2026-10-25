@@ -392,6 +392,80 @@ export class CharacterRenderer {
     ctx.restore();
   }
 
+  /** Casa de lama do mangue (maré baixa): areia escura e molhada com buracos de siri. */
+  public static drawMudTile(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    row: number,
+    col: number,
+    isDark: boolean
+  ): void {
+    const par = (row + col) % 2 === 0;
+    ctx.fillStyle = isDark ? (par ? '#1a2a26' : '#182622') : par ? '#8b6b48' : '#80613f';
+    ctx.fillRect(x, y, w, h);
+    let seed = row * 131 + col * 17 + 9;
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    ctx.save();
+    // Brilho de areia molhada
+    ctx.fillStyle = isDark ? 'rgba(127, 245, 224, 0.06)' : 'rgba(255, 255, 255, 0.12)';
+    ctx.beginPath();
+    ctx.ellipse(x + w * (0.3 + rnd() * 0.4), y + h * (0.4 + rnd() * 0.3), w * 0.22, h * 0.07, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Buracos de siri e raízes de mangue
+    ctx.fillStyle = isDark ? '#0b1412' : '#4a3320';
+    for (let k = 0; k < 2; k++) {
+      ctx.beginPath();
+      ctx.ellipse(x + w * (0.15 + rnd() * 0.7), y + h * (0.25 + rnd() * 0.6), 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = isDark ? '#1f3a33' : '#5c3b1e';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    const rx = x + w * (0.2 + rnd() * 0.6);
+    ctx.beginPath();
+    ctx.moveTo(rx, y + h * 0.9);
+    ctx.quadraticCurveTo(rx + 6, y + h * 0.6, rx + 2, y + h * 0.3);
+    ctx.moveTo(rx, y + h * 0.9);
+    ctx.quadraticCurveTo(rx - 8, y + h * 0.65, rx - 4, y + h * 0.4);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Planta submersa (bolhas) ou encalhada (rachaduras de lama) nas linhas de maré. */
+  public static drawPresa(ctx: CanvasRenderingContext2D, cx: number, cy: number, cellH: number, submersa: boolean, t: number): void {
+    ctx.save();
+    if (submersa) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      for (let k = 0; k < 3; k++) {
+        const f = ((t * 0.0012 + k * 0.33) % 1);
+        ctx.globalAlpha = 1 - f;
+        ctx.beginPath();
+        ctx.arc(cx - 10 + k * 10, cy + cellH * 0.2 - f * cellH * 0.5, 2.5 + k, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else {
+      ctx.strokeStyle = 'rgba(74, 51, 32, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 24, cy + cellH * 0.34);
+      ctx.lineTo(cx - 12, cy + cellH * 0.3);
+      ctx.lineTo(cx - 4, cy + cellH * 0.38);
+      ctx.moveTo(cx + 6, cy + cellH * 0.36);
+      ctx.lineTo(cx + 16, cy + cellH * 0.3);
+      ctx.lineTo(cx + 26, cy + cellH * 0.35);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   /** Correnteza: traços claros descendo o rio (desenhado a cada quadro). */
   public static drawRiverFlow(
     ctx: CanvasRenderingContext2D,
@@ -919,5 +993,6 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 12, k: 0.3, halfW: 52, sleeve: '#d9452b' },
   // Canoeiro: "feet" é a linha d'água do casco; o casco abaixo dela fica escondido pela água
   canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 30, k: 0.5, halfW: 30, pivot: [94, 120], sleeve: '#2c9c8f' },
-  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#7a4a2a' }
+  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#7a4a2a' },
+  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 6, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#3f5f6a' }
 };

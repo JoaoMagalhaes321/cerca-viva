@@ -549,11 +549,154 @@ export const LEVEL_CATALOG: LevelConfig[] = [
       { time: 112, type: 'canoeiro', lane: 1 },
       { time: 114, type: 'canoeiro', lane: 3 }
     ])
+  },
+
+  // ───────────── MUNDO 4: MANGUE DA MARÉ ─────────────
+  // Bioma 'mangue': as linhas 1, 3 e 5 (índices 0, 2 e 4) enchem e secam com a maré.
+  // NÍVEL 4-1: Maré Baixa
+  // Primeiro contato: a maré sobe no meio da fase e as plantas de terra nas linhas de mangue ficam submersas.
+  {
+    id: 21,
+    world: 4,
+    stage: 1,
+    name: 'Fase 4-1: Maré Baixa',
+    initialSun: 300,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'basic', lane: 1 },
+      { time: 18, type: 'basic', lane: 3 },
+      { time: 28, type: 'basic', lane: 0 },
+      { time: 38, type: 'cone', lane: 2 },
+      { time: 48, type: 'basic', lane: 4 },
+      { time: 58, type: 'canoeiro', lane: 2 },
+      { time: 66, type: 'cone', lane: 1 },
+      { time: 76, type: 'basic', lane: 3 },
+      { time: 84, type: 'canoeiro', lane: 0 },
+      { time: 92, type: 'cone', lane: 4 },
+      { time: 100, type: 'basic', lane: 2 },
+      { time: 108, type: 'canoeiro', lane: 4 },
+      { time: 112, type: 'cone', lane: 1 }
+    ])
+  },
+
+  // NÍVEL 4-2: Siris na Lama
+  // Os Zumbis Siri trocam de linha: não dá para defender só uma.
+  {
+    id: 22,
+    world: 4,
+    stage: 2,
+    name: 'Fase 4-2: Siris na Lama',
+    initialSun: 300,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'siri', lane: 2 },
+      { time: 18, type: 'basic', lane: 1 },
+      { time: 26, type: 'siri', lane: 0 },
+      { time: 36, type: 'cone', lane: 3 },
+      { time: 44, type: 'siri', lane: 4 },
+      { time: 54, type: 'canoeiro', lane: 2 },
+      { time: 62, type: 'siri', lane: 1 },
+      { time: 70, type: 'cyber_sprinter', lane: 3 },
+      { time: 78, type: 'siri', lane: 2 },
+      { time: 86, type: 'bucket', lane: 1 },
+      { time: 94, type: 'siri', lane: 4 },
+      { time: 100, type: 'canoeiro', lane: 0 },
+      { time: 106, type: 'siri', lane: 3 },
+      { time: 112, type: 'cone', lane: 2 }
+    ])
+  },
+
+  // NÍVEL 4-3: Enchente
+  // Canoeiros em todas as linhas de mangue na maré alta; Siris e Motoqueiros na terra.
+  {
+    id: 23,
+    world: 4,
+    stage: 3,
+    name: 'Fase 4-3: Enchente',
+    initialSun: 325,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'canoeiro', lane: 0 },
+      { time: 12, type: 'canoeiro', lane: 4 },
+      { time: 22, type: 'siri', lane: 2 },
+      { time: 32, type: 'bucket', lane: 1 },
+      { time: 40, type: 'canoeiro', lane: 2 },
+      { time: 48, type: 'siri', lane: 3 },
+      { time: 56, type: 'rubber_hazard', lane: 1 },
+      { time: 64, type: 'canoeiro', lane: 0 },
+      { time: 66, type: 'canoeiro', lane: 4 },
+      { time: 74, type: 'siri', lane: 1 },
+      { time: 82, type: 'gargantuar', lane: 3 },
+      { time: 90, type: 'canoeiro', lane: 2 },
+      { time: 98, type: 'siri', lane: 0 },
+      { time: 104, type: 'bucket', lane: 3 },
+      { time: 110, type: 'canoeiro', lane: 4 },
+      { time: 114, type: 'siri', lane: 2 }
+    ])
+  },
+
+  // NÍVEL 4-4: Lua Cheia
+  // Tempestade noturna com maré: o Lírio ilumina, o raio corre pela água.
+  {
+    id: 24,
+    world: 4,
+    stage: 4,
+    name: 'Fase 4-4: Lua Cheia',
+    initialSun: 325,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'rubber_hazard', lane: 1 },
+      { time: 16, type: 'siri', lane: 2 },
+      { time: 26, type: 'pyro_scavenger', lane: 3 },
+      { time: 34, type: 'canoeiro', lane: 0 },
+      { time: 42, type: 'siri', lane: 4 },
+      { time: 50, type: 'bucket', lane: 1 },
+      { time: 58, type: 'canoeiro', lane: 2 },
+      { time: 66, type: 'pyro_scavenger', lane: 3 },
+      { time: 74, type: 'siri', lane: 0 },
+      { time: 82, type: 'rubber_hazard', lane: 1 },
+      { time: 90, type: 'gargantuar', lane: 2 },
+      { time: 98, type: 'canoeiro', lane: 4 },
+      { time: 104, type: 'siri', lane: 3 },
+      { time: 110, type: 'cyber_sprinter', lane: 1 },
+      { time: 116, type: 'canoeiro', lane: 0 }
+    ])
+  },
+
+  // NÍVEL 4-5: Ressaca
+  // Clímax do Mundo 4: dois Colossos, siris por todo lado e a Colheitadeira Z no fim.
+  {
+    id: 25,
+    world: 4,
+    stage: 5,
+    name: 'Fase 4-5: Ressaca',
+    initialSun: 375,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 6, type: 'siri', lane: 2 },
+      { time: 10, type: 'canoeiro', lane: 0 },
+      { time: 18, type: 'bucket', lane: 3 },
+      { time: 26, type: 'siri', lane: 1 },
+      { time: 34, type: 'gargantuar', lane: 4 },
+      { time: 42, type: 'canoeiro', lane: 2 },
+      { time: 50, type: 'rubber_hazard', lane: 1 },
+      { time: 56, type: 'siri', lane: 3 },
+      { time: 64, type: 'pyro_scavenger', lane: 1 },
+      { time: 70, type: 'canoeiro', lane: 4 },
+      { time: 78, type: 'gargantuar', lane: 0 },
+      { time: 86, type: 'siri', lane: 2 },
+      { time: 92, type: 'bucket', lane: 3 },
+      { time: 98, type: 'canoeiro', lane: 2 },
+      { time: 104, type: 'zomboss_mech', lane: 2 },
+      { time: 112, type: 'siri', lane: 1 },
+      { time: 116, type: 'siri', lane: 3 }
+    ])
   }
 ];
 
 /** Bioma de cada mundo da Aventura. */
 export function biomaDoMundo(world: number): string {
+  if (world === 4) return 'mangue';
   if (world === 3) return 'igarape';
   if (world === 2) return 'bioluminescent_swamp';
   return 'front_yard';

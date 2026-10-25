@@ -73,7 +73,8 @@ export type ZombieVariant =
   | 'rubber_hazard'
   | 'pyro_scavenger'
   | 'canoeiro'
-  | 'mapinguari';
+  | 'mapinguari'
+  | 'siri';
 
 export interface ZombieEntity {
   id: number;
@@ -104,7 +105,18 @@ export interface ZombieEntity {
   torchDoused?: boolean;
   /** Pegadas do Curupira: enquanto dura, anda para trás, virado para o lado errado. */
   confusoTimer: number;
+  /** Zumbi Siri: segundos até a próxima troca de linha. */
+  trocaLinhaTimer?: number;
 }
+
+/** Maré do Mundo 4: nível 0 = lama (maré baixa), 1 = água (maré alta). */
+export interface Mare {
+  estado: 'baixa' | 'subindo' | 'alta' | 'baixando';
+  /** 0 a 1. */
+  nivel: number;
+  timer: number;
+}
+export const MARE = { baixaDura: 22, altaDura: 20, transicao: 3.5 } as const;
 
 /** O Curupira correndo pela linha (aliado de efeito rápido). */
 export interface Curupira {
@@ -270,6 +282,8 @@ export class GameEngine {
   private texturaSol: HTMLCanvasElement | null = null;
   /** Trava o clima atual (desafio do dia com noite ou chuva o tempo todo). */
   public weatherLocked = false;
+  /** Maré (só no bioma de mangue). */
+  public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
   public skySunScale = 1;
 
@@ -342,9 +356,53 @@ export class GameEngine {
     return [0, 1, 2, 3, 4];
   }
 
-  /** Linha de rio do bioma atual (Mundo 3): só plantas aquáticas, zumbis sempre molhados. */
+  /** Linha de rio do bioma atual (Mundo 3) ou linha de mangue com a maré alta: só plantas aquáticas. */
   public isRiverRow(row: number): boolean {
-    return (this.currentBiome.riverRows ?? []).includes(row);
+    if ((this.currentBiome.riverRows ?? []).includes(row)) return true;
+    return this.isTideRow(row) && this.mare.nivel >= 0.5;
+  }
+
+  /** Linha de mangue (Mundo 4): enche e seca com a maré. */
+  public isTideRow(row: number): boolean {
+    return (this.currentBiome.tideRows ?? []).includes(row);
+  }
+
+  /** Lama da maré baixa (linha de mangue sem água). */
+  public isMudRow(row: number): boolean {
+    return this.isTideRow(row) && this.mare.nivel < 0.5;
+  }
+
+  private atualizarMare(dt: number): void {
+    if (!this.currentBiome.tideRows?.length) return;
+    const m = this.mare;
+    m.timer -= dt;
+    const antes = m.nivel >= 0.5;
+    if (m.estado === 'subindo') m.nivel = Math.min(1, m.nivel + dt / MARE.transicao);
+    else if (m.estado === 'baixando') m.nivel = Math.max(0, m.nivel - dt / MARE.transicao);
+    if (m.timer <= 0) {
+      if (m.estado === 'baixa') {
+        m.estado = 'subindo';
+        m.timer = MARE.transicao;
+        this.onToast('🌊 A maré está subindo! Plantas de terra nas linhas de mangue vão ficar submersas.');
+      } else if (m.estado === 'subindo') {
+        m.estado = 'alta';
+        m.timer = MARE.altaDura;
+      } else if (m.estado === 'alta') {
+        m.estado = 'baixando';
+        m.timer = MARE.transicao;
+        this.onToast('🏖️ A maré está baixando: vira lama, que atola zumbis e encalha o Aguapé.');
+      } else {
+        m.estado = 'baixa';
+        m.timer = MARE.baixaDura;
+      }
+    }
+    const depois = m.nivel >= 0.5;
+    if (antes !== depois) {
+      this.boardCacheDirty = true;
+      for (const r of this.currentBiome.tideRows) {
+        this.spawnFloatingText(depois ? '🌊 MARÉ ALTA' : '🏖️ MARÉ BAIXA', 4.5, r + 0.5, depois ? '#7dd3fc' : '#fcd34d', 1.1);
+      }
+    }
   }
 
   public isLaneAvailable(row: number): boolean {
@@ -374,6 +432,7 @@ export class GameEngine {
       this.totalLevelDuration = 165;
     }
 
+    this.mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
     this.wave = 1;
     this.maxWaves = this.currentBiome.maxWaves;
     this.waveProgress = 0;
@@ -622,6 +681,10 @@ export class GameEngine {
         }
         if (rios.includes(r)) {
           CharacterRenderer.drawRiverTile(bCtx, x, y, this.cellW, this.cellH, r, c, isDark);
+          continue;
+        }
+        if (this.isTideRow(r)) {
+          CharacterRenderer.drawMudTile(bCtx, x, y, this.cellW, this.cellH, r, c, isDark);
           continue;
         }
         CharacterRenderer.drawLawnTileDetail(
@@ -1032,14 +1095,14 @@ export class GameEngine {
 
     const habitat = def.habitat ?? 'terra';
     if (this.isRiverRow(row) && habitat === 'terra') {
-      const aquaticas = PLANT_CATALOG.filter((p) => (p.habitat ?? 'terra') !== 'terra')
+      const aquaticas = PLANT_CATALOG.filter((p) => (p.habitat ?? 'terra') !== 'terra' && !p.instantanea)
         .map((p) => p.name)
         .join(' e ');
-      this.onToast(`🌊 No rio só crescem plantas aquáticas: ${aquaticas}.`);
+      this.onToast(`🌊 Na água só crescem plantas aquáticas: ${aquaticas}.`);
       return;
     }
     if (!this.isRiverRow(row) && habitat === 'agua') {
-      this.onToast(`🪷 ${def.name} só cresce na água do rio.`);
+      this.onToast(this.isTideRow(row) ? `🪷 ${def.name} só cresce com a maré alta. Espere a água subir.` : `🪷 ${def.name} só cresce na água do rio.`);
       return;
     }
 
@@ -1147,6 +1210,7 @@ export class GameEngine {
       }
     }
 
+    this.atualizarMare(dt);
     if (!this.weatherLocked) this.weatherTimer -= dt;
     if (this.weatherTimer <= 0) {
       this.weatherTimer = 42;
@@ -1223,6 +1287,21 @@ export class GameEngine {
         p.hp = Math.min(p.maxHp, p.hp + regenRate * dt);
       }
 
+      // Maré: planta de terra debaixo d'água fica submersa; planta de água na lama fica encalhada
+      let presa = false;
+      if (this.isTideRow(p.row)) {
+        const habitat = p.def.habitat ?? 'terra';
+        presa = (this.mare.nivel >= 0.5 && habitat === 'terra') || (this.mare.nivel < 0.5 && habitat === 'agua');
+        if (presa) {
+          p.hp -= 6 * dt;
+          if (p.hp <= 0) {
+            this.spawnParticles(p.col + 0.5, p.row + 0.5, '#7dd3fc', 10);
+            this.plants.splice(i, 1);
+            continue;
+          }
+        }
+      }
+
       // O terreno mexe com a planta: poça cura, chão queimado e veneno machucam, gelo muda o ritmo
       const terreno = efeitoNaPlanta(this.tiles[p.row][p.col].hazard, p.def.element);
       if (terreno.vidaPorSeg !== 0) {
@@ -1275,7 +1354,9 @@ export class GameEngine {
       const polinizada = this.plants.some(
         (q) => q.caminho === 'polinizadora' && q.id !== p.id && Math.abs(q.row - p.row) <= 1 && Math.abs(q.col - p.col) <= 1
       );
-      if (p.overdriveTimer > 0 && p.def.id === 'peashooter') {
+      if (presa) {
+        // Submersa ou encalhada: não ataca nem gera sol
+      } else if (p.overdriveTimer > 0 && p.def.id === 'peashooter') {
         p.attackTimer -= dt * 6;
       } else {
         p.attackTimer -= dt * speedMultiplier * terreno.ritmo * (polinizada ? 1.2 : 1);
@@ -1398,6 +1479,23 @@ export class GameEngine {
         }
       }
 
+      // Zumbi Siri: anda de lado e troca de linha de tempos em tempos
+      if (z.variant === 'siri' && !z.isEating && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x > 0.8 && z.x < GRID_COLS - 0.2) {
+        z.trocaLinhaTimer = (z.trocaLinhaTimer ?? 4 + Math.random() * 3) - dt;
+        if (z.trocaLinhaTimer <= 0) {
+          z.trocaLinhaTimer = 4 + Math.random() * 3;
+          const lanes = this.getActiveLanes();
+          const opcoes = [z.row - 1, z.row + 1].filter((r) => lanes.includes(r));
+          if (opcoes.length > 0) {
+            const nova = opcoes[Math.floor(Math.random() * opcoes.length)];
+            this.spawnParticles(z.x, z.row + 0.7, '#e0603a', 8);
+            z.row = nova;
+            z.walkPhase += 2;
+            this.spawnFloatingText('🦀 DE LADO!', z.x, z.row + 0.2, '#fb923c', 0.95);
+          }
+        }
+      }
+
       // Confere os limites de desmembramento
       this.checkZombieDismemberment(z);
 
@@ -1419,6 +1517,10 @@ export class GameEngine {
         const currentTileCol = Math.floor(z.x);
         let mudSpeedMult = 1.0;
         const chaoAtual = currentTileCol >= 0 && currentTileCol < GRID_COLS ? this.tiles[z.row][currentTileCol]?.hazard : 'none';
+        if (this.isMudRow(z.row) && z.variant !== 'siri') {
+          // Lama da maré baixa: atola; a canoa encalha de vez
+          mudSpeedMult = z.variant === 'canoeiro' ? 0.25 : 0.7;
+        }
         if (chaoAtual === 'swamp_mud') {
           mudSpeedMult = z.variant === 'rubber_hazard' ? 0.85 : 0.6;
         } else if (chaoAtual === 'ice_patch') {
@@ -1430,7 +1532,7 @@ export class GameEngine {
         // As raízes do Aguapé prendem os zumbis logo à frente dele.
         let riverMult = 1.0;
         if (this.isRiverRow(z.row)) {
-          riverMult = z.variant === 'canoeiro' ? 1.0 : 0.85;
+          riverMult = z.variant === 'canoeiro' ? 1.0 : z.variant === 'siri' ? 1.5 : 0.85;
           const raizes = this.plants.some(
             (p) =>
               p.row === z.row &&
@@ -1776,6 +1878,11 @@ export class GameEngine {
         target.burnTimer = 7.0;
         this.spawnFloatingText('🔥 BORRACHA EM CHAMAS!', target.x, target.row + 0.15, '#f97316', 1.15);
       }
+    }
+
+    // ZUMBI SIRI: a carapaça segura metade dos projéteis de Natureza; ácido e fogo passam
+    if (target.variant === 'siri' && element === 'nature') {
+      finalDamage = Math.floor(baseDamage * 0.5);
     }
 
     // MAPINGUARI: o pelo pega fogo; parado (congelado/atordoado), o olho fica exposto
@@ -2254,6 +2361,13 @@ export class GameEngine {
       hp = 380;
       speed = 0.4;
       damage = 30;
+    } else if (type === 'siri') {
+      variant = 'siri';
+      name = 'Zumbi Siri';
+      emoji = '🦀';
+      hp = 420;
+      speed = 0.3;
+      damage = 34;
     }
 
     this.zombies.push({
@@ -2688,6 +2802,26 @@ export class GameEngine {
     }
     // 1. Draw cached board (1 ultra-fast drawImage call instead of 45 gradient allocations!)
     ctx.drawImage(this.boardCacheCanvas, 0, 0, width, height);
+    const mares = this.currentBiome.tideRows ?? [];
+    if (mares.length > 0 && this.mare.nivel > 0) {
+      // Água da maré subindo por cima da lama (a lama fica no cache; a água anima ao vivo)
+      const escuro = this.weather === 'night_storm' || this.weather === 'spore_fog';
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, this.mare.nivel * 1.1);
+      ctx.fillStyle = escuro ? '#0c3440' : '#3aaad8';
+      const pathX = this.boardLeft - 48;
+      for (const r of mares) {
+        const ry = this.boardTop + r * this.cellH;
+        const alturaAgua = this.cellH * (0.35 + 0.65 * this.mare.nivel);
+        ctx.fillRect(pathX, ry + this.cellH - alturaAgua, width - pathX, alturaAgua);
+      }
+      ctx.restore();
+      if (this.mare.nivel >= 0.5) {
+        for (const r of mares) {
+          CharacterRenderer.drawRiverFlow(ctx, this.boardLeft - 48, width, this.boardTop + r * this.cellH, this.cellW, this.cellH, agora, escuro);
+        }
+      }
+    }
     const riosNoMapa = this.currentBiome.riverRows ?? [];
     if (riosNoMapa.length > 0) {
       const escuro =
@@ -2884,6 +3018,12 @@ export class GameEngine {
 
       if (this.isRiverRow(p.row)) {
         CharacterRenderer.drawRipple(ctx, cx, cy + this.cellH * 0.36, this.cellW * 0.36, agora * 0.004 + p.col);
+      }
+      if (this.isTideRow(p.row)) {
+        const habitat = p.def.habitat ?? 'terra';
+        if ((this.mare.nivel >= 0.5 && habitat === 'terra') || (this.mare.nivel < 0.5 && habitat === 'agua')) {
+          CharacterRenderer.drawPresa(ctx, cx, cy, this.cellH, this.mare.nivel >= 0.5, agora);
+        }
       }
 
       CharacterRenderer.drawPlant(

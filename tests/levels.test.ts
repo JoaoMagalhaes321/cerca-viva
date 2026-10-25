@@ -6,7 +6,7 @@ import { BIOME_CATALOG, PLANT_CATALOG } from '../src/types';
 // Se um zumbi novo entrar no jogo, acrescente aqui também.
 const KNOWN_ZOMBIES = [
   'basic', 'cone', 'bucket', 'cyber_sprinter', 'gargantuar', 'zomboss_mech', 'rubber_hazard', 'pyro_scavenger',
-  'canoeiro', 'mapinguari'
+  'canoeiro', 'mapinguari', 'siri'
 ];
 const GRID_ROWS = 5;
 const plantIds = new Set(PLANT_CATALOG.map((p) => p.id));
@@ -81,7 +81,11 @@ describe('catálogo de fases', () => {
 });
 
 describe('Mundo 3 · Igarapé', () => {
-  const rios = (world: number) => BIOME_CATALOG.find((b) => b.id === biomaDoMundo(world))?.riverRows ?? [];
+  // Linhas de água de um mundo: rio (Mundo 3) ou mangue com maré (Mundo 4)
+  const rios = (world: number) => {
+    const b = BIOME_CATALOG.find((x) => x.id === biomaDoMundo(world));
+    return [...(b?.riverRows ?? []), ...(b?.tideRows ?? [])];
+  };
 
   it('todo mundo tem um bioma que existe', () => {
     for (const l of LEVEL_CATALOG) {
@@ -95,7 +99,7 @@ describe('Mundo 3 · Igarapé', () => {
     expect(rios(3).length).toBeGreaterThan(0);
   });
 
-  it('canoeiro só aparece em linha de rio, e só em mundo com rio', () => {
+  it('canoeiro só aparece em linha de água (rio ou maré), e só em mundo com água', () => {
     for (const l of LEVEL_CATALOG) {
       for (const s of l.spawns) {
         if (s.zombieType !== 'canoeiro') continue;
