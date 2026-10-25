@@ -73,6 +73,7 @@ branch e no pull request, para você saber antes do merge se o build e os testes
 | `src/audio.ts` | Efeitos e trilha sonora sintetizados com Web Audio |
 | `src/types.ts` | Tipos e catálogos: plantas, biomas, sinergias, mutações |
 | `src/levels.ts` | Fases do modo aventura (Mundo 1: fases 1-1 a 1-10; Mundo 2: 2-1 a 2-5) e ondas |
+| `src/progresso-sanitizar.ts` | Confere o progresso carregado contra os catálogos (fase que não existe, planta desconhecida, repetida) |
 | `src/progression.ts` | Progresso do jogador salvo no `localStorage` (chave `pvz_player_progress_v1`) |
 | `src/updater.ts` | Registro do service worker |
 | `android/` | Projeto Android gerado pelo Capacitor |
@@ -82,6 +83,10 @@ branch e no pull request, para você saber antes do merge se o build e os testes
 - **Fases, ondas e planta liberada por fase:** `src/levels.ts` (`LEVEL_CATALOG`).
 - **Plantas, custo, dano, biomas, sinergias e mutações:** catálogos em `src/types.ts`.
 - **Progresso inicial e desbloqueios:** `src/progression.ts` (`DEFAULT_PLAYER_PROGRESS`).
+- **Conserto do progresso salvo:** `src/progresso-sanitizar.ts`. Se o progresso salvo tiver algo
+  estranho, o jogo corrige campo por campo e guarda o texto original em
+  `pvz_player_progress_v1_antes_da_correcao` (para voltar, copie esse valor de volta para
+  `pvz_player_progress_v1` nas ferramentas do navegador).
 
 Depois de mexer nessas regras, rode `npm test`: os testes de `tests/levels.test.ts` conferem que as fases
 seguem em sequência, que toda planta liberada existe, que nenhuma é liberada duas vezes e que os zumbis
