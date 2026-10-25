@@ -26,6 +26,7 @@ import {
   salvarExpedicao,
   trechoDaEtapa
 } from './expedicao';
+import type { FimDePartida } from './conquistas';
 import './expedicao.css';
 
 const FASE_QUE_LIBERA = 5;
@@ -39,6 +40,7 @@ interface Opcoes {
   mostrarMenu: () => void;
   toast: (msg: string) => void;
   registrarNoHerbario: (concluida: boolean, nosVencidos: number) => void;
+  conquistas?: (fim: FimDePartida) => void;
 }
 
 export class ExpedicaoUi {
@@ -371,6 +373,14 @@ export class ExpedicaoUi {
     fimDeBatalha(x, no, won, [...e.unlockedMutations]);
     this.emBatalha = null;
     this.diretor = null;
+    this.o.conquistas?.({
+      venceu: won,
+      modo: 'expedicao',
+      deck: e.activeDeckIds,
+      marcas: e.marcas,
+      derrotadosNaPartida: e.tiposDerrotados,
+      expedicaoConcluida: x.estado === 'concluida'
+    });
 
     const icone = document.getElementById('result-icon')!;
     const titulo = document.getElementById('result-title')!;

@@ -18,6 +18,7 @@ import {
   sequenciaDeDias,
   textoParaCompartilhar
 } from './modo-infinito';
+import type { FimDePartida } from './conquistas';
 import './modos.css';
 
 export type TipoModo = 'infinito' | 'desafio';
@@ -86,6 +87,7 @@ interface Opcoes {
   /** Monta a barra de sementes, atualiza o HUD e fecha o menu. */
   prepararPartida: () => void;
   toast: (msg: string) => void;
+  conquistas?: (fim: FimDePartida) => void;
 }
 
 export class Modos {
@@ -307,6 +309,15 @@ export class Modos {
     const vencidas = this.diretor?.ondasVencidas ?? 0;
     this.registrarProgresso(vencidas, won, true);
     const reg = lerRegistro();
+    this.o.conquistas?.({
+      venceu: won,
+      modo: this.modo === 'infinito' ? 'infinito' : 'desafio',
+      deck: e.activeDeckIds,
+      marcas: e.marcas,
+      derrotadosNaPartida: e.tiposDerrotados,
+      ondasVencidas: vencidas,
+      diasSeguidos: sequenciaDeDias(reg.desafios)
+    });
 
     const icone = document.getElementById('result-icon')!;
     const titulo = document.getElementById('result-title')!;

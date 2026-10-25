@@ -802,6 +802,14 @@ function openGameOverModal(won: boolean): void {
     expedicao.mostrarResultado(won);
     return;
   }
+  herbario.checarConquistas({
+    venceu: won,
+    modo: 'aventura',
+    mundo: currentLevel?.world,
+    deck: engine.activeDeckIds,
+    marcas: engine.marcas,
+    derrotadosNaPartida: engine.tiposDerrotados
+  });
   if (won && currentLevel) {
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
@@ -1050,7 +1058,8 @@ const modos = new Modos({
     syncHud();
     hideMainMenuAndPlay();
   },
-  toast: (msg) => showToast(msg)
+  toast: (msg) => showToast(msg),
+  conquistas: (fim) => herbario.checarConquistas(fim)
 });
 
 // Tela de preparação antes de cada fase
@@ -1089,7 +1098,8 @@ const expedicao = new ExpedicaoUi({
   },
   mostrarMenu: () => showMainMenu(),
   toast: (msg) => showToast(msg),
-  registrarNoHerbario: (concluida, nos) => herbario.registrarExpedicao(concluida, nos)
+  registrarNoHerbario: (concluida, nos) => herbario.registrarExpedicao(concluida, nos),
+  conquistas: (fim) => herbario.checarConquistas(fim)
 });
 
 // Start on Main Menu with Progression Info

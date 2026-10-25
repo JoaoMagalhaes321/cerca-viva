@@ -63,6 +63,10 @@
   opacity: 0.55;
   filter: grayscale(1);
 }
+.herbario-grade.conquistas { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.herbario-item.conquista.falta { opacity: 0.75; filter: none; }
+.herbario-item.conquista small { color: #cbd5e1; line-height: 1.2; }
+.herbario-item.conquista.descoberto { border-color: rgba(250, 204, 21, 0.7); background: rgba(113, 63, 18, 0.35); }
 .herbario-emoji {
   font-size: 1.35rem;
   line-height: 1.1;
