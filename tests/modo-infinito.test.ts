@@ -12,7 +12,9 @@ import {
   pesosDaOnda,
   planoDaOnda,
   sequenciaDeDias,
-  sortearTipo
+  sortearTipo,
+  textoParaCompartilhar,
+  LINK_DO_JOGO
 } from '../src/modo-infinito';
 import { BIOME_CATALOG } from '../src/types';
 
@@ -162,6 +164,33 @@ describe('DiretorOndas', () => {
     const z = motor.zombies[0];
     expect(z.maxHp).toBe(Math.round(100 * planoDaOnda(2).vidaMult));
     expect(z.speed).toBeCloseTo(0.39);
+  });
+});
+
+describe('Texto para compartilhar o desafio', () => {
+  const desafio = { ...desafioDoDia('2026-10-25'), modificadores: ['corrida', 'colossos'] as ('corrida' | 'colossos')[] };
+
+  it('vitória: só quadrados verdes, data, regras, sequência e link', () => {
+    const t = textoParaCompartilhar({ desafio, ondasVencidas: 8, venceu: true, sequencia: 3, combos: 12 });
+    expect(t).toContain('Desafio do Dia 25/10');
+    expect(t).toContain('🟩🟩🟩🟩🟩🟩🟩🟩 8/8');
+    expect(t).not.toContain('🟥');
+    expect(t).toContain('💨 Corrida + 👹 Colossos');
+    expect(t).toContain('⚡ 12 combos');
+    expect(t).toContain('🔥 3 dias seguidos');
+    expect(t.trim().endsWith(LINK_DO_JOGO)).toBe(true);
+  });
+
+  it('derrota: verde até onde foi, vermelho na onda perdida, preto no resto', () => {
+    const t = textoParaCompartilhar({ desafio, ondasVencidas: 3, venceu: false, sequencia: 0, combos: 0 });
+    expect(t).toContain('🟩🟩🟩🟥⬛⬛⬛⬛ 3/8');
+    expect(t).not.toContain('combo');
+    expect(t).not.toContain('seguidos');
+  });
+
+  it('cabe numa mensagem curta de grupo', () => {
+    const t = textoParaCompartilhar({ desafio, ondasVencidas: 8, venceu: true, sequencia: 10, combos: 40 });
+    expect(t.split('\n').length).toBeLessThanOrEqual(6);
   });
 });
 

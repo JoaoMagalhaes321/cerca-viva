@@ -100,6 +100,40 @@ export function desafioDoDia(data: string): Desafio {
   return { data, semente, biomaId, modificadores: mods, ondas: ONDAS_DO_DESAFIO };
 }
 
+/** Endereço público do jogo, impresso no texto de compartilhar. */
+export const LINK_DO_JOGO = 'joaomagalhaes321.github.io/pvz-evolution/';
+
+export interface ResumoDoDesafio {
+  desafio: Desafio;
+  ondasVencidas: number;
+  venceu: boolean;
+  /** Dias seguidos com o desafio concluído (0 = nenhum). */
+  sequencia: number;
+  combos: number;
+}
+
+/**
+ * Texto curto para mandar no grupo (estilo Wordle): uma linha de quadradinhos por onda.
+ * 🟩 onda vencida · 🟥 onda em que os zumbis entraram · ⬛ ondas que nem começaram.
+ */
+export function textoParaCompartilhar(r: ResumoDoDesafio): string {
+  const { desafio: d } = r;
+  const vencidas = Math.max(0, Math.min(d.ondas, r.ondasVencidas));
+  const quadros =
+    '🟩'.repeat(vencidas) + (r.venceu ? '' : '🟥') + '⬛'.repeat(Math.max(0, d.ondas - vencidas - (r.venceu ? 0 : 1)));
+  const regras = d.modificadores.map((m) => `${MODIFICADORES[m].icone} ${MODIFICADORES[m].nome}`).join(' + ');
+  const [, mes, dia] = d.data.split('-');
+  const linhas = [
+    `🌿 Cerca Viva · Desafio do Dia ${dia}/${mes}`,
+    `${quadros} ${vencidas}/${d.ondas}`,
+    regras
+  ];
+  if (r.combos > 0) linhas.push(`⚡ ${r.combos} ${r.combos === 1 ? 'combo' : 'combos'}`);
+  if (r.sequencia > 1) linhas.push(`🔥 ${r.sequencia} dias seguidos`);
+  linhas.push(LINK_DO_JOGO);
+  return linhas.join('\n');
+}
+
 /** Clima travado pelas regras do dia, se houver. */
 export function climaTravado(mods: Modificador[]): WeatherType | null {
   if (mods.includes('noite')) return 'night_storm';
