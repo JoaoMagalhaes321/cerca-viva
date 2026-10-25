@@ -27,6 +27,8 @@ import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
 import { mostrarAbertura } from './abertura';
 import { tocarReplay } from './replay';
+import { aplicarAcessibilidade } from './acessibilidade';
+import { AcessibilidadeUi } from './acessibilidade-ui';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -1074,6 +1076,10 @@ menuAlmanacBtn.addEventListener('click', () => {
   almanacReturnTo = 'main-menu';
   openAlmanacModal('synergies');
 });
+
+aplicarAcessibilidade();
+const acessUi = new AcessibilidadeUi(showToast);
+document.getElementById('menu-acess-btn')!.addEventListener('click', () => acessUi.abrir());
 
 menuSoundBtn.addEventListener('click', () => {
   const on = sound.toggleMusic();

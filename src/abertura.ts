@@ -2,6 +2,7 @@
 // Dura ~2,8 s, aparece uma vez por sessão e um toque pula.
 
 import { sound } from './audio';
+import { movimentoReduzido } from './feedback';
 import './abertura.css';
 
 const DURACAO = 2.8;
@@ -25,7 +26,7 @@ export function mostrarAbertura(aoTerminar: () => void): void {
   } catch {
     /* sem armazenamento: mostra */
   }
-  if (vista || window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
+  if (vista || movimentoReduzido) {
     aoTerminar();
     return;
   }

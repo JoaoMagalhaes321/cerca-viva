@@ -7,10 +7,16 @@ import './impacto.css';
 export type Peso = 'leve' | 'medio' | 'forte';
 
 /** Quem pediu menos movimento no sistema não recebe tremida de tela nem confete. */
-export const movimentoReduzido =
+export const movimentoReduzidoDoSistema =
   typeof window !== 'undefined' &&
   typeof window.matchMedia === 'function' &&
   window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/** Vale o do sistema ou a opção "reduzir efeitos" do jogo (acessibilidade.ts). */
+export let movimentoReduzido = movimentoReduzidoDoSistema;
+export function setMovimentoReduzido(v: boolean): void {
+  movimentoReduzido = v;
+}
 
 /** Vibração curta. No navegador sem suporte, simplesmente não faz nada. */
 export function vibrar(peso: Peso): void {
