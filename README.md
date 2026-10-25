@@ -72,8 +72,8 @@ branch e no pull request, para você saber antes do merge se o build e os testes
 | `src/audio.ts` | Efeitos e trilha sonora sintetizados com Web Audio |
 | `src/types.ts` | Tipos e catálogos: plantas, biomas, sinergias, mutações |
 | `src/levels.ts` | Fases do modo aventura (Mundo 1: fases 1-1 a 1-10; Mundo 2: 2-1 a 2-5) e ondas |
-| `src/progression.ts` | Progresso do jogador salvo no `localStorage` (chave `pvz_player_progress_v1`) |
 | `src/progresso-sanitizar.ts` | Confere o progresso carregado contra os catálogos (fase que não existe, planta desconhecida, repetida) |
+| `src/progression.ts` | Progresso do jogador salvo no `localStorage` (chave `pvz_player_progress_v1`) |
 | `src/updater.ts` | Registro do service worker |
 | `android/` | Projeto Android gerado pelo Capacitor |
 
