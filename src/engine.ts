@@ -63,6 +63,8 @@ export interface PlantEntity {
   // Potato Mine state
   armTimer: number;
   armed: boolean;
+  /** Adormecida pela canção da Cuca: não ataca nem gera sol enquanto > 0. */
+  dormindoTimer?: number;
 }
 
 export type ZombieVariant =
@@ -76,7 +78,9 @@ export type ZombieVariant =
   | 'pyro_scavenger'
   | 'canoeiro'
   | 'mapinguari'
-  | 'siri';
+  | 'siri'
+  | 'mumia'
+  | 'cuca';
 
 export interface ZombieEntity {
   id: number;
@@ -111,6 +115,10 @@ export interface ZombieEntity {
   trocaLinhaTimer?: number;
   /** Mutação do zumbi (versão elite): ferro, gigante, dupla ou veloz. */
   elite?: EliteZumbi;
+  /** Cuca cochilando: parada, pele de pedra; só luz solar acorda. */
+  dormindoTimer?: number;
+  /** Quantos truques a Cuca já fez (define o próximo). */
+  cucaTruques?: number;
 }
 
 export type EliteZumbi = 'ferro' | 'gigante' | 'dupla' | 'veloz';
@@ -170,6 +178,8 @@ export interface ProjectileEntity {
   isRicochet?: boolean;
   /** Caminho de floração da planta que atirou (muda o que o acerto faz). */
   caminho?: string | null;
+  /** Bola de fogo da Abóbora-Brasa: deixa a casa do alvo em brasa. */
+  abobora?: boolean;
 }
 
 export interface SunOrb {
@@ -212,6 +222,10 @@ export const FALAS: Record<string, string[]> = {
   siri: ['De ladinho!', 'Troquei de fila!', 'Cuidado, siri!'],
   mapinguari: ['GRRR… meu quintal!', 'Quem mexeu na mata?'],
   colheitadeira: ['Hora da colheita!', 'Vou passar o trator!'],
+  cuca: ['Nana, nenê…', 'A Cuca vem pegar!', 'Dorme, jardim…'],
+  mumia: ['Mmmmh…', 'Cadê minhas faixas?'],
+  buu: ['BUU!', 'Buuuu!', 'Hihihi!'],
+  acordou: ['Ué, dormi?', 'Bom dia!', 'Acordei!'],
   mina: ['BUM!', 'Pegadinha!'],
   mare: ['Água subindo!', 'Segura o fôlego!'],
   adubada: ['Que terra boa!', 'Hmm, cinza!'],
@@ -622,7 +636,9 @@ export class GameEngine {
     const isDark =
       this.weather === 'night_storm' ||
       this.weather === 'spore_fog' ||
+      this.weather === 'lua_cheia' ||
       this.currentBiome.id === 'bioluminescent_swamp';
+    const assombrado = this.currentBiome.id === 'assombrado';
     const isRainy = this.weather === 'rain';
     const isJungle = this.currentBiome.id === 'igarape';
     const rios = this.currentBiome.riverRows ?? [];
@@ -760,10 +776,11 @@ export class GameEngine {
           this.cellH,
           r,
           c,
-          this.weather === 'night_storm',
+          this.weather === 'night_storm' || this.weather === 'lua_cheia',
           this.weather === 'rain',
           this.weather === 'spore_fog' || this.currentBiome.id === 'bioluminescent_swamp'
         );
+        if (assombrado) CharacterRenderer.drawAbobora(bCtx, x, y, this.cellW, this.cellH, r, c);
 
       }
     }
@@ -1022,7 +1039,15 @@ export class GameEngine {
 
       for (const z of this.zombies) {
         if (Math.abs(z.row - row) <= 1 && Math.abs(z.x - (col + 0.5)) <= 1.6) {
-          this.applyElementalDamage(z, 240, 'fire');
+          // Luz do céu: é o que acorda a Cuca cochilando
+          this.applyElementalDamage(z, 240, z.variant === 'cuca' && (z.dormindoTimer ?? 0) > 0 ? 'solar' : 'fire');
+        }
+      }
+      // Plantas adormecidas perto do feixe acordam com a luz
+      for (const p of this.plants) {
+        if ((p.dormindoTimer ?? 0) > 0 && Math.abs(p.row - row) <= 1 && Math.abs(p.col - col) <= 1) {
+          p.dormindoTimer = 0;
+          this.falar('acordou', p.col + 0.5, p.row, 0.5);
         }
       }
       this.spawnParticles(col + 0.5, row + 0.5, '#facc15', 32);
@@ -1129,6 +1154,31 @@ export class GameEngine {
       case 'plasma_mine':
         plant.armed = true;
         plant.armTimer = 0;
+        break;
+      case 'abobora_brasa':
+        for (let c = plant.col + 1; c <= Math.min(GRID_COLS - 1, plant.col + 3); c++) {
+          this.tiles[plant.row][c].hazard = 'scorched';
+          this.tiles[plant.row][c].hazardTimer = 10;
+        }
+        for (const z of this.zombies) {
+          if (z.row === plant.row && z.x > plant.col && z.x <= plant.col + 4) {
+            z.burnTimer = Math.max(z.burnTimer, 6);
+            this.applyElementalDamage(z, 160, 'fire');
+          }
+        }
+        this.spawnFloatingText('🎃 LANTERNA GIGANTE!', plant.col + 1.5, plant.row, '#fb923c', 1.35);
+        this.sacudir(5, 0.3, 'medio');
+        break;
+      case 'flor_fantasma':
+        for (const z of this.zombies) {
+          if (z.row === plant.row && z.x > plant.col) {
+            z.confusoTimer = Math.max(z.confusoTimer, 4);
+            this.applyElementalDamage(z, 90, 'wind');
+          }
+        }
+        this.falar('buu', plant.col + 0.5, plant.row, 1);
+        this.spawnFloatingText('👻 GRITO DE ARREPIAR!', plant.col + 1.5, plant.row, '#e9d5ff', 1.35);
+        sound.efeito('buu');
         break;
       case 'wallnut':
         plant.maxHp = 4500;
@@ -1433,6 +1483,16 @@ export class GameEngine {
       const polinizada = this.plants.some(
         (q) => q.caminho === 'polinizadora' && q.id !== p.id && Math.abs(q.row - p.row) <= 1 && Math.abs(q.col - p.col) <= 1
       );
+      if ((p.dormindoTimer ?? 0) > 0) {
+        p.dormindoTimer! -= dt;
+        if (p.dormindoTimer! <= 0) {
+          p.dormindoTimer = 0;
+          this.falar('acordou', p.col + 0.5, p.row, 0.35);
+        } else if (Math.random() < dt * 0.8) {
+          this.spawnFloatingText('z', p.col + 0.7, p.row + 0.1, '#c4b5fd', 0.8);
+        }
+        continue; // dormindo: não ataca nem gera sol
+      }
       if (presa) {
         // Submersa ou encalhada: não ataca nem gera sol
       } else if (p.overdriveTimer > 0 && p.def.id === 'peashooter') {
@@ -1467,6 +1527,14 @@ export class GameEngine {
               }
             }
           }
+        }
+      } else if (p.def.id === 'flor_fantasma') {
+        const alcance = p.caminho === 'assombracao' ? 3 : 2;
+        const perto = this.zombies.some((z) => z.row === p.row && z.x > p.col && z.x - p.col <= alcance + 0.5);
+        if (perto && p.attackTimer <= 0) {
+          p.attackTimer = p.def.attackInterval;
+          p.scaleKick = 0.35;
+          this.sustoDaFlor(p, alcance, p.caminho === 'assombracao' ? 3 : 2, Math.round(p.def.damage * (p.adubada ? ADUBADA.dano : 1)));
         }
       } else if (p.def.attackInterval > 0) {
         const hasZombieAhead = this.zombies.some((z) => z.row === p.row && z.x > p.col);
@@ -1587,7 +1655,10 @@ export class GameEngine {
 
       // Movement & Biting Plants
       z.isEating = false;
-      if (z.confusoTimer > 0 && z.frozenTimer <= 0 && z.stunTimer <= 0) {
+      const cochilando = (z.dormindoTimer ?? 0) > 0;
+      if (cochilando) {
+        // Cuca cochilando: fica parada, de pedra
+      } else if (z.confusoTimer > 0 && z.frozenTimer <= 0 && z.stunTimer <= 0) {
         // Pegadas ao contrário: anda para trás, para o lado errado
         z.x = Math.min(GRID_COLS + 0.4, z.x + z.speed * 0.9 * dt);
         z.walkPhase += dt * 6;
@@ -1883,10 +1954,11 @@ export class GameEngine {
     if (this.estagioDe(plant) === 'muda') mult *= MUDA.dano;
     const c = plant.caminho;
     if (c === 'quiabo_pesado') mult *= 1.8;
+    else if (c === 'abobora_bomba') mult *= 1.5;
     else if (c === 'estalactite') mult *= 1.6;
     else if (c === 'dragao') mult *= 1.5;
     else if (c === 'bolhao') mult *= 1.5;
-    if (c === 'quiabo_pesado') plant.attackTimer *= 1.3;
+    if (c === 'quiabo_pesado' || c === 'abobora_bomba') plant.attackTimer *= 1.3;
     const tiros = c === 'quiabo_duplo' ? 2 : 1;
     for (let k = 0; k < tiros; k++) {
       this.projectiles.push({
@@ -1899,7 +1971,8 @@ export class GameEngine {
         damage: Math.round(plant.def.damage * mult),
         element: plant.def.element,
         color: plant.def.color,
-        radius: (plant.def.element === 'fire' || plant.def.element === 'wind' ? 9 : 7) * (c === 'quiabo_pesado' ? 1.3 : 1),
+        abobora: plant.def.id === 'abobora_brasa',
+        radius: (plant.def.element === 'fire' || plant.def.element === 'wind' ? 9 : 7) * (c === 'quiabo_pesado' || c === 'abobora_bomba' ? 1.3 : 1),
         caminho: c
       });
     }
@@ -1913,6 +1986,18 @@ export class GameEngine {
     }
     this.applyElementalDamage(target, dano, proj.element);
     this.spawnParticles(target.x, target.row + 0.5, proj.color, 8);
+
+    // Abóbora-Brasa: a casa onde a bola de fogo estoura fica em brasa
+    if (proj.abobora) {
+      const col = Math.floor(target.x);
+      if (col >= 0 && col < GRID_COLS) {
+        const t = this.tiles[target.row][col];
+        if (t.hazard === 'none' || t.hazard === 'scorched' || t.hazard === 'ash') {
+          t.hazard = 'scorched';
+          t.hazardTimer = Math.max(t.hazardTimer, proj.caminho === 'lanterna' ? 6 : 3);
+        }
+      }
+    }
 
     // Efeitos extras do caminho de floração da planta que atirou
     switch (proj.caminho) {
@@ -2006,6 +2091,37 @@ export class GameEngine {
     // CAPACETE DE FERRO (elite): enquanto não cai, metade do dano de Natureza; ácido derrete normal
     if (target.elite === 'ferro' && !target.lostHeadgear && element === 'nature') {
       finalDamage = Math.floor(finalDamage * 0.5);
+    }
+
+    // MÚMIA: as faixas não sentem gelo (não congela, não fica lenta), mas pegam fogo
+    if (target.variant === 'mumia') {
+      if (element === 'ice') {
+        finalDamage = Math.floor(baseDamage * 0.4);
+        target.frozenTimer = 0;
+        target.chilledTimer = 0;
+        this.spawnFloatingText('🧻 FAIXAS SECAS (sem gelo)', target.x, target.row + 0.15, '#e2e8f0', 1.0);
+      } else if (element === 'fire') {
+        finalDamage = Math.floor(baseDamage * 2);
+        target.burnTimer = Math.max(target.burnTimer, 6);
+        this.spawnFloatingText('🔥 FAIXAS EM CHAMAS!', target.x, target.row + 0.15, '#fb923c', 1.2);
+      }
+    }
+
+    // CUCA: cochilando, só luz solar machuca (×3) e acorda ela; acordada, o fogo irrita (×1.3)
+    if (target.variant === 'cuca') {
+      if ((target.dormindoTimer ?? 0) > 0) {
+        if (element !== 'solar') {
+          this.spawnFloatingText('💤 PELE DE PEDRA', target.x, target.row + 0.15, '#94a3b8', 0.9);
+          this.spawnParticles(target.x, target.row + 0.5, '#94a3b8', 4);
+          return;
+        }
+        target.dormindoTimer = 0;
+        target.stunTimer = Math.max(target.stunTimer, 1.5);
+        finalDamage = Math.floor(baseDamage * 3);
+        this.spawnFloatingText('☀️ ACORDOU ASSUSTADA! ×3', target.x, target.row + 0.15, '#fde047', 1.4);
+      } else if (element === 'fire') {
+        finalDamage = Math.floor(baseDamage * 1.3);
+      }
     }
 
     // MAPINGUARI: o pelo pega fogo; parado (congelado/atordoado), o olho fica exposto
@@ -2296,7 +2412,7 @@ export class GameEngine {
     this.zombiesKilled++;
     this.onDescoberta?.('zumbis', z.variant);
     if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
-    if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
+    if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
     sound.efeito('zumbi_cai', 0.12);
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
@@ -2432,6 +2548,10 @@ export class GameEngine {
       this.spawnMapinguari(targetLane);
       return;
     }
+    if (type === 'cuca') {
+      this.spawnCuca(targetLane);
+      return;
+    }
 
     // Regras da fase: Blindados sobe a proteção de quem nasce
     if (this.regrasAtivas.has('blindados')) {
@@ -2506,6 +2626,13 @@ export class GameEngine {
       hp = 420;
       speed = 0.3;
       damage = 34;
+    } else if (type === 'mumia') {
+      variant = 'mumia';
+      name = 'Zumbi Múmia';
+      emoji = '🧻';
+      hp = 520;
+      speed = 0.22;
+      damage = 36;
     }
     if (this.regrasAtivas.has('corrida')) speed *= 1.3;
 
@@ -2770,14 +2897,114 @@ export class GameEngine {
 
   /** Habilidades da Colheitadeira Z quando ela está em campo. */
   public updateBossSkills(dt: number): void {
-    const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari');
-    if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0 && activeBoss.confusoTimer <= 0) {
+    const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca');
+    if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0 && activeBoss.confusoTimer <= 0 && !((activeBoss.dormindoTimer ?? 0) > 0)) {
       this.bossSkillTimer -= dt;
       if (this.bossSkillTimer <= 0) {
-        this.bossSkillTimer = activeBoss.variant === 'mapinguari' ? 6.0 : 5.2;
+        this.bossSkillTimer = activeBoss.variant === 'mapinguari' ? 6.0 : activeBoss.variant === 'cuca' ? 6.5 : 5.2;
         if (activeBoss.variant === 'mapinguari') this.executeMapinguariSkill(activeBoss);
+        else if (activeBoss.variant === 'cuca') this.executeCucaSkill(activeBoss);
         else this.executeZombossSkill(activeBoss);
       }
+    }
+    // A Cuca cochilando: não anda; acorda sozinha quando o sono acaba
+    if (activeBoss?.variant === 'cuca' && (activeBoss.dormindoTimer ?? 0) > 0) {
+      activeBoss.dormindoTimer! -= dt;
+      if (activeBoss.dormindoTimer! <= 0) {
+        activeBoss.dormindoTimer = 0;
+        this.spawnFloatingText('🐊 A CUCA ACORDOU!', activeBoss.x - 0.6, activeBoss.row, '#86efac', 1.2);
+      } else if (Math.random() < dt * 1.5) {
+        this.spawnFloatingText('z', activeBoss.x + 0.2, activeBoss.row - 0.3, '#c4b5fd', 0.9);
+      }
+    }
+  }
+
+  /** A Cuca, chefe da Noite da Cuca: bruxa-jacaré que canta para as plantas dormirem. */
+  public spawnCuca(targetLane?: number): void {
+    const lanes = this.getActiveLanes();
+    const row = typeof targetLane === 'number' && lanes.includes(targetLane) ? targetLane : lanes[Math.floor(lanes.length / 2)] ?? 2;
+    this.bossSpawned = true;
+    sound.bossMode = true;
+    sound.playBossSiren();
+    this.lightningFlash = 0.5;
+    this.onToast('🐊 A CUCA CHEGOU! A canção dela faz as plantas dormirem. Quando ela cochila, só luz solar (Feixe Orbital) machuca e acorda.');
+    this.spawnFloatingText('🐊 CUCA!', 7.5, row + 0.3, '#a3e635', 1.5);
+    this.falar('cuca', GRID_COLS - 0.4, row - 0.1, 1);
+    this.sacudir(8, 0.6, 'forte');
+    this.zombies.push({
+      id: this.nextEntityId++,
+      variant: 'cuca',
+      name: 'Cuca',
+      emoji: '🐊',
+      row,
+      x: GRID_COLS + 0.3,
+      hp: 3600,
+      maxHp: 3600,
+      speed: 0.11,
+      damagePerSec: 100,
+      wetTimer: 0,
+      chilledTimer: 0,
+      frozenTimer: 0,
+      burnTimer: 0,
+      poisonTimer: 0,
+      stunTimer: 0,
+      hitFlash: 0,
+      walkPhase: 0,
+      isEating: false,
+      lostHeadgear: false,
+      lostArm: false,
+      confusoTimer: 0,
+      dormindoTimer: 0,
+      cucaTruques: 0
+    });
+  }
+
+  private executeCucaSkill(boss: ZombieEntity): void {
+    boss.cucaTruques = (boss.cucaTruques ?? 0) + 1;
+    const vez = boss.cucaTruques % 3;
+    if (vez === 1) {
+      // Canção de ninar: as plantas da linha dela e das vizinhas dormem
+      let dormiram = 0;
+      for (const p of this.plants) {
+        if (Math.abs(p.row - boss.row) <= 1 && p.col + 0.5 < boss.x) {
+          p.dormindoTimer = 6;
+          dormiram++;
+        }
+      }
+      this.falar('cuca', boss.x - 0.2, boss.row - 0.1, 1);
+      this.spawnFloatingText(`🎵 CANÇÃO DE NINAR!${dormiram > 0 ? ` ${dormiram} dormiram` : ''}`, boss.x - 1.2, boss.row + 0.1, '#c4b5fd', 1.4);
+      sound.efeito('cancao');
+      for (let i = 0; i < 6; i++) this.spawnParticles(boss.x - 0.5 - i * 0.4, boss.row - 0.4 + Math.random() * 0.4, '#c4b5fd', 2);
+    } else if (vez === 2) {
+      // Caldeirão: múmias saem em duas linhas
+      const lanes = this.getActiveLanes().filter((r) => r !== boss.row);
+      const escolhidas = lanes.sort(() => Math.random() - 0.5).slice(0, 2);
+      for (const r of escolhidas) this.spawnZombieByType('mumia', r);
+      this.spawnFloatingText('🫕 DO CALDEIRÃO!', boss.x - 0.8, boss.row, '#a3e635', 1.25);
+      this.spawnParticles(boss.x, boss.row + 0.4, '#84cc16', 20);
+    } else {
+      // Cochilo: dorme de pé e a pele vira pedra; só luz solar machuca (e acorda)
+      boss.dormindoTimer = 5;
+      this.spawnFloatingText('💤 A CUCA COCHILOU (só o Sol acorda)', boss.x - 1.4, boss.row + 0.1, '#fde68a', 1.5);
+      sound.efeito('ronco');
+    }
+  }
+
+  /** Flor-Fantasma: susto nos zumbis próximos da linha. */
+  private sustoDaFlor(p: PlantEntity, alcance: number, duracao: number, dano: number): void {
+    let acertou = 0;
+    for (const z of this.zombies) {
+      if (z.row === p.row && z.x > p.col && z.x - p.col <= alcance + 0.5) {
+        z.confusoTimer = Math.max(z.confusoTimer, duracao);
+        if (p.caminho === 'grito_gelado') z.chilledTimer = Math.max(z.chilledTimer, 4);
+        this.applyElementalDamage(z, dano, 'wind');
+        acertou++;
+      }
+    }
+    if (acertou > 0) {
+      this.falar('buu', p.col + 0.5, p.row, 0.6);
+      sound.efeito('buu', 0.3);
+      this.spawnParticles(p.col + 1, p.row + 0.4, '#e9d5ff', 10);
     }
   }
 
@@ -2989,7 +3216,7 @@ export class GameEngine {
     const mares = this.currentBiome.tideRows ?? [];
     if (mares.length > 0 && this.mare.nivel > 0) {
       // Água da maré subindo por cima da lama (a lama fica no cache; a água anima ao vivo)
-      const escuro = this.weather === 'night_storm' || this.weather === 'spore_fog';
+      const escuro = this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia';
       ctx.save();
       ctx.globalAlpha = Math.min(1, this.mare.nivel * 1.1);
       ctx.fillStyle = escuro ? '#0c3440' : '#3aaad8';
@@ -3009,7 +3236,7 @@ export class GameEngine {
     const riosNoMapa = this.currentBiome.riverRows ?? [];
     if (riosNoMapa.length > 0) {
       const escuro =
-        this.weather === 'night_storm' || this.weather === 'spore_fog';
+        this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia';
       for (const r of riosNoMapa) {
         CharacterRenderer.drawRiverFlow(
           ctx,
@@ -3184,7 +3411,7 @@ export class GameEngine {
       }
     }
 
-    const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog';
+    const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia';
     sound.night = isNightScene; // a trilha troca para o tema da noite
 
     // 3. Cercas vivas (uma por linha, no caminho de pedra)
@@ -3256,7 +3483,7 @@ export class GameEngine {
       CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH, isNightScene, this.isRiverRow(z.row));
 
       // Zombie HP bar - accurately positioned above head based on variant scale
-      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech' || z.variant === 'mapinguari';
+      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca';
       if (!isBoss) {
         const bw = Math.min(this.cellW * 0.44, 38);
         const bh = 4;
@@ -3465,7 +3692,7 @@ export class GameEngine {
     if (tremendo) ctx.restore();
 
     // 13. Barra de vida do chefe (Colheitadeira Z ou Mapinguari)
-    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari');
+    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca');
     if (zomboss) {
       const barW = Math.min(440, width * 0.65);
       const barH = 18;
@@ -3485,7 +3712,7 @@ export class GameEngine {
       ctx.fillStyle = '#fca5a5';
       ctx.textAlign = 'center';
       ctx.fillText(
-        `${zomboss.variant === 'mapinguari' ? '👁️ CHEFE: MAPINGUARI' : '💀 CHEFE FINAL: COLHEITADEIRA Z'} (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
+        `${zomboss.variant === 'mapinguari' ? '👁️ CHEFE: MAPINGUARI' : zomboss.variant === 'cuca' ? `🐊 CHEFE: CUCA${(zomboss.dormindoTimer ?? 0) > 0 ? ' 💤' : ''}` : '💀 CHEFE FINAL: COLHEITADEIRA Z'} (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
         width / 2,
         by + 7
       );

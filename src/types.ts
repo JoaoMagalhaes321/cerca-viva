@@ -9,7 +9,7 @@ export type ElementType =
   | 'toxin'
   | 'explosive';
 
-export type WeatherType = 'sunny' | 'rain' | 'night_storm' | 'spore_fog';
+export type WeatherType = 'sunny' | 'rain' | 'night_storm' | 'spore_fog' | 'lua_cheia';
 
 export type TileHazard =
   | 'none'
@@ -40,6 +40,8 @@ export interface PlantDefinition {
   habitat?: 'terra' | 'agua' | 'ambos';
   /** Carta de efeito imediato (o Curupira): age na hora e não fica no gramado. */
   instantanea?: boolean;
+  /** Planta de evento sazonal: só entra no deck durante o evento. */
+  evento?: 'halloween';
 }
 
 export interface MutationDefinition {
@@ -71,12 +73,16 @@ export interface BiomeDefinition {
     | 'canoeiro'
     | 'mapinguari'
     | 'siri'
+    | 'mumia'
+    | 'cuca'
   )[];
   description: string;
   /** Linhas que são rio (Mundo 3): só plantas aquáticas crescem nelas. */
   riverRows?: number[];
   /** Linhas de maré (Mundo 4): ora água (maré alta), ora lama (maré baixa). */
   tideRows?: number[];
+  /** Bioma de evento sazonal (não aparece na escolha livre). */
+  evento?: 'halloween';
 }
 
 export interface SynergyRecipe {
@@ -109,6 +115,8 @@ export interface LevelConfig {
   regras?: string[];
   /** Com a regra deck_fixo: as sementes que a fase impõe. */
   deckFixo?: string[];
+  /** Fase de evento sazonal: não entra na progressão da Aventura. */
+  evento?: 'halloween';
 }
 
 export interface PlayerProgress {
@@ -199,6 +207,20 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     zombiePreviews: ['siri', 'canoeiro', 'bucket', 'gargantuar'],
     description: 'Três linhas de mangue enchem e secam com a maré. Na maré alta só plantas aquáticas vivem nelas e os canoeiros descem; na baixa vira lama que atola zumbis e encalha o Aguapé. Zumbis Siri andam de lado e trocam de linha.',
     tideRows: [0, 2, 4]
+  },
+  {
+    id: 'assombrado',
+    name: '🎃 Jardim Assombrado',
+    subtitle: 'Noite da Cuca — evento de Halloween',
+    icon: '🎃',
+    startingSun: 250,
+    maxWaves: 10,
+    defaultWeather: 'lua_cheia',
+    puddlesCount: 0,
+    toxicCount: 0,
+    zombiePreviews: ['mumia', 'basic', 'cone', 'cuca'],
+    description: 'Lua cheia sobre um jardim de abóboras. Múmias enfaixadas não sentem gelo, mas o fogo pega nas faixas. No fim, a Cuca chega cantando: quem ouve a canção dela dorme — acorde as plantas com luz solar.',
+    evento: 'halloween'
   }
 ];
 
@@ -426,6 +448,40 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     overdriveDesc: 'Tapete de Aguapé: enrola todos os zumbis da linha, que ficam parados por 4 s.',
     color: '#7dd3fc',
     habitat: 'agua'
+  },
+  {
+    id: 'abobora_brasa',
+    name: 'Abóbora-Brasa',
+    emoji: '🎃',
+    element: 'fire',
+    elementBadge: '🎃',
+    cost: 150,
+    cooldown: 12,
+    maxHp: 320,
+    attackInterval: 2.4,
+    damage: 48,
+    description: 'Abóbora com uma brasa dentro: cospe bolas de fogo que deixam a casa do zumbi queimando. Múmias e Isolantes pegam fogo fácil.',
+    overdriveDesc: 'Explode uma lanterna gigante: 3 casas à frente viram brasa por 10 s e todo zumbi delas queima.',
+    color: '#fb923c',
+    habitat: 'terra',
+    evento: 'halloween'
+  },
+  {
+    id: 'flor_fantasma',
+    name: 'Flor-Fantasma',
+    emoji: '👻',
+    element: 'wind',
+    elementBadge: '👻',
+    cost: 100,
+    cooldown: 10,
+    maxHp: 260,
+    attackInterval: 5.5,
+    damage: 30,
+    description: 'Flor pálida que grita "BUU!" quando um zumbi chega perto: os zumbis a até 2 casas levam um susto e andam para trás por 2 s.',
+    overdriveDesc: 'Grito de arrepiar: todos os zumbis da linha andam para trás por 4 s e levam 90 de dano.',
+    color: '#e9d5ff',
+    habitat: 'terra',
+    evento: 'halloween'
   },
   {
     id: 'curupira',

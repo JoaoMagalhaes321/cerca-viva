@@ -41,7 +41,9 @@ export const ZUMBIS_DO_HERBARIO: ZumbiDoHerbario[] = [
   { id: 'siri', nome: 'Zumbi Siri', emoji: '🦀' },
   { id: 'gargantuar', nome: 'Colosso do Ferro-Velho', emoji: '👹' },
   { id: 'mapinguari', nome: 'Mapinguari', emoji: '👁️' },
-  { id: 'zomboss_mech', nome: 'Colheitadeira Z', emoji: '🚜' }
+  { id: 'zomboss_mech', nome: 'Colheitadeira Z', emoji: '🚜' },
+  { id: 'mumia', nome: 'Zumbi Múmia', emoji: '🧻' },
+  { id: 'cuca', nome: 'Cuca', emoji: '🐊' }
 ];
 
 export function herbarioVazio(): Herbario {
