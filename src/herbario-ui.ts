@@ -2,6 +2,8 @@
 
 import { Categoria, Herbario, itensDoHerbario, lerHerbario, progressoDoHerbario, registrar, registrarDerrota, salvarHerbario } from './herbario';
 import { ProgressionManager } from './progression';
+import { CONQUISTAS, FimDePartida, lerConquistas, salvarConquistas, verificarConquistas } from './conquistas';
+import { sound } from './audio';
 import './herbario.css';
 
 const SECOES: { id: Categoria; titulo: string }[] = [
@@ -14,10 +16,12 @@ const SECOES: { id: Categoria; titulo: string }[] = [
 
 export class HerbarioUi {
   private dados: Herbario;
+  private conquistas: string[];
   private modal: HTMLDivElement;
 
   constructor(private readonly toast: (msg: string) => void) {
     this.dados = lerHerbario();
+    this.conquistas = lerConquistas();
     this.modal = this.criarModal();
     document.getElementById('menu-herbario-btn')?.addEventListener('click', () => this.abrir());
     this.atualizarBotao();
@@ -37,6 +41,22 @@ export class HerbarioUi {
       if (item) this.toast(`📗 Novo no Herbário: ${item.emoji} ${item.nome}`);
     }
     this.atualizarBotao();
+    this.checarConquistas(null);
+  }
+
+  /** Confere as conquistas no fim de uma partida (ou numa descoberta) e avisa as novas. */
+  public checarConquistas(fim: FimDePartida | null): void {
+    const novas = verificarConquistas(this.conquistas, fim, {
+      herbario: this.dados,
+      combosDescobertos: ProgressionManager.getDiscoveredCombos(),
+      totalDoHerbario: progressoDoHerbario(this.dados, ProgressionManager.getDiscoveredCombos())
+    });
+    if (novas.length === 0) return;
+    for (const c of novas) this.conquistas.push(c.id);
+    salvarConquistas(this.conquistas);
+    sound.efeito('conquista');
+    novas.forEach((c, i) => window.setTimeout(() => this.toast(`🏆 Conquista: ${c.icone} ${c.nome} — ${c.descricao}`), i * 3400));
+    this.atualizarBotao();
   }
 
   public registrarExpedicao(concluida: boolean, nosVencidos: number): void {
@@ -49,7 +69,7 @@ export class HerbarioUi {
     const info = document.getElementById('menu-herbario-info');
     if (!info) return;
     const p = progressoDoHerbario(this.dados, ProgressionManager.getDiscoveredCombos());
-    info.textContent = `${p.feitos}/${p.total} descobertos`;
+    info.textContent = `${p.feitos}/${p.total} · 🏆 ${this.conquistas.length}/${CONQUISTAS.length}`;
   }
 
   private criarModal(): HTMLDivElement {
@@ -87,6 +107,22 @@ export class HerbarioUi {
           ? `🧭 Melhor expedição: ${this.dados.melhorExpedicao} nós vencidos`
           : '🧭 Nenhuma expedição ainda. O mapa espera por você.';
     corpo.appendChild(exp);
+
+    // Conquistas primeiro: é o que dá motivo de rejogar
+    const sec = document.createElement('section');
+    sec.className = 'herbario-secao';
+    sec.innerHTML = `<h3>🏆 Conquistas <span>${this.conquistas.length}/${CONQUISTAS.length}</span></h3><div class="herbario-grade conquistas"></div>`;
+    const gradeC = sec.querySelector('.herbario-grade')!;
+    for (const c of CONQUISTAS) {
+      const feita = this.conquistas.includes(c.id);
+      const chip = document.createElement('div');
+      chip.className = `herbario-item conquista ${feita ? 'descoberto' : 'falta'}`;
+      chip.title = c.descricao;
+      chip.innerHTML = `<span class="herbario-emoji">${feita ? c.icone : '🔒'}</span><strong>${c.nome}</strong><small>${c.descricao}</small>`;
+      gradeC.appendChild(chip);
+    }
+    corpo.appendChild(sec);
+
     for (const s of SECOES) {
       const itens = itensDoHerbario(this.dados, s.id, combos);
       const feitos = itens.filter((i) => i.descoberto).length;

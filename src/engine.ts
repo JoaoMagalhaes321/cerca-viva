@@ -219,6 +219,10 @@ export class GameEngine {
   public waveProgress = 0;
   public totalCombos = 0;
   public zombiesKilled = 0;
+  /** Contadores da partida usados pelas conquistas. */
+  /** Tipos de zumbi derrotados nesta partida. */
+  public tiposDerrotados: string[] = [];
+  public marcas = { cercasQuebradas: 0, plantasPerdidas: 0, plantasAfogadas: 0, combosNaOnda: 0, maxCombosNaOnda: 0, maxConfusos: 0, maxAdubadas: 0 };
   public gameSpeed = 1;
   public paused = false;
   public gameOver = false;
@@ -444,6 +448,8 @@ export class GameEngine {
     this.waveProgress = 0;
     this.totalCombos = 0;
     this.zombiesKilled = 0;
+    this.marcas = { cercasQuebradas: 0, plantasPerdidas: 0, plantasAfogadas: 0, combosNaOnda: 0, maxCombosNaOnda: 0, maxConfusos: 0, maxAdubadas: 0 };
+    this.tiposDerrotados = [];
     this.overdriveCharges = 2;
     this.gameOver = false;
     this.paused = false;
@@ -855,6 +861,7 @@ export class GameEngine {
         confundiu++;
       }
     }
+    this.marcas.maxConfusos = Math.max(this.marcas.maxConfusos, confundiu);
     if (confundiu === 0) this.onToast('👣 O Curupira passou, mas não tinha zumbi nessa linha à frente dele.');
   }
 
@@ -1140,6 +1147,7 @@ export class GameEngine {
     if (adubada) {
       tile.hazard = 'none';
       tile.hazardTimer = 0;
+      this.marcas.maxAdubadas = Math.max(this.marcas.maxAdubadas, this.plants.filter((p) => p.adubada).length + 1);
       this.registerCombo('cinzas_ferteis');
       this.spawnFloatingText('🌱 ADUBADA!', col + 0.5, row + 0.1, '#bef264', 1.2);
       this.spawnParticles(col + 0.5, row + 0.7, '#a3a3a3', 10);
@@ -1308,6 +1316,8 @@ export class GameEngine {
           if (p.hp <= 0) {
             this.spawnParticles(p.col + 0.5, p.row + 0.5, '#7dd3fc', 10);
             this.plants.splice(i, 1);
+            this.marcas.plantasPerdidas++;
+            this.marcas.plantasAfogadas++;
             continue;
           }
         }
@@ -1320,6 +1330,7 @@ export class GameEngine {
         if (p.hp <= 0) {
           this.spawnParticles(p.col + 0.5, p.row + 0.5, '#78716c', 10);
           this.plants.splice(i, 1);
+          this.marcas.plantasPerdidas++;
           continue;
         }
       }
@@ -1574,6 +1585,7 @@ export class GameEngine {
             if (aheadPlant.hp <= 0) {
               const pIdx = this.plants.indexOf(aheadPlant);
               if (pIdx !== -1) this.plants.splice(pIdx, 1);
+              this.marcas.plantasPerdidas++;
             }
           }
         }
@@ -1605,6 +1617,7 @@ export class GameEngine {
           if (targetPlant.hp <= 0) {
             const pIdx = this.plants.indexOf(targetPlant);
             if (pIdx !== -1) this.plants.splice(pIdx, 1);
+            this.marcas.plantasPerdidas++;
           }
         } else {
           z.x -= z.speed * chillMult * mudSpeedMult * riverMult * freioDasRaizes(cerca, z.x) * dt;
@@ -1697,6 +1710,7 @@ export class GameEngine {
 
   /** A cerca caiu: galhos voam, a tela treme e o jogador é avisado de que a linha está aberta. */
   private quebrarCerca(c: CercaViva): void {
+    this.marcas.cercasQuebradas++;
     sound.efeito('cerca_quebra');
     this.sacudir(5, 0.3, 'medio');
     this.spawnParticles(-0.3, c.row + 0.55, '#4ade80', 18);
@@ -2192,6 +2206,7 @@ export class GameEngine {
     this.zombies.splice(index, 1);
     this.zombiesKilled++;
     this.onDescoberta?.('zumbis', z.variant);
+    if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
     sound.efeito('zumbi_cai', 0.12);
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
@@ -2240,6 +2255,7 @@ export class GameEngine {
       );
       if (newWave !== this.wave) {
         this.wave = newWave;
+        this.marcas.combosNaOnda = 0;
         this.onUiUpdate();
       }
 
@@ -2274,6 +2290,7 @@ export class GameEngine {
       );
       if (newWave !== this.wave) {
         this.wave = newWave;
+        this.marcas.combosNaOnda = 0;
         this.onUiUpdate();
       }
 
@@ -2477,7 +2494,10 @@ export class GameEngine {
         if (Math.abs(p.row - boss.row) <= 1 && Math.abs(p.col + 0.5 - boss.x) <= 1.6) {
           p.hp -= 110;
           p.scaleKick = 0.4;
-          if (p.hp <= 0) this.plants.splice(i, 1);
+          if (p.hp <= 0) {
+            this.plants.splice(i, 1);
+            this.marcas.plantasPerdidas++;
+          }
         }
       }
       this.spawnParticles(boss.x, boss.row + 0.8, '#78350f', 22);
@@ -2714,6 +2734,8 @@ export class GameEngine {
 
   private registerCombo(synergyId: string): void {
     this.totalCombos++;
+    this.marcas.combosNaOnda++;
+    this.marcas.maxCombosNaOnda = Math.max(this.marcas.maxCombosNaOnda, this.marcas.combosNaOnda);
     this.onCombo?.(synergyId);
   }
 

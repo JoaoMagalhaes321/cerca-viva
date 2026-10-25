@@ -196,6 +196,7 @@ export function sortearTipo(onda: number, mods: Modificador[], rand: () => numbe
 export interface MotorDasOndas {
   zombies: { variant: string; hp: number; maxHp: number; speed: number }[];
   gameOver: boolean;
+  marcas?: { combosNaOnda: number };
   wave: number;
   maxWaves: number;
   waveProgress: number;
@@ -287,6 +288,7 @@ export class DiretorOndas {
     this.restantes = this.plano.quantidade;
     this.timer = 1.2;
     this.motor.wave = this.onda;
+    if (this.motor.marcas) this.motor.marcas.combosNaOnda = 0;
     this.motor.waveProgress = 0;
     if (chefe) {
       const antes = this.motor.zombies.length;
