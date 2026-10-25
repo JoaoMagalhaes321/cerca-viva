@@ -24,6 +24,7 @@ import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
+import { JardimZen } from './zen-ui';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -662,6 +663,12 @@ function iniciarFase(level: LevelConfig): void {
   aplicarRegrasDaFase(engine, level);
   // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns
   engine.chanceElite = level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
+  // Jardim Zen: regou ontem ou hoje, começa com mais sol
+  const bonusZen = jardimZen.bonusDeHoje();
+  if (bonusZen > 0) {
+    engine.sun += bonusZen;
+    window.setTimeout(() => showToast(`🪴 Jardim Zen: +${bonusZen}☀️ de sol inicial por ter regado as plantas.`), 1200);
+  }
   buildSeedPackets();
   syncHud();
   updateMenuStageInfo();
@@ -1074,6 +1081,9 @@ const modos = new Modos({
   toast: (msg) => showToast(msg),
   conquistas: (fim) => herbario.checarConquistas(fim)
 });
+
+// Jardim Zen (rega diária com bônus de sol)
+const jardimZen = new JardimZen(plantaDeRetrato, (msg) => showToast(msg));
 
 // Tela de preparação antes de cada fase
 const preparacao = new Preparacao({

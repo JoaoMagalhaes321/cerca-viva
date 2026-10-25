@@ -1,0 +1,41 @@
+/* Jardim Zen: prateleira de vasinhos */
+.zen-card { max-width: 720px; }
+.zen-texto { margin: 4px 0 10px; font-size: 0.82rem; color: #e2e8f0; line-height: 1.4; }
+.zen-prateleira {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: 8px;
+  padding: 10px 8px 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(120, 72, 32, 0.35), rgba(80, 48, 20, 0.5));
+  border: 2px solid rgba(180, 120, 60, 0.4);
+  max-height: 52vh;
+  overflow-y: auto;
+}
+.zen-vaso {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 4px 8px;
+  border-radius: 12px 12px 8px 8px;
+  border: 2px solid rgba(217, 119, 6, 0.6);
+  background: linear-gradient(180deg, #1e293b 55%, #b45309 55%);
+  color: #f8fafc;
+  font: inherit;
+  cursor: pointer;
+  transition: transform 0.12s;
+}
+.zen-vaso:hover { transform: translateY(-3px); }
+.zen-vaso strong { font-size: 0.6rem; line-height: 1.1; text-shadow: 0 1px 0 rgba(0, 0, 0, 0.5); }
+.zen-vaso.regada { border-color: #38bdf8; }
+.zen-gota { position: absolute; top: 4px; right: 6px; font-size: 0.8rem; }
+.zen-vaso.regando canvas { animation: zen-balanca 0.35s ease-out; }
+@keyframes zen-balanca { 30% { transform: rotate(-6deg) scale(1.08); } 70% { transform: rotate(5deg) scale(1.04); } }
+.zen-rodape { margin: 8px 0 0; font-size: 0.72rem; color: #fde68a; font-weight: 700; }
+@media (max-height: 480px) {
+  .zen-prateleira { max-height: 40vh; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: 5px; }
+  .zen-vaso canvas { width: 48px; height: 44px; }
+  .zen-texto { font-size: 0.72rem; margin-bottom: 6px; }
+}
