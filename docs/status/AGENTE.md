@@ -3,11 +3,11 @@
 Este arquivo vale para a tarefa agendada que roda na nuvem e trabalha nos cards de
 `docs/status/board.js`. Ele mora na branch `claude/quadro`, junto do quadro. O projeto é do João.
 
-- Repositório: `JoaoMagalhaes321/pvz-evolution`
+- Repositório: `JoaoMagalhaes321/cerca-viva` (ex-`pvz-evolution`; o GitHub redireciona o nome antigo)
 - Quadro publicado: https://claude.ai/artifact/Xc5hPRYLL4mxTpdtanKHUC
 - Registro de decisões: `docs/status/decisoes.md`
 - Relatórios das rodadas: `docs/status/relatorios/`
-- Central de Agentes: https://claude.ai/artifact/98M4nS3QipRddUH4xe2kRR (documento `projetos/JoaoMagalhaes321~pvz-evolution`)
+- Central de Agentes: https://claude.ai/artifact/98M4nS3QipRddUH4xe2kRR (documento `projetos/JoaoMagalhaes321~pvz-evolution`, que continua com o nome antigo: D-20261025-6)
 - Para manter o quadro, use a skill status-board (Atualizar, Validar, Publicar). Este arquivo vence a skill
   quando os dois falam da mesma coisa.
 

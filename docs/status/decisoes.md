@@ -3,6 +3,36 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261025-6 · Depois do renomear: Central continua no documento antigo; quadro aponta para o repositório novo
+- Card: renomear / endereco-antigo · Branch: claude/quadro · Data: 2026-10-25
+- Regra de negócio? não
+- Muda decisão anterior? não (segue o seu PR #39)
+- Escolha: `repoUrl` do quadro e o nome do repositório no AGENTE.md passam a `JoaoMagalhaes321/cerca-viva`
+  (o GitHub redireciona o nome antigo, o clone e o push funcionaram). Na Central, o documento continua
+  `projetos/JoaoMagalhaes321~pvz-evolution`, porque é o que a tarefa agendada manda e é o único que existe lá;
+  criar um segundo deixaria o projeto duplicado. O AGENTE.md da main (do PR #39) já fala em `~cerca-viva`;
+  vale o da branch claude/quadro.
+- Outras opções:
+  - A) Criar `~cerca-viva` na Central e parar de atualizar o antigo — nome certo / duplica o card até alguém
+    apagar o antigo, e a tarefa agendada continuaria escrevendo no antigo.
+  - B) Deixar tudo com o nome antigo — zero mudança / links novos do quadro ficariam dependendo do redirecionamento.
+- Como trocar depois: mudar o doc_id no texto da tarefa agendada e na linha "Central" do AGENTE.md.
+- Fácil de reverter? sim
+
+### D-20261025-5 · Branches do agente atualizadas com a main mesmo com o freio ligado
+- Card: sw-versao, progresso-robusto, botoes-debug · Data: 2026-10-25
+- Regra de negócio? não
+- Muda decisão anterior? não
+- Escolha: com 3 cards esperando merge, o freio impede card novo, mas o agente trouxe a main (PRs #21 a #39)
+  para as 3 branches, para elas continuarem mergeáveis. Conflitos: em `public/sw.js` ficou o service worker
+  versionado da branch (que já usava o prefixo cerca-viva); em `src/main.ts` e `src/style.css` ficaram os dois
+  lados (só acréscimos). Build e testes passam nas três (107, 119 e 106 testes).
+- Outras opções:
+  - A) Não mexer até o seu merge — nada muda nas branches / você teria 3 conflitos para resolver no merge.
+  - B) Refazer as branches a partir da main (rebase) — histórico limpo / reescreve o que já estava publicado.
+- Como trocar depois: nada a trocar; se preferir resolver conflitos você mesmo, avise e o agente para de trazer a main.
+- Fácil de reverter? sim (é um commit de merge em cada branch)
+
 ### D-20261025-4 · Botões de teste só no modo dev (npm run dev ou ?dev=1 no endereço)
 - Card: botoes-debug · Branch: claude/botoes-debug · Data: 2026-10-25
 - Regra de negócio? **sim** (regra do jogo: o jogador comum não pode invocar o chefe nem trocar o clima)
