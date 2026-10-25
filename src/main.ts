@@ -20,6 +20,8 @@ import { ProgressionManager } from './progression';
 import { LEVEL_CATALOG, biomaDoMundo, getNextLevel } from './levels';
 import { Tutorial } from './tutorial';
 import { BalaoFlorescer } from './florescer-ui';
+import { HerbarioUi } from './herbario-ui';
+import { ExpedicaoUi } from './expedicao-ui';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -128,6 +130,9 @@ function plantaDeRetrato(def: PlantDefinition): PlantEntity {
   };
 }
 
+// O Herbário precisa existir antes do motor: o motor já registra o bioma ao montar o tabuleiro
+const herbario = new HerbarioUi((msg) => showToast(msg));
+
 let engine!: GameEngine;
 
 engine = new GameEngine(canvas, {
@@ -137,6 +142,7 @@ engine = new GameEngine(canvas, {
   },
   onMutationPrompt: (choices) => openMutationModal(choices),
   onBloomPrompt: (plant) => balaoFlorescer.abrir(plant),
+  onDescoberta: (categoria, id) => herbario.registrar(categoria, id),
   onGameEnd: (won) => openGameOverModal(won),
   onToast: (msg) => showToast(msg)
 });
@@ -211,6 +217,8 @@ function syncHud(): void {
     engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
   if (modos.ativo()) {
     stageBadgeEl.textContent = modos.rotulo();
+  } else if (expedicao.ativo()) {
+    stageBadgeEl.textContent = expedicao.rotulo();
   } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
@@ -607,6 +615,7 @@ function updateMenuStageInfo(): void {
 
 function startLevel(level: LevelConfig): void {
   modos.sair();
+  expedicao.sair();
   currentLevel = level;
   ProgressionManager.setCurrentLevel(level.id);
 
@@ -767,6 +776,10 @@ function openGameOverModal(won: boolean): void {
     modos.mostrarResultado(won);
     return;
   }
+  if (expedicao.ativo()) {
+    expedicao.mostrarResultado(won);
+    return;
+  }
   if (won && currentLevel) {
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
@@ -841,7 +854,10 @@ closeDeckBtn.addEventListener('click', () => {
 startBattleBtn.addEventListener('click', () => {
   deckModal.classList.add('hidden');
   if (modos.ativo()) modos.reiniciar();
-  else startLevel(currentLevel);
+  else if (expedicao.ativo()) {
+    showMainMenu();
+    expedicao.abrir();
+  } else startLevel(currentLevel);
 });
 
 openAlmanacFromDeckBtn.addEventListener('click', () => {
@@ -941,7 +957,10 @@ pauseBtn.addEventListener('click', () => {
 restartBtn.addEventListener('click', () => {
   gameOverModal.classList.add('hidden');
   if (modos.ativo()) modos.reiniciar();
-  else startLevel(currentLevel);
+  else if (expedicao.ativo()) {
+    showMainMenu();
+    expedicao.abrir();
+  } else startLevel(currentLevel);
 });
 
 // Main Menu Controls
@@ -991,6 +1010,7 @@ menuSoundBtn.addEventListener('click', () => {
 
 menuHomeBtn.addEventListener('click', () => {
   modos.sair();
+  expedicao.sair();
   showMainMenu();
 });
 
@@ -1003,11 +1023,31 @@ const modos = new Modos({
     return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
   },
   prepararPartida: () => {
+    expedicao.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
   },
   toast: (msg) => showToast(msg)
+});
+
+// Modo Expedição (corrida com mapa de caminhos)
+const expedicao = new ExpedicaoUi({
+  engine,
+  deck: () => {
+    const unlocked = ProgressionManager.getProgress().unlockedPlants;
+    const deck = draftDeckIds.filter((id) => unlocked.includes(id));
+    return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+  },
+  prepararPartida: () => {
+    modos.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  mostrarMenu: () => showMainMenu(),
+  toast: (msg) => showToast(msg),
+  registrarNoHerbario: (concluida, nos) => herbario.registrarExpedicao(concluida, nos)
 });
 
 // Start on Main Menu with Progression Info

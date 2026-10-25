@@ -310,6 +310,7 @@ export class GameEngine {
   private onToast: (msg: string) => void;
   private onCombo?: (synergyId: string) => void;
   private onBloomPrompt?: (plant: PlantEntity) => void;
+  private onDescoberta?: (categoria: 'plantas' | 'caminhos' | 'zumbis' | 'biomas', id: string) => void;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -322,6 +323,8 @@ export class GameEngine {
       onCombo?: (synergyId: string) => void;
       /** Chamado quando o jogador toca numa planta pronta para florescer. */
       onBloomPrompt?: (plant: PlantEntity) => void;
+      /** Para o Herbário: planta usada, caminho escolhido, zumbi derrotado, bioma visitado. */
+      onDescoberta?: (categoria: 'plantas' | 'caminhos' | 'zumbis' | 'biomas', id: string) => void;
     }
   ) {
     this.canvas = canvas;
@@ -336,6 +339,7 @@ export class GameEngine {
     this.onToast = callbacks.onToast;
     this.onCombo = callbacks.onCombo;
     this.onBloomPrompt = callbacks.onBloomPrompt;
+    this.onDescoberta = callbacks.onDescoberta;
 
     this.initBoard();
     this.setupInputs();
@@ -510,6 +514,7 @@ export class GameEngine {
     this.avisouFlorescer = false;
     this.holdWaves = false;
     this.boardCacheDirty = true;
+    this.onDescoberta?.('biomas', this.currentBiome.id);
     this.onUiUpdate();
   }
 
@@ -864,6 +869,7 @@ export class GameEngine {
     p.caminho = c.id;
     p.caminhoTimer = 0;
     p.scaleKick = 0.45;
+    this.onDescoberta?.('caminhos', c.id);
     if (c.id === 'rocha') {
       p.maxHp = Math.round(p.maxHp * 1.6);
       p.hp = p.maxHp;
@@ -1115,6 +1121,7 @@ export class GameEngine {
       return;
     }
 
+    this.onDescoberta?.('plantas', def.id);
     if (def.instantanea) {
       // Carta de efeito imediato: não ocupa a casa
       this.sun -= def.cost;
@@ -2168,6 +2175,7 @@ export class GameEngine {
   private handleZombieDeath(z: ZombieEntity, index: number): void {
     this.zombies.splice(index, 1);
     this.zombiesKilled++;
+    this.onDescoberta?.('zumbis', z.variant);
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
     // A cabeça do zumbi cai quando ele é derrotado
