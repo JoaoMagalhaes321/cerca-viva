@@ -147,8 +147,20 @@ class SoundManager {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(pico, t + ataque);
     g.gain.exponentialRampToValueAtTime(0.0001, fim);
-    g.connect(this.musica!);
+    g.connect(this.destinoEnvelope ?? this.musica ?? ctx.destination);
     return g;
+  }
+
+  /** Saída dos efeitos: separada da música, para tocar mesmo com a trilha desligada ou parada. */
+  private destinoEnvelope: AudioNode | null = null;
+  private saidaEfeitos: GainNode | null = null;
+  private efeitosSaida(ctx: AudioContext): GainNode {
+    if (!this.saidaEfeitos) {
+      this.saidaEfeitos = ctx.createGain();
+      this.saidaEfeitos.gain.value = 0.9;
+      this.saidaEfeitos.connect(ctx.destination);
+    }
+    return this.saidaEfeitos;
   }
 
   private instrumento(ctx: AudioContext, inst: Instrumento, freq: number, t: number, dur: number, vol: number): void {
@@ -419,6 +431,15 @@ class SoundManager {
     const ultimo = this.ultimoEfeito.get(nome) ?? -9;
     if (t - ultimo < minIntervalo) return;
     this.ultimoEfeito.set(nome, t);
+    this.destinoEnvelope = this.efeitosSaida(ctx);
+    try {
+      this.tocarEfeito(ctx, nome, t);
+    } finally {
+      this.destinoEnvelope = null;
+    }
+  }
+
+  private tocarEfeito(ctx: AudioContext, nome: Efeito, t: number): void {
     const g = (vol: number, ataque: number, fim: number) => this.envelope(ctx, t, ataque, vol, t + fim);
 
     switch (nome) {
