@@ -1358,3 +1358,8 @@ html, body {
   border-radius: 12px;
   z-index: 5;
 }
+
+/* Botões de teste (💀 Chefe e 🌦️ Clima): escondidos fora do modo dev (src/modo-dev.ts). */
+.so-dev[hidden] {
+  display: none !important;
+}
