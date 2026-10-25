@@ -102,6 +102,25 @@ p { margin: 0; }
 }
 .tela img { display: block; width: 100%; height: auto; }
 
+/* ---------- Evento sazonal (Noite da Cuca): só aparece de 1/out a 2/nov, mesma regra de src/halloween.ts ---------- */
+.evento { background: linear-gradient(180deg, #2a1640 0%, #3b1d52 100%); border-bottom: 4px solid var(--tinta); color: #fff6e0; padding-block: 18px; }
+.evento .miolo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px 22px; align-items: center; }
+.evento-figuras { display: flex; align-items: flex-end; }
+.evento-figuras img { width: 64px; height: 72px; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.35)); }
+.evento-figuras img + img { margin-left: -14px; }
+.evento-selo { display: inline-block; font-weight: 900; font-size: 12.5px; letter-spacing: 2px; text-transform: uppercase; background: #fb923c; color: var(--tinta); border: 2.5px solid var(--tinta); border-radius: 999px; padding: 3px 12px; animation: evento-pisca 1.6s ease-in-out infinite; }
+.evento h2 { font-size: clamp(26px, 4.2vw, 36px); color: #fdba74; -webkit-text-stroke: 1.5px var(--tinta); paint-order: stroke fill; text-shadow: 0 3px 0 var(--tinta); margin-top: 6px; }
+.evento p { font-weight: 700; font-size: 15.5px; color: #f5e7ff; max-width: 60ch; margin-top: 4px; }
+.evento .contagem { color: #fde68a; }
+.evento .botao { background: #fb923c; color: var(--tinta); -webkit-text-stroke: 0; font-size: 21px; padding: 12px 22px; }
+@keyframes evento-pisca { 0%, 100% { box-shadow: 0 0 0 0 rgba(251,146,60,0.0); } 50% { box-shadow: 0 0 14px 2px rgba(251,146,60,0.75); } }
+@media (prefers-reduced-motion: reduce) { .evento-selo { animation: none; } }
+@media (max-width: 720px) {
+  .evento .miolo { grid-template-columns: minmax(0, 1fr); text-align: left; }
+  .evento-figuras img { width: 52px; height: 58px; }
+  .evento .botao { justify-self: start; }
+}
+
 /* ---------- Gramado: como se joga ---------- */
 .gramado { background: var(--folha); padding-block: 8px 72px; color: var(--tinta); }
 .gramado .cabeca { display: flex; flex-direction: column; gap: 6px; margin-bottom: 26px; }
@@ -180,6 +199,32 @@ p { margin: 0; }
 
 </head>
 <body>
+<aside class="evento" id="evento-halloween" aria-label="Evento de Halloween" hidden>
+  <div class="miolo">
+    <div class="evento-figuras" aria-hidden="true">
+      <img src="../sprites/dia/abobora_brasa.svg" alt="" width="64" height="72">
+      <img src="../sprites/dia/flor_fantasma.svg" alt="" width="64" height="72">
+    </div>
+    <div>
+      <span class="evento-selo">🎃 Evento disponível agora</span>
+      <h2>Noite da Cuca: o Halloween chegou ao quintal!</h2>
+      <p>Fase especial com múmias, zumbis fantasiados e a Cuca no fim. Jogue com a Abóbora-Brasa e a Flor-Fantasma, plantas que só existem no evento. <span class="contagem" id="evento-contagem">Só até 2 de novembro.</span> No jogo, toque em <b>🎃 Noite da Cuca</b> no menu.</p>
+    </div>
+    <a class="botao" href="../">🎃 Jogar o evento</a>
+  </div>
+</aside>
+<script>
+  // Mesmo período de src/halloween.ts: 1 de outubro a 2 de novembro, todo ano.
+  (function () {
+    var hoje = new Date(), mes = hoje.getMonth(), dia = hoje.getDate();
+    if (!(mes === 9 || (mes === 10 && dia <= 2))) return;
+    document.getElementById('evento-halloween').hidden = false;
+    var fim = new Date(hoje.getFullYear(), 10, 2, 23, 59, 59);
+    var dias = Math.max(0, Math.floor((fim - hoje) / 86400000));
+    document.getElementById('evento-contagem').textContent =
+      dias === 0 ? 'Último dia: só até hoje!' : 'Só até 2 de novembro: falta' + (dias === 1 ? ' 1 dia!' : 'm ' + dias + ' dias!');
+  })();
+</script>
 <header class="ceu">
   <div class="miolo">
     <div class="chamada">
