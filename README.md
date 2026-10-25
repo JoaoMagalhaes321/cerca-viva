@@ -41,6 +41,17 @@ npm run dev        # abre em http://localhost:5180 (também acessível pela rede
 | `npm run mobile:apk` | Gera o APK de debug no Windows (`gerar-apk.ps1`, precisa do Android SDK) |
 | `npm run mobile:patch` | Gera um patch `.zip` do site em `patches/` (`gerar-patch.ps1`) |
 
+### Botões de teste (modo dev)
+
+Os botões **💀 Chefe** (invoca a Colheitadeira Z na hora) e **🌦️** (troca o clima) só aparecem no
+modo dev, porque quebram a progressão de quem está jogando:
+
+- no `npm run dev`, sempre;
+- no jogo publicado (site ou app), abrindo o endereço com `?dev=1` no fim (ex.: `.../index.html?dev=1`).
+
+A regra fica em `src/modo-dev.ts`; para mostrar outro elemento só no modo dev, dê a ele a classe
+`so-dev` e o atributo `hidden` no `index.html`.
+
 ## Conferência automática (CI)
 
 O workflow `.github/workflows/ci.yml` roda `npm ci`, `npm run build` e `npm test` em todo push de

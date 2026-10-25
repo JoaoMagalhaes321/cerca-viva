@@ -1359,6 +1359,11 @@ html, body {
   z-index: 5;
 }
 
+/* Botões de teste (💀 Chefe e 🌦️ Clima): escondidos fora do modo dev (src/modo-dev.ts). */
+.so-dev[hidden] {
+  display: none !important;
+}
+
 .almanac-nota { grid-column: 1 / -1; margin: 0 0 8px; padding: 8px 10px; border-radius: 10px; background: rgba(239, 68, 68, 0.12); border: 1.5px solid rgba(239, 68, 68, 0.4); color: #fecaca; font-size: 0.74rem; line-height: 1.35; }
 
 /* Replay do melhor momento na tela de resultado */

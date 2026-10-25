@@ -19,6 +19,8 @@ import {
 import { ProgressionManager } from './progression';
 import { LEVEL_CATALOG, biomaDoMundo, getNextLevel } from './levels';
 import { Tutorial } from './tutorial';
+import { aplicarModoDev, modoDevDaPagina } from './modo-dev';
+
 import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
@@ -1020,7 +1022,12 @@ speedBtn.addEventListener('click', () => {
   speedBtn.textContent = `⏩ ${engine.gameSpeed}x`;
 });
 
+// Botões de teste (💀 Chefe e 🌦️ Clima): só no modo dev (npm run dev ou ?dev=1). Ver src/modo-dev.ts.
+const MODO_DEV = modoDevDaPagina();
+aplicarModoDev(MODO_DEV);
+
 bossBtn.addEventListener('click', () => {
+  if (!MODO_DEV) return;
   sound.startSoundtrack();
   engine.spawnZombossFinalBoss();
 });
@@ -1032,6 +1039,7 @@ musicBtn.addEventListener('click', () => {
 });
 
 weatherCycleBtn.addEventListener('click', () => {
+  if (!MODO_DEV) return;
   engine.cycleWeather();
 });
 
