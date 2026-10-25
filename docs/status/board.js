@@ -89,6 +89,27 @@ window.BOARD = {
       ]
     },
     {
+      "id": "mundo4-recompensas",
+      "fila": 1,
+      "title": "Recompensa do Mundo 4 (Mangue da Maré)",
+      "domain": "jogo",
+      "column": "design",
+      "env": "none",
+      "updated": "2026-10-25",
+      "summary": "Card criado pelo agente (25/10): na main ad4f490 as fases 4-1 a 4-5 (levels.ts, ids 21 a 25) não liberam planta, igual ao Mundo 2 antes do Musgo-Esponja. Seguir o mesmo modelo: uma planta que responda ao problema do mundo (maré e Zumbi Siri) liberada na 4-5, com o aviso de mundo concluído que já vem na branch claude/mundo2-recompensas. Começa depois do merge dela, para não duplicar fechaMundo.",
+      "pending": [
+        "Esperar o merge de claude/mundo2-recompensas",
+        "Decidir a planta (regra do jogo, registrar em decisoes.md)",
+        "Implementar e testar"
+      ],
+      "links": [
+        {
+          "label": "levels.ts",
+          "path": "src/levels.ts"
+        }
+      ]
+    },
+    {
       "id": "compartilhar-desafio",
       "title": "Desafio do Dia: botão Compartilhar",
       "domain": "jogo",
