@@ -12,12 +12,14 @@ import {
   pesosDaOnda,
   planoDaOnda,
   sequenciaDeDias,
-  sortearTipo
+  sortearTipo,
+  textoParaCompartilhar,
+  LINK_DO_JOGO
 } from '../src/modo-infinito';
 import { BIOME_CATALOG } from '../src/types';
 
 function motorFalso() {
-  const chamadas = { mutacoes: 0, fim: [] as boolean[], chefes: 0 };
+  const chamadas = { mutacoes: 0, fim: [] as boolean[], chefes: 0, mapinguaris: 0 };
   const motor: MotorDasOndas = {
     zombies: [],
     gameOver: false,
@@ -30,6 +32,10 @@ function motorFalso() {
     spawnZombossFinalBoss() {
       chamadas.chefes++;
       this.zombies.push({ variant: 'zomboss_mech', hp: 3600, maxHp: 3600, speed: 0.11 });
+    },
+    spawnMapinguari() {
+      chamadas.mapinguaris++;
+      this.zombies.push({ variant: 'mapinguari', hp: 3200, maxHp: 3200, speed: 0.13 });
     },
     offerMutation() {
       chamadas.mutacoes++;
@@ -150,8 +156,12 @@ describe('DiretorOndas', () => {
     for (let i = 0; i < 10; i++) jogarOnda(d, motor);
     expect(chamadas.fim).toEqual([]);
     expect(chamadas.chefes).toBe(1);
+    expect(chamadas.mapinguaris).toBe(0);
     expect(d.ondasVencidas).toBe(10);
     expect(motor.wave).toBe(11);
+    for (let i = 0; i < 10; i++) jogarOnda(d, motor);
+    expect(chamadas.mapinguaris).toBe(1);
+    expect(chamadas.chefes).toBe(1);
   });
 
   it('zumbis ganham vida pela onda e velocidade com a regra Corrida', () => {
@@ -162,6 +172,33 @@ describe('DiretorOndas', () => {
     const z = motor.zombies[0];
     expect(z.maxHp).toBe(Math.round(100 * planoDaOnda(2).vidaMult));
     expect(z.speed).toBeCloseTo(0.39);
+  });
+});
+
+describe('Texto para compartilhar o desafio', () => {
+  const desafio = { ...desafioDoDia('2026-10-25'), modificadores: ['corrida', 'colossos'] as ('corrida' | 'colossos')[] };
+
+  it('vitória: só quadrados verdes, data, regras, sequência e link', () => {
+    const t = textoParaCompartilhar({ desafio, ondasVencidas: 8, venceu: true, sequencia: 3, combos: 12 });
+    expect(t).toContain('Desafio do Dia 25/10');
+    expect(t).toContain('🟩🟩🟩🟩🟩🟩🟩🟩 8/8');
+    expect(t).not.toContain('🟥');
+    expect(t).toContain('💨 Corrida + 👹 Colossos');
+    expect(t).toContain('⚡ 12 combos');
+    expect(t).toContain('🔥 3 dias seguidos');
+    expect(t.trim().endsWith(LINK_DO_JOGO)).toBe(true);
+  });
+
+  it('derrota: verde até onde foi, vermelho na onda perdida, preto no resto', () => {
+    const t = textoParaCompartilhar({ desafio, ondasVencidas: 3, venceu: false, sequencia: 0, combos: 0 });
+    expect(t).toContain('🟩🟩🟩🟥⬛⬛⬛⬛ 3/8');
+    expect(t).not.toContain('combo');
+    expect(t).not.toContain('seguidos');
+  });
+
+  it('cabe numa mensagem curta de grupo', () => {
+    const t = textoParaCompartilhar({ desafio, ondasVencidas: 8, venceu: true, sequencia: 10, combos: 40 });
+    expect(t.split('\n').length).toBeLessThanOrEqual(6);
   });
 });
 

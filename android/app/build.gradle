@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "com.pvzevolution.game"
+    namespace "com.cercaviva.jogo"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "com.pvzevolution.game"
+        applicationId "com.cercaviva.jogo"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // No GitHub Actions o número da build vira a versão, para cada APK novo instalar por cima do anterior
