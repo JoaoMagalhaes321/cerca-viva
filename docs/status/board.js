@@ -55,32 +55,56 @@ window.BOARD = {
   },
   "cards": [
     {
-      "id": "evento-opcional",
-      "title": "Evento só quando escolhido e gráfico sem redução automática",
+      "id": "convite-evento",
+      "title": "Convite com a faixa do evento Noite da Cuca",
       "domain": "jogo",
       "column": "qas",
       "env": "branch",
       "updated": "2026-10-25",
-      "risk": "MEDIDO na main ad4f490: depois de jogar a Noite da Cuca, INICIAR JOGO volta para o evento (main.ts: menuPlayBtn usa currentLevel, que o evento troca); reduzir efeitos liga e grava sozinho com reduzir movimento do sistema (acessibilidade.ts carregar/aplicar); qualidade econômica mede quadros também no menu e na abertura (engine.ts medirDesempenho). Corrigido na branch claude/evento-opcional, vale até o merge. Que isso seja a causa do gráfico reduzido no seu celular: SUPOSIÇÃO, NÃO MEDIDO no aparelho.",
-      "summary": "Pedido seu (25/10). Na branch claude/evento-opcional: INICIAR JOGO sempre abre a Aventura e o evento fica só no botão Noite da Cuca (D-20261025-9, regra do jogo). Reduzir efeitos só liga por escolha do jogador; o valor gravado sozinho é ignorado (D-20261025-10, muda decisão sua de 25/10). Qualidade econômica só mede com a partida rodando e depois de 6 s lentos (D-20261025-11, muda decisão sua de 24/10). 132 testes passando; conferido no Chromium. Esperando seu merge.",
+      "summary": "Pedido seu (25/10). Na branch claude/convite-evento: o convite (/convite/) ganha no topo uma faixa roxa \"🎃 Evento disponível agora\" com a Abóbora-Brasa e a Flor-Fantasma, contagem de dias e botão \"Jogar o evento\". Aparece só de 1/out a 2/nov (mesma regra de src/halloween.ts) e some sozinha depois. Conferido no Chromium no computador e no celular, sem rolagem lateral. Esperando seu merge.",
       "delivered": [
-        "Correções + 4 testes (8003308 e 91f9d76, 25/10)",
-        "Conferido no Chromium: evento → Menu → INICIAR JOGO abre a Fase 1-1; com reduzir movimento os efeitos continuam (25/10)"
+        "Faixa do evento no convite (convite-evento, 25/10)"
       ],
       "pending": [
-        "Seu merge de claude/evento-opcional na main",
+        "Seu merge de claude/convite-evento na main"
+      ],
+      "links": [
+        {
+          "label": "convite",
+          "path": "public/convite/index.html",
+          "branch": "claude/convite-evento"
+        },
+        {
+          "label": "Captura (celular)",
+          "path": "docs/status/relatorios/img/2026-10-25-convite-evento.png",
+          "branch": "claude/quadro"
+        }
+      ]
+    },
+    {
+      "id": "evento-opcional",
+      "title": "Evento só quando escolhido e gráfico sem redução automática",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-25",
+      "summary": "Pedido seu (25/10). Na main: INICIAR JOGO sempre abre a Aventura e o evento fica só no botão Noite da Cuca (D-20261025-9, regra do jogo). Reduzir efeitos só liga por escolha do jogador; o valor gravado sozinho é ignorado (D-20261025-10, muda decisão sua de 25/10). Qualidade econômica só mede com a partida rodando e depois de 6 s lentos (D-20261025-11, muda decisão sua de 24/10). 132 testes passando; conferido no Chromium.",
+      "delivered": [
+        "Correções + 4 testes (8003308 e 91f9d76, 25/10)",
+        "Conferido no Chromium: evento → Menu → INICIAR JOGO abre a Fase 1-1; com reduzir movimento os efeitos continuam (25/10)",
+        "Mergeado na main por você (PR #44, 1405ee4, 25/10)"
+      ],
+      "pending": [
         "Conferir o gráfico no seu celular depois do merge (se continuar reduzido, mandar print)"
       ],
       "links": [
         {
           "label": "main.ts",
-          "path": "src/main.ts",
-          "branch": "claude/evento-opcional"
+          "path": "src/main.ts"
         },
         {
           "label": "acessibilidade.ts",
-          "path": "src/acessibilidade.ts",
-          "branch": "claude/evento-opcional"
+          "path": "src/acessibilidade.ts"
         },
         {
           "label": "Relatório",
@@ -93,24 +117,21 @@ window.BOARD = {
       "id": "mundo2-recompensas",
       "title": "Recompensas do Mundo 2: Musgo-Esponja",
       "domain": "jogo",
-      "column": "qas",
-      "env": "branch",
+      "column": "prod",
+      "env": "main",
       "updated": "2026-10-25",
-      "summary": "Na branch claude/mundo2-recompensas: vencer a 2-5 libera o Musgo-Esponja (água, 75 de sol, 1500 de vida). Quem morde fica Molhado e o Lança-Chamas apaga a tocha ao encostar nele; superpoder encharca a linha e cura; floração Encharcado ou Esponja Viva (D-20261025-7, regra do jogo). A última fase de cada mundo mostra \"Mundo N Concluído!\". Quem já passou da 2-5 recebe a planta sozinho (D-20261025-8). Sprites de dia e noite novos. 134 testes passando; conferido no Chromium (almanaque e progresso). Esperando seu merge.",
+      "summary": "Na main: vencer a 2-5 libera o Musgo-Esponja (água, 75 de sol, 1500 de vida). Quem morde fica Molhado e o Lança-Chamas apaga a tocha ao encostar nele; superpoder encharca a linha e cura; floração Encharcado ou Esponja Viva (D-20261025-7, regra do jogo). A última fase de cada mundo mostra \"Mundo N Concluído!\". Quem já passou da 2-5 recebe a planta sozinho (D-20261025-8). Sprites de dia e noite novos. 134 testes passando; conferido no Chromium (almanaque e progresso).",
       "pending": [
-        "Seu merge de claude/mundo2-recompensas na main",
         "Balanceamento NÃO MEDIDO jogando de verdade (só por comparação com o Cacto-Muralha)"
       ],
       "links": [
         {
           "label": "musgo.ts",
-          "path": "src/musgo.ts",
-          "branch": "claude/mundo2-recompensas"
+          "path": "src/musgo.ts"
         },
         {
           "label": "levels.ts",
-          "path": "src/levels.ts",
-          "branch": "claude/mundo2-recompensas"
+          "path": "src/levels.ts"
         },
         {
           "label": "Relatório",
@@ -120,7 +141,8 @@ window.BOARD = {
       ],
       "delivered": [
         "Musgo-Esponja + fechaMundo + sprites + README + 6 testes (59c9ec6, 25/10)",
-        "Conferido no Chromium com vite preview: jogo abre sem erro, planta no Almanaque, progresso antigo recebe a planta (25/10)"
+        "Conferido no Chromium com vite preview: jogo abre sem erro, planta no Almanaque, progresso antigo recebe a planta (25/10)",
+        "Mergeado na main por você (PR #45, 62889ac, 25/10)"
       ]
     },
     {
@@ -131,9 +153,8 @@ window.BOARD = {
       "column": "design",
       "env": "none",
       "updated": "2026-10-25",
-      "summary": "Card criado pelo agente (25/10): na main ad4f490 as fases 4-1 a 4-5 (levels.ts, ids 21 a 25) não liberam planta, igual ao Mundo 2 antes do Musgo-Esponja. Seguir o mesmo modelo: uma planta que responda ao problema do mundo (maré e Zumbi Siri) liberada na 4-5, com o aviso de mundo concluído que já vem na branch claude/mundo2-recompensas. Começa depois do merge dela, para não duplicar fechaMundo.",
+      "summary": "Card criado pelo agente (25/10): na main ad4f490 as fases 4-1 a 4-5 (levels.ts, ids 21 a 25) não liberam planta, igual ao Mundo 2 antes do Musgo-Esponja. Seguir o mesmo modelo: uma planta que responda ao problema do mundo (maré e Zumbi Siri) liberada na 4-5, com o aviso de mundo concluído que já vem na branch claude/mundo2-recompensas.",
       "pending": [
-        "Esperar o merge de claude/mundo2-recompensas",
         "Decidir a planta (regra do jogo, registrar em decisoes.md)",
         "Implementar e testar"
       ],
