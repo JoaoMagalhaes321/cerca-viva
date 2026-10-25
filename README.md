@@ -2,11 +2,12 @@
 
 Tower defense 2.5D de plantas contra zumbis, com elementos (natureza, água, elétrico, fogo…),
 sinergias entre plantas, mutações roguelite, clima dinâmico e trilha sonora original.
-O jogo se chamava "PvZ: Evolution"; o repositório e o endereço do site continuam com o nome antigo.
+O jogo se chamava "PvZ: Evolution" e o repositório, `pvz-evolution`; em outubro de 2026 tudo passou a se chamar `cerca-viva`
+(site, repositório e id do app Android `com.cercaviva.jogo`). Links antigos do GitHub redirecionam; o endereço antigo do site não.
 Roda no navegador e no Android (app Capacitor).
 
-- Jogar no navegador: https://joaomagalhaes321.github.io/pvz-evolution/
-- Convite para mandar aos amigos (com prévia de link): https://joaomagalhaes321.github.io/pvz-evolution/convite/
+- Jogar no navegador: https://joaomagalhaes321.github.io/cerca-viva/
+- Convite para mandar aos amigos (com prévia de link): https://joaomagalhaes321.github.io/cerca-viva/convite/
   — página estática em `public/convite/`.
 - Tecnologia: TypeScript + Vite (canvas 2D, Web Audio), Capacitor 6 para Android.
 
@@ -15,7 +16,7 @@ Roda no navegador e no Android (app Capacitor).
 - **Pelo navegador (Android e PC):** abra o link do jogo no Chrome e toque em **📲 Instalar** no menu
   (ou "Instalar app" no menu do Chrome). Ganha ícone na tela inicial, abre em tela cheia e funciona sem
   internet. No iPhone: Compartilhar → "Adicionar à Tela de Início".
-- **APK para Android:** https://github.com/JoaoMagalhaes321/pvz-evolution/releases/download/android/cerca-viva.apk
+- **APK para Android:** https://github.com/JoaoMagalhaes321/cerca-viva/releases/download/android/cerca-viva.apk
   — o deploy atualiza esse arquivo a cada push na `main`. Como não vem da Play Store, o Android pede para
   permitir instalar apps dessa origem. O APK é assinado com uma chave fixa e pública
   (`android/app/cerca-viva-debug.keystore`), para cada versão nova instalar por cima da anterior; para
@@ -50,7 +51,7 @@ branch e no pull request, para você saber antes do merge se o build e os testes
 
 1. Todo push na `main` dispara o workflow `.github/workflows/deploy.yml`, que:
    - faz o build e publica o site no **GitHub Pages**;
-   - gera o **APK de debug** e deixa como artefato `PvZ-Evolution-Android-APK` na execução do Actions.
+   - gera o **APK de debug** e deixa como artefato `Cerca-Viva-Android-APK` na execução do Actions.
 2. O app Android não carrega uma cópia local do jogo: o `capacitor.config.json` aponta `server.url`
    para o site do GitHub Pages. Por isso, depois de instalado uma vez, o app recebe toda versão nova
    publicada na `main`, sem reinstalar.

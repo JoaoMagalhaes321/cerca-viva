@@ -1,9 +1,9 @@
 {
-  "appId": "com.pvzevolution.game",
+  "appId": "com.cercaviva.jogo",
   "appName": "Cerca Viva",
   "webDir": "dist",
   "server": {
-    "url": "https://joaomagalhaes321.github.io/pvz-evolution/",
+    "url": "https://joaomagalhaes321.github.io/cerca-viva/",
     "cleartext": true,
     "androidScheme": "https"
   },

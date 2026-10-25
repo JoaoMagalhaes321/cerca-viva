@@ -1,4 +1,4 @@
-const CACHE_NAME = 'pvz-evolution-v1';
+const CACHE_NAME = 'cerca-viva-v1';
 const PRECACHE_ASSETS = [
   './',
   './index.html'
