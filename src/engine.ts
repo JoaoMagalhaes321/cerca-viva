@@ -190,6 +190,32 @@ export interface FloatingText {
   scale: number;
 }
 
+/** Balão de fala curto de um personagem (plantas, zumbis, chefes). */
+export interface Fala {
+  texto: string;
+  x: number;
+  y: number;
+  life: number;
+  maxLife: number;
+}
+
+/** Falas por situação; uma é sorteada a cada vez. */
+export const FALAS: Record<string, string[]> = {
+  floresceu: ['Agora sim!', 'Olha eu florida!', 'Cresci, viu?', 'Que tal?'],
+  primeira_planta: ['Bom dia, sol!', 'Mãos à obra!', 'Vamos lá!'],
+  cerca_floresce: ['Floresci!', 'Tenta passar agora!', 'Espinho neles!'],
+  cerca_quebra: ['Ai!', 'Replanta eu!', 'Fui…'],
+  curupira: ['Hehe, por aqui não!', 'Perdidos, é?', 'Volta pra mata!'],
+  confuso: ['Ué?', 'Cadê a casa?', 'Hã?!', 'Errei o lado!'],
+  siri: ['De ladinho!', 'Troquei de fila!', 'Cuidado, siri!'],
+  mapinguari: ['GRRR… meu quintal!', 'Quem mexeu na mata?'],
+  colheitadeira: ['Hora da colheita!', 'Vou passar o trator!'],
+  mina: ['BUM!', 'Pegadinha!'],
+  mare: ['Água subindo!', 'Segura o fôlego!'],
+  adubada: ['Que terra boa!', 'Hmm, cinza!'],
+  vitoria: ['Jardim salvo!', 'Até a próxima!']
+};
+
 export interface LightningArc {
   x1: number;
   y1: number;
@@ -276,6 +302,7 @@ export class GameEngine {
   public projectiles: ProjectileEntity[] = [];
   public suns: SunOrb[] = [];
   public floatingTexts: FloatingText[] = [];
+  public falas: Fala[] = [];
   public arcs: LightningArc[] = [];
   public particles: Particle[] = [];
   public debris: PhysicsDebris[] = [];
@@ -406,6 +433,7 @@ export class GameEngine {
         m.estado = 'subindo';
         m.timer = MARE.transicao;
         sound.efeito('mare_sobe');
+        for (const p of this.plants) if (this.isTideRow(p.row) && (p.def.habitat ?? 'terra') === 'terra') { this.falar('mare', p.col + 0.5, p.row, 1); break; }
         this.onToast('🌊 A maré está subindo! Plantas de terra nas linhas de mangue vão ficar submersas.');
       } else if (m.estado === 'subindo') {
         m.estado = 'alta';
@@ -519,6 +547,7 @@ export class GameEngine {
     this.projectiles = [];
     this.suns = [];
     this.floatingTexts = [];
+    this.falas = [];
     this.arcs = [];
     this.particles = [];
     this.debris = [];
@@ -867,6 +896,7 @@ export class GameEngine {
   private invocarCurupira(row: number, col: number): void {
     this.curupiras.push({ row, x: col + 0.2, vida: 2.4 });
     sound.efeito('curupira');
+    this.falar('curupira', col + 0.8, row);
     this.spawnParticles(col + 0.5, row + 0.6, '#ff4d1f', 14);
     this.spawnFloatingText('👣 PEGADAS AO CONTRÁRIO!', col + 1.2, row + 0.1, '#ffb020', 1.2);
     let confundiu = 0;
@@ -875,6 +905,7 @@ export class GameEngine {
         z.confusoTimer = 5;
         z.isEating = false;
         confundiu++;
+        if (confundiu === 1) this.falar('confuso', z.x, z.row);
       }
     }
     this.marcas.maxConfusos = Math.max(this.marcas.maxConfusos, confundiu);
@@ -896,6 +927,7 @@ export class GameEngine {
     p.scaleKick = 0.45;
     this.onDescoberta?.('caminhos', c.id);
     sound.efeito('floresceu');
+    this.falar('floresceu', p.col + 0.5, p.row);
     if (c.id === 'rocha') {
       p.maxHp = Math.round(p.maxHp * 1.6);
       p.hp = p.maxHp;
@@ -1148,6 +1180,7 @@ export class GameEngine {
     }
 
     this.onDescoberta?.('plantas', def.id);
+    if (this.plants.length === 0 && !def.instantanea) this.falar('primeira_planta', col + 0.5, row, 0.8);
     if (def.instantanea) {
       // Carta de efeito imediato: não ocupa a casa
       this.sun -= def.cost;
@@ -1166,6 +1199,7 @@ export class GameEngine {
       this.marcas.maxAdubadas = Math.max(this.marcas.maxAdubadas, this.plants.filter((p) => p.adubada).length + 1);
       this.registerCombo('cinzas_ferteis');
       this.spawnFloatingText('🌱 ADUBADA!', col + 0.5, row + 0.1, '#bef264', 1.2);
+      this.falar('adubada', col + 0.5, row, 0.6);
       this.spawnParticles(col + 0.5, row + 0.7, '#a3a3a3', 10);
     }
     const cdMultiplier = this.unlockedMutations.has('overclock_roots') ? 0.7 : 1.0;
@@ -1529,6 +1563,7 @@ export class GameEngine {
             this.spawnParticles(z.x, z.row + 0.7, '#e0603a', 8);
             sound.efeito('siri_lado', 0.3);
             z.row = nova;
+            this.falar('siri', z.x, z.row, 0.5);
             z.walkPhase += 2;
             this.spawnFloatingText('🦀 DE LADO!', z.x, z.row + 0.2, '#fb923c', 0.95);
           }
@@ -1654,6 +1689,7 @@ export class GameEngine {
       const evento = atualizarCerca(c, dt);
       if (evento === 'floresceu') {
         sound.efeito('cerca_floresce');
+        this.falar('cerca_floresce', 0.4, c.row + 0.2, 0.7);
         this.spawnParticles(-0.3, c.row + 0.5, '#fde047', 12);
         this.spawnFloatingText('🌼 FLORESCEU!', 0.5, c.row + 0.15, '#fde047', 1.1);
       } else if (evento === 'cresceu') {
@@ -1706,6 +1742,10 @@ export class GameEngine {
       ft.life -= dt;
       if (ft.life <= 0) this.floatingTexts.splice(i, 1);
     }
+    for (let i = this.falas.length - 1; i >= 0; i--) {
+      this.falas[i].life -= dt;
+      if (this.falas[i].life <= 0) this.falas.splice(i, 1);
+    }
 
     for (let i = this.arcs.length - 1; i >= 0; i--) {
       this.arcs[i].life -= dt;
@@ -1728,6 +1768,7 @@ export class GameEngine {
   private quebrarCerca(c: CercaViva): void {
     this.marcas.cercasQuebradas++;
     sound.efeito('cerca_quebra');
+    this.falar('cerca_quebra', 0.4, c.row + 0.2);
     this.sacudir(5, 0.3, 'medio');
     this.spawnParticles(-0.3, c.row + 0.55, '#4ade80', 18);
     this.spawnParticles(-0.3, c.row + 0.55, '#b9824a', 10);
@@ -2502,6 +2543,7 @@ export class GameEngine {
     this.lightningFlash = 0.4;
     this.onToast('👁️ O MAPINGUARI SAIU DA MATA! Fogo queima o pelo dele; mire no olho quando ele parar.');
     this.spawnFloatingText('👁️ MAPINGUARI!', 7.5, row + 0.3, '#f97316', 1.5);
+    this.falar('mapinguari', GRID_COLS - 0.4, row - 0.1);
     this.sacudir(9, 0.7, 'forte');
     this.zombies.push({
       id: this.nextEntityId++,
@@ -2583,6 +2625,7 @@ export class GameEngine {
     this.lightningFlash = 0.65;
     this.onToast('💀 ALERTA DE CHEFE FINAL: A COLHEITADEIRA Z ENTROU NO JARDIM!');
     this.spawnFloatingText('💀 COLHEITADEIRA Z!', 7.5, 1.5, '#ef4444', 1.5);
+    this.falar('colheitadeira', GRID_COLS - 0.4, 1.6);
     this.sacudir(10, 0.8, 'forte');
 
     this.zombies.push({
@@ -2789,6 +2832,16 @@ export class GameEngine {
     this.marcas.combosNaOnda++;
     this.marcas.maxCombosNaOnda = Math.max(this.marcas.maxCombosNaOnda, this.marcas.combosNaOnda);
     this.onCombo?.(synergyId);
+  }
+
+  /** Um personagem fala: balão curto perto dele (no máximo 3 na tela, sem repetir no mesmo lugar). */
+  public falar(situacao: keyof typeof FALAS, x: number, y: number, chance = 1): void {
+    if (Math.random() > chance) return;
+    const opcoes = FALAS[situacao];
+    if (!opcoes || this.falas.some((f) => Math.abs(f.x - x) < 0.6 && Math.abs(f.y - y) < 0.6)) return;
+    if (this.falas.length >= 3) this.falas.shift();
+    this.falas.push({ texto: opcoes[Math.floor(Math.random() * opcoes.length)], x, y, life: 1.9, maxLife: 1.9 });
+    sound.efeito('fala', 0.4);
   }
 
   private spawnFloatingText(
@@ -3338,6 +3391,39 @@ export class GameEngine {
       ctx.fillText(ft.text, fx, fy);
       ctx.restore();
     }
+
+    // 12b. Balões de fala (por cima dos textos)
+    for (const f of this.falas) {
+      const fx = this.boardLeft + f.x * this.cellW;
+      const fy = this.boardTop + f.y * this.cellH - this.cellH * 0.1;
+      const k = Math.min(1, (f.maxLife - f.life) / 0.15);
+      const sumindo = Math.min(1, f.life / 0.3);
+      ctx.save();
+      ctx.globalAlpha = sumindo;
+      ctx.translate(fx, fy);
+      ctx.scale(k, k);
+      ctx.font = "800 12px 'Nunito', 'Outfit', sans-serif";
+      const w = ctx.measureText(f.texto).width + 16;
+      const h = 22;
+      ctx.fillStyle = '#fff8e6';
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-w / 2, -h - 8, w, h, 8);
+      ctx.moveTo(-5, -8);
+      ctx.lineTo(0, 0);
+      ctx.lineTo(5, -8);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fff8e6';
+      ctx.fillRect(-5, -9, 10, 3);
+      ctx.fillStyle = '#2a2416';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(f.texto, 0, -h / 2 - 8);
+      ctx.restore();
+    }
+
 
     if (tremendo) ctx.restore();
 

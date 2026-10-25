@@ -823,6 +823,10 @@ function openGameOverModal(won: boolean): void {
     expedicao.mostrarResultado(won);
     return;
   }
+  if (won && engine.plants.length > 0) {
+    const p = engine.plants[Math.floor(Math.random() * engine.plants.length)];
+    engine.falar('vitoria', p.col + 0.5, p.row);
+  }
   herbario.checarConquistas({
     venceu: won,
     modo: 'aventura',
