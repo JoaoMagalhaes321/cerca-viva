@@ -441,6 +441,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     name: 'Fase 3-2: Canoas na Correnteza',
     initialSun: 275,
     availableLanes: 5,
+    unlockedPlantOnClear: 'curupira',
     spawns: createSpawns([
       { time: 8, type: 'canoeiro', lane: 1 },
       { time: 16, type: 'basic', lane: 2 },
@@ -518,7 +519,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
   },
 
   // NÍVEL 3-5: O Encontro das Águas
-  // Clímax do Mundo 3: Colossos nas margens, ondas de canoas e de tudo um pouco.
+  // Clímax do Mundo 3: canoas, Colossos e, no fim, o Mapinguari sai da mata.
   {
     id: 20,
     world: 3,
@@ -544,7 +545,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
       { time: 92, type: 'cyber_sprinter', lane: 0 },
       { time: 98, type: 'canoeiro', lane: 1 },
       { time: 100, type: 'canoeiro', lane: 3 },
-      { time: 106, type: 'gargantuar', lane: 2 },
+      { time: 104, type: 'mapinguari', lane: 2 },
       { time: 112, type: 'canoeiro', lane: 1 },
       { time: 114, type: 'canoeiro', lane: 3 }
     ])

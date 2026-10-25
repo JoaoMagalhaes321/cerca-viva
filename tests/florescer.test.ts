@@ -5,7 +5,7 @@ import { PLANT_CATALOG } from '../src/types';
 describe('Plantas que crescem', () => {
   it('toda planta do catálogo tem exatamente dois caminhos, com ids únicos', () => {
     const ids = new Set<string>();
-    for (const p of PLANT_CATALOG) {
+    for (const p of PLANT_CATALOG.filter((x) => !x.instantanea)) {
       const c = caminhosDe(p.id);
       expect(c, p.id).not.toBeNull();
       expect(c!.length).toBe(2);
@@ -15,7 +15,7 @@ describe('Plantas que crescem', () => {
         expect(k.descricao.length).toBeGreaterThan(10);
       }
     }
-    expect(Object.keys(CAMINHOS).length).toBe(PLANT_CATALOG.length);
+    expect(Object.keys(CAMINHOS).length).toBe(PLANT_CATALOG.filter((x) => !x.instantanea).length);
   });
 
   it('muda → adulta → pronta → florida', () => {

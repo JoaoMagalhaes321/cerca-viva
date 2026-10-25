@@ -1,7 +1,7 @@
 // Regras do Modo Infinito e do Desafio do Dia (sem interface; a interface fica em modos.ts).
 //
 // Infinito: ondas sem fim que ficam mais fortes; a cada 3 ondas vencidas, uma mutação;
-//           a cada 10 ondas, a Colheitadeira Z. Acaba quando os zumbis entram na casa.
+//           a cada 10 ondas, um chefe (Colheitadeira Z e Mapinguari se alternam). Acaba quando os zumbis entram na casa.
 // Desafio do Dia: mesma estrutura, 8 ondas, com 2 regras especiais e um bioma sorteados pela data.
 //           Todo mundo que jogar no mesmo dia recebe o mesmo desafio e a mesma sequência de zumbis.
 
@@ -200,6 +200,8 @@ export interface MotorDasOndas {
   waveProgress: number;
   spawnZombieByType(type: string, lane?: number): void;
   spawnZombossFinalBoss(): void;
+  /** O chefe do Igarapé; se existir, os chefes se alternam (onda 10 Colheitadeira, 20 Mapinguari…). */
+  spawnMapinguari?(): void;
   offerMutation(): void;
   finishGame(won: boolean): void;
   updateBossSkills(dt: number): void;
@@ -275,7 +277,9 @@ export class DiretorOndas {
     this.motor.waveProgress = 0;
     if (this.plano.chefe) {
       const antes = this.motor.zombies.length;
-      this.motor.spawnZombossFinalBoss();
+      const vez = Math.round(this.onda / CHEFE_A_CADA);
+      if (vez % 2 === 0 && this.motor.spawnMapinguari) this.motor.spawnMapinguari();
+      else this.motor.spawnZombossFinalBoss();
       this.reforcar(antes);
     }
     this.opcoes.aoComecarOnda?.(this.onda, this.plano);

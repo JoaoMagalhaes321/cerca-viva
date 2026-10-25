@@ -19,7 +19,7 @@ import {
 import { BIOME_CATALOG } from '../src/types';
 
 function motorFalso() {
-  const chamadas = { mutacoes: 0, fim: [] as boolean[], chefes: 0 };
+  const chamadas = { mutacoes: 0, fim: [] as boolean[], chefes: 0, mapinguaris: 0 };
   const motor: MotorDasOndas = {
     zombies: [],
     gameOver: false,
@@ -32,6 +32,10 @@ function motorFalso() {
     spawnZombossFinalBoss() {
       chamadas.chefes++;
       this.zombies.push({ variant: 'zomboss_mech', hp: 3600, maxHp: 3600, speed: 0.11 });
+    },
+    spawnMapinguari() {
+      chamadas.mapinguaris++;
+      this.zombies.push({ variant: 'mapinguari', hp: 3200, maxHp: 3200, speed: 0.13 });
     },
     offerMutation() {
       chamadas.mutacoes++;
@@ -152,8 +156,12 @@ describe('DiretorOndas', () => {
     for (let i = 0; i < 10; i++) jogarOnda(d, motor);
     expect(chamadas.fim).toEqual([]);
     expect(chamadas.chefes).toBe(1);
+    expect(chamadas.mapinguaris).toBe(0);
     expect(d.ondasVencidas).toBe(10);
     expect(motor.wave).toBe(11);
+    for (let i = 0; i < 10; i++) jogarOnda(d, motor);
+    expect(chamadas.mapinguaris).toBe(1);
+    expect(chamadas.chefes).toBe(1);
   });
 
   it('zumbis ganham vida pela onda e velocidade com a regra Corrida', () => {

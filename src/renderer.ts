@@ -578,8 +578,9 @@ export class CharacterRenderer {
     // Linha d'água: quem anda no rio fica com a água na canela; a canoa flutua; quem nada afunda até o peito
     const waterY = zy + cellH * 0.24 - (naAgua && !canoeiro ? cellH * 0.13 : 0);
     const afunda = nadando ? cellH * 0.3 : 0;
-    const isBoss = z.variant === 'gargantuar' || isZomboss;
-    const baseScale = (cellH / 92) * (isZomboss ? 1.55 : isBoss ? 1.32 : 0.96);
+    const mapinguari = z.variant === 'mapinguari';
+    const isBoss = z.variant === 'gargantuar' || isZomboss || mapinguari;
+    const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96);
     const walk = z.walkPhase;
     const armBob = z.isEating
       ? Math.sin(performance.now() * 0.025) * 9
@@ -607,7 +608,7 @@ export class CharacterRenderer {
           ? 0
           : Math.abs(Math.sin(walk)) * -4.5;
     ctx.translate(zx, zy + cellH * 0.24 + lift + afunda);
-    ctx.scale(baseScale, baseScale);
+    ctx.scale(baseScale * (z.confusoTimer > 0 ? -1 : 1), baseScale);
 
     const place = (img: SpriteImage): void => {
       ctx.drawImage(img, -spec.ox * k, -spec.feet * k, spec.w * k, spec.h * k);
@@ -711,12 +712,62 @@ export class CharacterRenderer {
       ctx.fill();
     }
 
+    if (z.confusoTimer > 0) {
+      // Interrogação balançando em cima da cabeça (desespelhada)
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.font = "800 16px 'Outfit', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffb020';
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 3;
+      const qy = top - 10 + Math.sin(performance.now() * 0.008) * 3;
+      ctx.strokeText('?', 0, qy);
+      ctx.fillText('?', 0, qy);
+      ctx.restore();
+    }
+
     ctx.restore();
 
     if (naAgua) {
       const raio = spec.halfW * baseScale * (canoeiro && !nadando ? 2.1 : 1.15);
       this.drawRipple(ctx, zx, waterY, raio, z.walkPhase);
     }
+  }
+
+  /** O Curupira correndo pela linha (aliado do folclore). */
+  public static drawCurupira(ctx: CanvasRenderingContext2D, x: number, y: number, cellH: number, isNight: boolean, t: number): void {
+    const img = getSprite('curupira', isNight);
+    if (!img) return;
+    const s = (cellH / 92) * 0.95;
+    const bob = Math.abs(Math.sin(t * 0.02)) * -6;
+    ctx.save();
+    ctx.translate(x, y + cellH * 0.18 + bob);
+    ctx.scale(s, s);
+    ctx.rotate(0.12);
+    const k = PLANT_SPRITE_SCALE;
+    ctx.drawImage(img, -80 * k, 6 - 172 * k, 160 * k, 180 * k);
+    ctx.restore();
+  }
+
+  /** Pegada ao contrário (aponta para trás, de onde o Curupira veio). */
+  public static drawPegada(ctx: CanvasRenderingContext2D, x: number, y: number, cellH: number, alpha: number): void {
+    const s = cellH / 90;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.fillStyle = '#5f3d22';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 4.2, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Dedos apontando para a esquerda (o pé está ao contrário)
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(-6, -4 + i * 4, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   /** Ondinha na linha d'água (zumbis no rio e plantas aquáticas). */
@@ -867,5 +918,6 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   gargantuar: { w: 230, h: 280, ox: 124, feet: 262, head: 42, k: 0.36, halfW: 34, pivot: [84, 112], sleeve: '#a7bf8a' },
   zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 12, k: 0.3, halfW: 52, sleeve: '#d9452b' },
   // Canoeiro: "feet" é a linha d'água do casco; o casco abaixo dela fica escondido pela água
-  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 30, k: 0.5, halfW: 30, pivot: [94, 120], sleeve: '#2c9c8f' }
+  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 30, k: 0.5, halfW: 30, pivot: [94, 120], sleeve: '#2c9c8f' },
+  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#7a4a2a' }
 };
