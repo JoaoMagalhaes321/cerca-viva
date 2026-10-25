@@ -26,6 +26,7 @@ import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
 import { mostrarAbertura } from './abertura';
+import { tocarReplay } from './replay';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -813,8 +814,25 @@ function renderLevelsGrid(): void {
   }
 }
 
+let pararReplay: (() => void) | null = null;
+/** Mostra (ou esconde) o replay do melhor momento na tela de resultado. */
+function mostrarReplay(): void {
+  pararReplay?.();
+  pararReplay = null;
+  const caixa = document.getElementById('result-replay')!;
+  const m = engine.gravador.melhor;
+  if (!m || m.fotos.length < 5) {
+    caixa.classList.add('hidden');
+    return;
+  }
+  document.getElementById('result-replay-motivo')!.textContent = m.motivo;
+  caixa.classList.remove('hidden');
+  pararReplay = tocarReplay(document.getElementById('result-replay-canvas') as HTMLCanvasElement, m);
+}
+
 function openGameOverModal(won: boolean): void {
   document.getElementById('compartilhar-desafio-btn')?.remove();
+  mostrarReplay();
   if (modos.ativo()) {
     modos.mostrarResultado(won);
     return;
