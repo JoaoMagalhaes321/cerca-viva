@@ -38,6 +38,8 @@ export interface PlantDefinition {
   color: string;
   /** Onde a planta pode ser plantada: terra (padrão), só na água do rio ou nos dois. */
   habitat?: 'terra' | 'agua' | 'ambos';
+  /** Carta de efeito imediato (o Curupira): age na hora e não fica no gramado. */
+  instantanea?: boolean;
 }
 
 export interface MutationDefinition {
@@ -67,6 +69,7 @@ export interface BiomeDefinition {
     | 'rubber_hazard'
     | 'pyro_scavenger'
     | 'canoeiro'
+    | 'mapinguari'
   )[];
   description: string;
   /** Linhas que são rio (Mundo 3): só plantas aquáticas crescem nelas. */
@@ -172,7 +175,7 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     defaultWeather: 'sunny',
     puddlesCount: 0,
     toxicCount: 0,
-    zombiePreviews: ['canoeiro', 'basic', 'cone', 'cyber_sprinter'],
+    zombiePreviews: ['canoeiro', 'mapinguari', 'cone', 'cyber_sprinter'],
     description: 'Dois braços de rio cortam o quintal. Na água só crescem plantas aquáticas, os zumbis do rio estão sempre molhados e os canoeiros descem a correnteza. Na chuva, os raios do Junco Tesla pulam para dentro do rio!',
     riverRows: [1, 3]
   }
@@ -402,6 +405,23 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     overdriveDesc: 'Tapete de Aguapé: enrola todos os zumbis da linha, que ficam parados por 4 s.',
     color: '#7dd3fc',
     habitat: 'agua'
+  },
+  {
+    id: 'curupira',
+    name: 'Curupira',
+    emoji: '👣',
+    element: 'nature',
+    elementBadge: '👣',
+    cost: 125,
+    cooldown: 30,
+    maxHp: 1,
+    attackInterval: 0,
+    damage: 0,
+    description: 'Aliado do folclore: corre pela linha deixando pegadas ao contrário. Os zumbis da linha andam para trás por 5 segundos.',
+    overdriveDesc: 'Não fica no gramado: age na hora em que é colocado.',
+    color: '#ff4d1f',
+    habitat: 'ambos',
+    instantanea: true
   }
 ];
 

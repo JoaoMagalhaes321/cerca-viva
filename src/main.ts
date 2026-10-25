@@ -504,6 +504,13 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         desc: 'Gigante com garra de sucata e muita vida. Combine reações elementais e Adubo Supremo!'
       },
       {
+        variant: 'mapinguari',
+        name: 'Mapinguari (Chefe do Igarapé)',
+        hp: 3200,
+        speedText: 'Pesado',
+        desc: '👁️ Do folclore amazônico: um olho só, boca na barriga e pelo grosso. Ruge (trava as plantas da linha), dá pisões que ferem as plantas perto e chama canoeiros pelo rio. 🔥 Fogo queima o pelo (+60% de dano) e, parado (❄️ congelado ou atordoado), o olho fica exposto (+40%).'
+      },
+      {
         variant: 'zomboss_mech',
         name: 'Colheitadeira Z (Chefe Final)',
         hp: 3600,
@@ -526,7 +533,7 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
       const c = card.querySelector('canvas') as HTMLCanvasElement;
       const zCtx = c.getContext('2d');
       const almanacScale =
-        zInfo.variant === 'zomboss_mech' ? 0.42 : zInfo.variant === 'gargantuar' ? 0.72 : 1;
+        zInfo.variant === 'zomboss_mech' ? 0.42 : zInfo.variant === 'gargantuar' || zInfo.variant === 'mapinguari' ? 0.68 : 1;
       if (zCtx) {
         CharacterRenderer.drawZombie(
           zCtx,
@@ -551,7 +558,8 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
             walkPhase: 0.5,
             isEating: false,
             lostHeadgear: false,
-            lostArm: false
+            lostArm: false,
+            confusoTimer: 0
           },
           34,
           60 - 64 * almanacScale * 0.24,

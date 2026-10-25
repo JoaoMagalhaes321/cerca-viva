@@ -72,7 +72,8 @@ export type ZombieVariant =
   | 'zomboss_mech'
   | 'rubber_hazard'
   | 'pyro_scavenger'
-  | 'canoeiro';
+  | 'canoeiro'
+  | 'mapinguari';
 
 export interface ZombieEntity {
   id: number;
@@ -101,6 +102,22 @@ export interface ZombieEntity {
   // Special tactical abilities
   flameTimer?: number;
   torchDoused?: boolean;
+  /** Pegadas do Curupira: enquanto dura, anda para trás, virado para o lado errado. */
+  confusoTimer: number;
+}
+
+/** O Curupira correndo pela linha (aliado de efeito rápido). */
+export interface Curupira {
+  row: number;
+  x: number;
+  vida: number;
+}
+
+/** Pegada ao contrário deixada pelo Curupira. */
+export interface Pegada {
+  row: number;
+  x: number;
+  life: number;
 }
 
 export interface PhysicsDebris {
@@ -236,6 +253,8 @@ export class GameEngine {
   public arcs: LightningArc[] = [];
   public particles: Particle[] = [];
   public debris: PhysicsDebris[] = [];
+  public curupiras: Curupira[] = [];
+  public pegadas: Pegada[] = [];
   /** A cerca viva de cada linha aberta (última defesa, no lugar do cortador de grama). */
   public cercas: CercaViva[] = [];
   /** Quando definido, substitui o diretor de ondas das fases (modo infinito e desafio do dia). */
@@ -416,6 +435,8 @@ export class GameEngine {
     this.arcs = [];
     this.particles = [];
     this.debris = [];
+    this.curupiras = [];
+    this.pegadas = [];
 
     this.cercas = [];
     for (const r of activeLanes) this.cercas.push(novaCerca(r));
@@ -750,6 +771,23 @@ export class GameEngine {
     this.onUiUpdate();
   }
 
+  /** O Curupira entra na linha: pegadas ao contrário e os zumbis dali andam para trás. */
+  private invocarCurupira(row: number, col: number): void {
+    this.curupiras.push({ row, x: col + 0.2, vida: 2.4 });
+    sound.playMutationUnlock();
+    this.spawnParticles(col + 0.5, row + 0.6, '#ff4d1f', 14);
+    this.spawnFloatingText('👣 PEGADAS AO CONTRÁRIO!', col + 1.2, row + 0.1, '#ffb020', 1.2);
+    let confundiu = 0;
+    for (const z of this.zombies) {
+      if (z.row === row && z.x >= col) {
+        z.confusoTimer = 5;
+        z.isEating = false;
+        confundiu++;
+      }
+    }
+    if (confundiu === 0) this.onToast('👣 O Curupira passou, mas não tinha zumbi nessa linha à frente dele.');
+  }
+
   /** Estágio de vida de uma planta (muda, adulta ou florida). */
   public estagioDe(p: PlantEntity): 'muda' | 'adulta' | 'florida' {
     return estagioDaPlanta(p.idade, p.caminho);
@@ -986,11 +1024,11 @@ export class GameEngine {
       return;
     }
 
-    const existing = this.plants.find((p) => p.row === row && p.col === col);
-    if (existing) return;
-
     const def = PLANT_CATALOG.find((p) => p.id === plantId);
     if (!def) return;
+
+    const existing = this.plants.find((p) => p.row === row && p.col === col);
+    if (existing && !def.instantanea) return;
 
     const habitat = def.habitat ?? 'terra';
     if (this.isRiverRow(row) && habitat === 'terra') {
@@ -1011,6 +1049,15 @@ export class GameEngine {
     }
 
     if ((this.seedCooldowns[def.id] || 0) > 0) {
+      return;
+    }
+
+    if (def.instantanea) {
+      // Carta de efeito imediato: não ocupa a casa
+      this.sun -= def.cost;
+      this.seedCooldowns[def.id] = def.cooldown;
+      if (def.id === 'curupira') this.invocarCurupira(row, col);
+      this.onUiUpdate();
       return;
     }
 
@@ -1296,10 +1343,25 @@ export class GameEngine {
       }
     }
 
+    // Curupira correndo e as pegadas que ele deixa
+    for (let i = this.curupiras.length - 1; i >= 0; i--) {
+      const c = this.curupiras[i];
+      const antes = c.x;
+      c.x += 4.2 * dt;
+      c.vida -= dt;
+      if (Math.floor(antes * 2) !== Math.floor(c.x * 2)) this.pegadas.push({ row: c.row, x: c.x, life: 6 });
+      if (c.vida <= 0 || c.x > GRID_COLS + 0.6) this.curupiras.splice(i, 1);
+    }
+    for (let i = this.pegadas.length - 1; i >= 0; i--) {
+      this.pegadas[i].life -= dt;
+      if (this.pegadas[i].life <= 0) this.pegadas.splice(i, 1);
+    }
+
     // Update Zombies
     for (let i = this.zombies.length - 1; i >= 0; i--) {
       const z = this.zombies[i];
       if (z.hitFlash > 0) z.hitFlash = Math.max(0, z.hitFlash - dt * 4);
+      if (z.confusoTimer > 0) z.confusoTimer = Math.max(0, z.confusoTimer - dt);
       if (z.wetTimer > 0) z.wetTimer = Math.max(0, z.wetTimer - dt);
       if (z.chilledTimer > 0) z.chilledTimer = Math.max(0, z.chilledTimer - dt);
       if (z.frozenTimer > 0) z.frozenTimer = Math.max(0, z.frozenTimer - dt);
@@ -1346,7 +1408,11 @@ export class GameEngine {
 
       // Movement & Biting Plants
       z.isEating = false;
-      if (z.frozenTimer <= 0 && z.stunTimer <= 0) {
+      if (z.confusoTimer > 0 && z.frozenTimer <= 0 && z.stunTimer <= 0) {
+        // Pegadas ao contrário: anda para trás, para o lado errado
+        z.x = Math.min(GRID_COLS + 0.4, z.x + z.speed * 0.9 * dt);
+        z.walkPhase += dt * 6;
+      } else if (z.frozenTimer <= 0 && z.stunTimer <= 0) {
         const chillMult = z.chilledTimer > 0 ? 0.5 : 1.0;
 
         // Swamp Mud hazard deceleration on zombies
@@ -1712,6 +1778,18 @@ export class GameEngine {
       }
     }
 
+    // MAPINGUARI: o pelo pega fogo; parado (congelado/atordoado), o olho fica exposto
+    if (target.variant === 'mapinguari') {
+      if (element === 'fire') {
+        finalDamage = Math.floor(baseDamage * 1.6);
+        this.spawnFloatingText('🔥 PELO EM CHAMAS!', target.x, target.row + 0.1, '#fb923c', 1.15);
+      }
+      if (target.frozenTimer > 0 || target.stunTimer > 0) {
+        finalDamage = Math.floor(finalDamage * 1.4);
+        this.spawnFloatingText('👁️ NO OLHO!', target.x, target.row + 0.25, '#fde047', 1.2);
+      }
+    }
+
     // TACTICAL COUNTER 2: PYRO SCAVENGER ZOMBIE (Doused by Water)
     if (target.variant === 'pyro_scavenger') {
       if (element === 'water') {
@@ -2041,15 +2119,7 @@ export class GameEngine {
         this.triggerMutationModal();
       }
 
-      // Habilidades do chefe (troca de linha, chuva de sucata, reforços)
-      const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
-      if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
-        this.bossSkillTimer -= dt;
-        if (this.bossSkillTimer <= 0) {
-          this.bossSkillTimer = 5.2;
-          this.executeZombossSkill(activeBoss);
-        }
-      }
+      this.updateBossSkills(dt);
 
       // Victory Condition for Level: All spawns dispatched, all zombies dead, level elapsed at least 15s
       if (
@@ -2088,15 +2158,7 @@ export class GameEngine {
         this.spawnZombossFinalBoss();
       }
 
-      // Habilidades do chefe (troca de linha, chuva de sucata, reforços)
-      const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
-      if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
-        this.bossSkillTimer -= dt;
-        if (this.bossSkillTimer <= 0) {
-          this.bossSkillTimer = 5.2;
-          this.executeZombossSkill(activeBoss);
-        }
-      }
+      this.updateBossSkills(dt);
 
       if (this.waveProgress < 98) {
         this.zombieSpawnTimer -= dt;
@@ -2124,6 +2186,11 @@ export class GameEngine {
 
     if (type === 'zomboss_mech') {
       this.spawnZombossFinalBoss();
+      return;
+    }
+
+    if (type === 'mapinguari') {
+      this.spawnMapinguari(targetLane);
       return;
     }
 
@@ -2210,8 +2277,80 @@ export class GameEngine {
       walkPhase: Math.random() * 6,
       isEating: false,
       lostHeadgear: false,
-      lostArm: false
+      lostArm: false,
+      confusoTimer: 0
     });
+  }
+
+  /** O Mapinguari, chefe do Igarapé: sai da mata numa linha de terra. */
+  public spawnMapinguari(targetLane?: number): void {
+    const rios = this.currentBiome.riverRows ?? [];
+    const terra = this.getActiveLanes().filter((r) => !rios.includes(r));
+    let row = typeof targetLane === 'number' ? targetLane : terra[Math.floor(terra.length / 2)] ?? 2;
+    if (rios.includes(row)) row = terra[Math.floor(terra.length / 2)] ?? 2;
+    this.bossSpawned = true;
+    sound.bossMode = true;
+    sound.playBossSiren();
+    this.lightningFlash = 0.4;
+    this.onToast('👁️ O MAPINGUARI SAIU DA MATA! Fogo queima o pelo dele; mire no olho quando ele parar.');
+    this.spawnFloatingText('👁️ MAPINGUARI!', 7.5, row + 0.3, '#f97316', 1.5);
+    this.sacudir(9, 0.7, 'forte');
+    this.zombies.push({
+      id: this.nextEntityId++,
+      variant: 'mapinguari',
+      name: 'Mapinguari',
+      emoji: '👁️',
+      row,
+      x: GRID_COLS + 0.3,
+      hp: 3200,
+      maxHp: 3200,
+      speed: 0.13,
+      damagePerSec: 110,
+      wetTimer: 0,
+      chilledTimer: 0,
+      frozenTimer: 0,
+      burnTimer: 0,
+      poisonTimer: 0,
+      stunTimer: 0,
+      hitFlash: 0,
+      walkPhase: 0,
+      isEating: false,
+      lostHeadgear: false,
+      lostArm: false,
+      confusoTimer: 0
+    });
+    this.onUiUpdate();
+  }
+
+  /** Habilidades do Mapinguari: rugido, pisão e chamar a mata. */
+  private executeMapinguariSkill(boss: ZombieEntity): void {
+    const roll = Math.random();
+    if (roll < 0.36) {
+      // Rugido: as plantas da linha travam por 2 s
+      for (const p of this.plants) if (p.row === boss.row) p.attackTimer = Math.max(p.attackTimer, 2.0);
+      this.spawnFloatingText('🗣️ RUGIDO!', boss.x - 0.8, boss.row, '#fb923c', 1.35);
+      this.sacudir(6, 0.4, 'medio');
+      sound.playBossSiren();
+    } else if (roll < 0.7) {
+      // Pisão: fere as plantas perto dele
+      for (let i = this.plants.length - 1; i >= 0; i--) {
+        const p = this.plants[i];
+        if (Math.abs(p.row - boss.row) <= 1 && Math.abs(p.col + 0.5 - boss.x) <= 1.6) {
+          p.hp -= 110;
+          p.scaleKick = 0.4;
+          if (p.hp <= 0) this.plants.splice(i, 1);
+        }
+      }
+      this.spawnParticles(boss.x, boss.row + 0.8, '#78350f', 22);
+      this.spawnFloatingText('🦶 PISÃO!', boss.x - 0.6, boss.row + 0.1, '#fde68a', 1.3);
+      this.sacudir(8, 0.35, 'forte');
+    } else {
+      // Chama a mata: canoeiros descem o rio (ou zumbis comuns, sem rio)
+      const rios = this.currentBiome.riverRows ?? [];
+      const linhas = rios.length > 0 ? rios.slice(0, 2) : [Math.max(0, boss.row - 1), Math.min(GRID_ROWS - 1, boss.row + 1)];
+      for (const r of linhas) this.spawnZombieByType(rios.length > 0 ? 'canoeiro' : 'basic', r);
+      this.spawnFloatingText('🌳 A MATA RESPONDE!', boss.x - 0.8, boss.row, '#4ade80', 1.25);
+    }
   }
 
   /** Treme a tela por um instante e, se pedido, vibra o celular. */
@@ -2255,7 +2394,8 @@ export class GameEngine {
       walkPhase: 0,
       isEating: false,
       lostHeadgear: false,
-      lostArm: false
+      lostArm: false,
+      confusoTimer: 0
     });
     this.onUiUpdate();
   }
@@ -2308,7 +2448,8 @@ export class GameEngine {
           walkPhase: 0,
           isEating: false,
           lostHeadgear: false,
-          lostArm: false
+          lostArm: false,
+          confusoTimer: 0
         });
       });
       this.spawnFloatingText('⚡ REFORÇOS!', boss.x, boss.row, '#c084fc', 1.25);
@@ -2345,12 +2486,13 @@ export class GameEngine {
 
   /** Habilidades da Colheitadeira Z quando ela está em campo. */
   public updateBossSkills(dt: number): void {
-    const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech');
-    if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0) {
+    const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari');
+    if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0 && activeBoss.confusoTimer <= 0) {
       this.bossSkillTimer -= dt;
       if (this.bossSkillTimer <= 0) {
-        this.bossSkillTimer = 5.2;
-        this.executeZombossSkill(activeBoss);
+        this.bossSkillTimer = activeBoss.variant === 'mapinguari' ? 6.0 : 5.2;
+        if (activeBoss.variant === 'mapinguari') this.executeMapinguariSkill(activeBoss);
+        else this.executeZombossSkill(activeBoss);
       }
     }
   }
@@ -2425,7 +2567,8 @@ export class GameEngine {
       walkPhase: Math.random() * 6,
       isEating: false,
       lostHeadgear: false,
-      lostArm: false
+      lostArm: false,
+      confusoTimer: 0
     });
   }
 
@@ -2729,6 +2872,11 @@ export class GameEngine {
       CharacterRenderer.drawCerca(ctx, c, cx, cy, this.cellH, isNightScene, this.isRiverRow(c.row), this.sun >= CERCA.replantar);
     }
 
+    // 3b. Pegadas do Curupira
+    for (const pg of this.pegadas) {
+      CharacterRenderer.drawPegada(ctx, this.boardLeft + pg.x * this.cellW, this.boardTop + (pg.row + 0.8) * this.cellH, this.cellH, Math.min(1, pg.life / 2));
+    }
+
     // 4. Draw Plants
     for (const p of this.plants) {
       const cx = this.boardLeft + (p.col + 0.5) * this.cellW;
@@ -2780,7 +2928,7 @@ export class GameEngine {
       CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH, isNightScene, this.isRiverRow(z.row));
 
       // Zombie HP bar - accurately positioned above head based on variant scale
-      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech';
+      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech' || z.variant === 'mapinguari';
       if (!isBoss) {
         const bw = Math.min(this.cellW * 0.44, 38);
         const bh = 4;
@@ -2798,6 +2946,11 @@ export class GameEngine {
                 : '#ef4444';
         ctx.fillRect(bx, by, bw * Math.max(0, z.hp / z.maxHp), bh);
       }
+    }
+
+    // 5b. Curupira correndo
+    for (const c of this.curupiras) {
+      CharacterRenderer.drawCurupira(ctx, this.boardLeft + c.x * this.cellW, this.boardTop + (c.row + 0.54) * this.cellH, this.cellH, isNightScene, agora);
     }
 
     // 6. Pedaços que caem (braços, capacetes, cabeças)
@@ -2948,8 +3101,8 @@ export class GameEngine {
 
     if (tremendo) ctx.restore();
 
-    // 13. Barra de vida do chefe final (Colheitadeira Z)
-    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech');
+    // 13. Barra de vida do chefe (Colheitadeira Z ou Mapinguari)
+    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari');
     if (zomboss) {
       const barW = Math.min(440, width * 0.65);
       const barH = 18;
@@ -2969,7 +3122,7 @@ export class GameEngine {
       ctx.fillStyle = '#fca5a5';
       ctx.textAlign = 'center';
       ctx.fillText(
-        `💀 CHEFE FINAL: COLHEITADEIRA Z (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
+        `${zomboss.variant === 'mapinguari' ? '👁️ CHEFE: MAPINGUARI' : '💀 CHEFE FINAL: COLHEITADEIRA Z'} (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
         width / 2,
         by + 7
       );

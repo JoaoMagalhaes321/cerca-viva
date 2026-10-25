@@ -204,7 +204,7 @@ export class Modos {
       regras.push(
         '🌊 As ondas não acabam e cada uma vem mais forte que a anterior.',
         `🧬 A cada ${MUTACAO_A_CADA} ondas vencidas, você escolhe uma mutação.`,
-        `💀 A cada ${CHEFE_A_CADA} ondas, a Colheitadeira Z aparece.`,
+        `💀 A cada ${CHEFE_A_CADA} ondas vem um chefe: a Colheitadeira Z e o Mapinguari se revezam.`,
         '🏠 Acaba quando um zumbi entra na casa.'
       );
       q<HTMLElement>('.modo-placar').innerHTML =
