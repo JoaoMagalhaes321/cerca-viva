@@ -63,7 +63,7 @@ window.BOARD = {
       "updated": "2026-10-25",
       "summary": "Pedido seu (25/10). Na branch claude/convite-evento: o convite (/convite/) ganha no topo uma faixa roxa \"🎃 Evento disponível agora\" com a Abóbora-Brasa e a Flor-Fantasma, contagem de dias e botão \"Jogar o evento\". Aparece só de 1/out a 2/nov (mesma regra de src/halloween.ts) e some sozinha depois. Conferido no Chromium no computador e no celular, sem rolagem lateral. Esperando seu merge.",
       "delivered": [
-        "Faixa do evento no convite (convite-evento, 25/10)"
+        "Faixa do evento no convite (f3917f1, 25/10)"
       ],
       "pending": [
         "Seu merge de claude/convite-evento na main"
