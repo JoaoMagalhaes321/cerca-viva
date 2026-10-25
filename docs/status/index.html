@@ -409,6 +409,7 @@
     if (lastFocus) { lastFocus.focus(); lastFocus = null; }
   }
   function linkHref(l){
+    if (l.url) return l.url;
     const branch = l.branch || B.defaultBranch || 'main';
     return `${B.repoUrl}/blob/${branch}/${l.path}`;
   }
@@ -444,7 +445,7 @@
         el('div', {class:'sec'}, el('h4', {}, 'Pendente', el('span', {class:'n'}, String((c.pending||[]).length))), list(c.pending, 'todo')),
         el('div', {class:'sec'}, el('h4', {}, 'Documentos'),
           c.links && c.links.length
-            ? el('div', {class:'links'}, c.links.map(l => el('a', {href: linkHref(l), target:'_blank', rel:'noopener', title: l.path}, svg('link'), el('span', {}, l.label), l.branch ? el('span', {class:'br'}, l.branch) : null)))
+            ? el('div', {class:'links'}, c.links.map(l => el('a', {href: linkHref(l), target:'_blank', rel:'noopener', title: l.path || l.url}, svg('link'), el('span', {}, l.label), l.branch ? el('span', {class:'br'}, l.branch) : null)))
             : el('div', {class:'none'}, 'Sem documento vinculado.')),
       ));
     root.append(el('div', {class:'scrim', onclick: closeDrawer}), drawer);
