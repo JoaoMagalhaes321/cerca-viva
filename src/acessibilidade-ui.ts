@@ -48,12 +48,12 @@ export class AcessibilidadeUi {
     const red = this.modal.querySelector('#acess-reduzir') as HTMLInputElement;
     dalt.addEventListener('change', () => {
       acessibilidade.daltonico = dalt.checked;
-      aplicarAcessibilidade();
+      aplicarAcessibilidade(true);
       this.toast(dalt.checked ? '🔤 Modo daltônico ligado: letras nos tiros e terrenos.' : 'Modo daltônico desligado.');
     });
     red.addEventListener('change', () => {
       acessibilidade.reduzirEfeitos = red.checked;
-      aplicarAcessibilidade();
+      aplicarAcessibilidade(true);
       this.toast(red.checked ? '🌿 Efeitos reduzidos.' : 'Efeitos completos de volta.');
     });
   }

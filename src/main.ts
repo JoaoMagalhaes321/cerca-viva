@@ -631,9 +631,14 @@ function openMutationModal(choices: MutationDefinition[]): void {
   mutationModal.classList.remove('hidden');
 }
 
+/** Fase da Aventura (a do progresso salvo). A fase do evento nunca entra aqui: o evento é só um botão à parte. */
+function faseDaAventura(): LevelConfig {
+  return currentLevel && !currentLevel.evento ? currentLevel : ProgressionManager.getCurrentLevel();
+}
+
 function updateMenuStageInfo(): void {
-  if (menuStageInfoEl && currentLevel) {
-    menuStageInfoEl.textContent = `Aventura: ${currentLevel.name}`;
+  if (menuStageInfoEl) {
+    menuStageInfoEl.textContent = `Aventura: ${faseDaAventura().name}`;
   }
 }
 
@@ -1075,7 +1080,8 @@ function hideMainMenuAndPlay(): void {
 }
 
 menuPlayBtn.addEventListener('click', () => {
-  startLevel(currentLevel);
+  // INICIAR JOGO é sempre a Aventura, mesmo depois de jogar a Noite da Cuca
+  startLevel(faseDaAventura());
 });
 
 menuLevelsBtn.addEventListener('click', () => {

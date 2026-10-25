@@ -3120,6 +3120,9 @@ export class GameEngine {
     });
   }
 
+  /** Segundos seguidos abaixo de ~38 qps, com a partida rodando, antes de baixar a qualidade gráfica. */
+  private static readonly SEGUNDOS_LENTO_PARA_ECONOMIZAR = 6;
+
   /**
    * Mede o tempo de cada quadro. Se o jogo ficar abaixo de ~38 quadros por segundo por 3 s seguidos,
    * passa para a qualidade econômica: menos pixels no canvas, sem brilhos extras e menos partículas.
@@ -3128,10 +3131,16 @@ export class GameEngine {
     const dtMs = this.ultimoQuadro ? agora - this.ultimoQuadro : 16.7;
     this.ultimoQuadro = agora;
     if (this.qualidade === 'economica' || dtMs > 250) return; // aba em segundo plano não conta
+    // Pausado ou com o menu/abertura por cima não conta (D-20261025-11): o quadro lento ali é da tela de
+    // cima, e o jogo ficava borrado a partida inteira por causa de alguns segundos de carregamento.
+    if (this.paused || (typeof document !== 'undefined' && document.hidden)) {
+      this.tempoLento = 0;
+      return;
+    }
     this.quadroMedioMs = this.quadroMedioMs * 0.94 + dtMs * 0.06;
     if (this.quadroMedioMs > 26) {
       this.tempoLento += dtMs / 1000;
-      if (this.tempoLento > 3) this.usarQualidadeEconomica(true);
+      if (this.tempoLento > GameEngine.SEGUNDOS_LENTO_PARA_ECONOMIZAR) this.usarQualidadeEconomica(true);
     } else {
       this.tempoLento = Math.max(0, this.tempoLento - dtMs / 2000);
     }
