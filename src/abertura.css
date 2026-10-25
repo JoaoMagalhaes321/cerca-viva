@@ -1,0 +1,18 @@
+.abertura {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #7ccbff;
+  cursor: pointer;
+  transition: opacity 0.45s ease;
+}
+.abertura canvas { width: 100%; height: 100%; display: block; }
+.abertura.saindo { opacity: 0; pointer-events: none; }
+.abertura-dica {
+  position: absolute;
+  right: 14px;
+  bottom: 10px;
+  font: 800 0.7rem 'Nunito', system-ui, sans-serif;
+  color: rgba(42, 36, 22, 0.55);
+  letter-spacing: 0.3px;
+}

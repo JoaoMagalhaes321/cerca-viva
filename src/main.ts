@@ -25,6 +25,7 @@ import { ExpedicaoUi } from './expedicao-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
+import { mostrarAbertura } from './abertura';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -1141,7 +1142,7 @@ buildSeedPackets();
 // Redesenha os retratos das sementes quando os sprites terminarem de carregar
 preloadSprites().then(() => buildSeedPackets());
 syncHud();
-showToast(`🌱 Modo Aventura: ${currentLevel.name}! Toque em INICIAR JOGO.`);
+mostrarAbertura(() => showToast(`🌱 Modo Aventura: ${currentLevel.name}! Toque em INICIAR JOGO.`));
 
 let lastTime = performance.now();
 let lastHudSync = 0;
