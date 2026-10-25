@@ -1,4 +1,17 @@
 /* Tela de preparação da fase: zumbis que vêm + escolha das sementes */
+.prep-regras { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.prep-regras.hidden { display: none; }
+.prep-regra {
+  padding: 6px 8px;
+  border-radius: 8px;
+  background: rgba(192, 132, 252, 0.14);
+  border: 1.5px solid rgba(192, 132, 252, 0.5);
+  color: #f5f3ff;
+  font-size: 0.7rem;
+  line-height: 1.25;
+}
+.prep-regra b { display: block; color: #e9d5ff; font-size: 0.74rem; }
+.prep-semente.fixa { cursor: default; }
 .prep-card { max-width: 860px; }
 
 .prep-colunas {
@@ -109,7 +122,9 @@
 
 @media (max-width: 700px), (max-height: 480px) {
   .prep-colunas { grid-template-columns: 1fr; gap: 6px; }
-  .prep-zumbis { padding: 4px 6px; display: flex; align-items: center; gap: 8px; }
+  .prep-zumbis { padding: 4px 6px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px 8px; }
+  .prep-regras { width: 100%; flex-direction: row; flex-wrap: wrap; margin-bottom: 0; }
+  .prep-regra small { display: none; }
   .prep-zumbis h3 { margin: 0; white-space: nowrap; font-size: 0.72rem; }
   .prep-zumbis-lista { display: flex; overflow-x: auto; gap: 4px; flex: 1; }
   .prep-zumbi { flex: 0 0 auto; width: 58px; padding: 2px; }

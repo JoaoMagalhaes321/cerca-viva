@@ -23,6 +23,7 @@ import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
 import { Preparacao } from './preparacao';
+import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -647,8 +648,14 @@ function iniciarFase(level: LevelConfig): void {
   if (draftDeckIds.length === 0) {
     draftDeckIds = [...progress.unlockedPlants].slice(0, MAX_DECK_SIZE);
   }
+  // Regra "deck da fase": a fase impõe as sementes (só as já liberadas)
+  const deckDaPartida =
+    regrasDaFase(level).includes('deck_fixo') && level.deckFixo
+      ? level.deckFixo.filter((id) => progress.unlockedPlants.includes(id))
+      : draftDeckIds;
 
-  engine.initBoard(draftBiome, draftDeckIds, currentLevel);
+  engine.initBoard(draftBiome, deckDaPartida.length > 0 ? deckDaPartida : draftDeckIds, currentLevel);
+  aplicarRegrasDaFase(engine, level);
   buildSeedPackets();
   syncHud();
   updateMenuStageInfo();

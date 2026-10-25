@@ -286,6 +286,8 @@ export class GameEngine {
   private texturaSol: HTMLCanvasElement | null = null;
   /** Trava o clima atual (desafio do dia com noite ou chuva o tempo todo). */
   public weatherLocked = false;
+  /** Regras especiais da fase em andamento (corrida, blindados…), aplicadas nos zumbis que nascem. */
+  public regrasAtivas: Set<string> = new Set();
   /** Maré (só no bioma de mangue). */
   public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
@@ -424,6 +426,7 @@ export class GameEngine {
     this.currentLevel = level || null;
     this.waveDirector = null;
     this.weatherLocked = false;
+    this.regrasAtivas = new Set();
     this.skySunScale = 1;
     if (deckIds && deckIds.length > 0) {
       this.activeDeckIds = [...deckIds];
@@ -2343,6 +2346,12 @@ export class GameEngine {
       return;
     }
 
+    // Regras da fase: Blindados sobe a proteção de quem nasce
+    if (this.regrasAtivas.has('blindados')) {
+      if (type === 'basic') type = 'cone';
+      else if (type === 'cone') type = 'bucket';
+    }
+
     // Canoeiro só desce rio: escolhe uma linha de rio; sem rio no mapa, vira zumbi comum
     const rios = this.currentBiome.riverRows ?? [];
     if (type === 'canoeiro') {
@@ -2411,6 +2420,7 @@ export class GameEngine {
       speed = 0.3;
       damage = 34;
     }
+    if (this.regrasAtivas.has('corrida')) speed *= 1.3;
 
     this.zombies.push({
       id: this.nextEntityId++,
