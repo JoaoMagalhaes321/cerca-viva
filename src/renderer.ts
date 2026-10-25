@@ -2,7 +2,7 @@
 // Plantas e zumbis são sprites SVG (public/sprites): estilo cartoon de dia e luz noturna nas fases escuras.
 // O gramado e a cerca viva continuam desenhados em código.
 
-import { PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engine';
+import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engine';
 import { CERCA, CercaViva } from './cerca';
 import { MUDA, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { getSprite, SpriteImage } from './sprites';
@@ -654,7 +654,7 @@ export class CharacterRenderer {
     const afunda = nadando ? cellH * 0.3 : 0;
     const mapinguari = z.variant === 'mapinguari';
     const isBoss = z.variant === 'gargantuar' || isZomboss || mapinguari;
-    const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96);
+    const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96) * (z.elite === 'gigante' ? 1.3 : 1);
     const walk = z.walkPhase;
     const armBob = z.isEating
       ? Math.sin(performance.now() * 0.025) * 9
@@ -745,7 +745,21 @@ export class CharacterRenderer {
 
     if ((z.variant === 'cone' || z.variant === 'bucket' || canoeiro) && !z.lostHeadgear) {
       const gear = getSprite(`${z.variant}--capacete`, isNight);
-      if (gear) place(gear);
+      if (gear) {
+        place(gear);
+        if (z.elite === 'ferro') {
+          // Capacete de ferro: rebites escuros por cima
+          ctx.fillStyle = '#334155';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1.2;
+          for (const [rx, ry] of [[50, 30], [70, 24], [90, 32]] as [number, number][]) {
+            ctx.beginPath();
+            ctx.arc((rx - spec.ox) * k, (ry - spec.feet) * k, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+      }
     }
 
     ctx.restore();
@@ -784,6 +798,16 @@ export class CharacterRenderer {
       ctx.beginPath();
       ctx.arc(0, mid, -top * 0.32 + Math.sin(performance.now() * 0.03) * 4, 0, Math.PI * 2);
       ctx.fill();
+    }
+
+    if (z.elite) {
+      // Selo da mutação em cima da cabeça
+      ctx.save();
+      if (z.confusoTimer > 0) ctx.scale(-1, 1);
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(ELITES[z.elite].icone, 0, top - 6);
+      ctx.restore();
     }
 
     if (z.confusoTimer > 0) {
