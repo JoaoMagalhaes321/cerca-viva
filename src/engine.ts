@@ -26,6 +26,7 @@ import {
   replantarCerca
 } from './cerca';
 import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, prontaParaFlorescer } from './florescer';
+import { Foto, Gravador } from './replay';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
 export const GRID_ROWS = 5;
@@ -258,6 +259,9 @@ export class GameEngine {
   /** Contadores da partida usados pelas conquistas. */
   /** Tipos de zumbi derrotados nesta partida. */
   public tiposDerrotados: string[] = [];
+  /** Grava o melhor momento da partida (replay na tela de resultado). */
+  public gravador = new Gravador();
+  private tempoDePartida = 0;
   public marcas = { cercasQuebradas: 0, plantasPerdidas: 0, plantasAfogadas: 0, combosNaOnda: 0, maxCombosNaOnda: 0, maxConfusos: 0, maxAdubadas: 0 };
   public gameSpeed = 1;
   public paused = false;
@@ -494,6 +498,8 @@ export class GameEngine {
     this.zombiesKilled = 0;
     this.marcas = { cercasQuebradas: 0, plantasPerdidas: 0, plantasAfogadas: 0, combosNaOnda: 0, maxCombosNaOnda: 0, maxConfusos: 0, maxAdubadas: 0 };
     this.tiposDerrotados = [];
+    this.gravador.limpar();
+    this.tempoDePartida = 0;
     this.overdriveCharges = 2;
     this.gameOver = false;
     this.paused = false;
@@ -1762,6 +1768,27 @@ export class GameEngine {
 
     if (this.waveDirector) this.waveDirector.update(dt);
     else this.updateWaveDirector(dt);
+
+    this.tempoDePartida += dt;
+    this.gravador.tick(dt, this.tempoDePartida, () => this.tirarFoto());
+  }
+
+  /** Foto leve do tabuleiro para o replay. */
+  private tirarFoto(): Foto {
+    const rios = [0, 1, 2, 3, 4].filter((r) => this.isRiverRow(r));
+    return {
+      t: 0,
+      rios,
+      plantas: this.plants.map((p) => ({ id: p.def.id, row: p.row, col: p.col, caminho: p.caminho, adubada: p.adubada, idade: p.idade, armed: p.armed })),
+      zumbis: this.zombies.map((z) => ({
+        v: z.variant, row: z.row, x: z.x, w: z.walkPhase, eating: z.isEating, gear: z.lostHeadgear, arm: z.lostArm, elite: z.elite,
+        confuso: z.confusoTimer > 0, frozen: z.frozenTimer > 0, wet: z.wetTimer > 0
+      })),
+      tiros: this.projectiles.map((p) => ({ row: p.row, x: p.x, color: p.color, r: p.radius })),
+      arcos: this.arcs.map((a) => ({ x1: a.x1, y1: a.y1, x2: a.x2, y2: a.y2, color: a.color })),
+      particulas: this.particles.slice(0, 40).map((q) => ({ x: q.x, y: q.y, color: q.color, size: q.size, a: Math.max(0, q.life / q.maxLife) })),
+      textos: this.floatingTexts.map((f) => ({ text: f.text, x: f.x, y: f.y, color: f.color, a: Math.max(0, f.life / f.maxLife) }))
+    };
   }
 
   /** A cerca caiu: galhos voam, a tela treme e o jogador é avisado de que a linha está aberta. */
@@ -2268,6 +2295,7 @@ export class GameEngine {
     this.zombiesKilled++;
     this.onDescoberta?.('zumbis', z.variant);
     if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
+    if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
     sound.efeito('zumbi_cai', 0.12);
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
@@ -2829,6 +2857,7 @@ export class GameEngine {
 
   private registerCombo(synergyId: string): void {
     this.totalCombos++;
+    this.gravador.combo(this.tempoDePartida);
     this.marcas.combosNaOnda++;
     this.marcas.maxCombosNaOnda = Math.max(this.marcas.maxCombosNaOnda, this.marcas.combosNaOnda);
     this.onCombo?.(synergyId);
