@@ -217,6 +217,10 @@ export interface OpcoesDiretor {
   /** Avisos para a interface. */
   aoComecarOnda?: (onda: number, plano: PlanoDaOnda) => void;
   aoVencerOnda?: (onda: number) => void;
+  /** Soma à onda para calcular a força dos zumbis (Expedição: a corrida vai ficando mais dura). */
+  dificuldade?: number;
+  /** Se definido, decide qual chefe (ou nenhum) abre cada onda, no lugar da regra de 10 em 10. */
+  chefeDaOnda?: (onda: number) => 'colheitadeira' | 'mapinguari' | null;
 }
 
 const PAUSA_INICIAL = 9;
@@ -271,15 +275,22 @@ export class DiretorOndas {
   private comecarOnda(): void {
     this.onda++;
     this.estado = 'onda';
-    this.plano = planoDaOnda(this.onda);
+    const forca = this.onda + (this.opcoes.dificuldade ?? 0);
+    this.plano = planoDaOnda(forca);
+    let chefe: 'colheitadeira' | 'mapinguari' | null = null;
+    if (this.opcoes.chefeDaOnda) {
+      chefe = this.opcoes.chefeDaOnda(this.onda);
+      this.plano = { ...this.plano, chefe: chefe !== null, quantidade: chefe ? Math.ceil(this.plano.quantidade / 2) : this.plano.quantidade };
+    } else if (this.plano.chefe) {
+      chefe = Math.round(this.onda / CHEFE_A_CADA) % 2 === 0 && this.motor.spawnMapinguari ? 'mapinguari' : 'colheitadeira';
+    }
     this.restantes = this.plano.quantidade;
     this.timer = 1.2;
     this.motor.wave = this.onda;
     this.motor.waveProgress = 0;
-    if (this.plano.chefe) {
+    if (chefe) {
       const antes = this.motor.zombies.length;
-      const vez = Math.round(this.onda / CHEFE_A_CADA);
-      if (vez % 2 === 0 && this.motor.spawnMapinguari) this.motor.spawnMapinguari();
+      if (chefe === 'mapinguari' && this.motor.spawnMapinguari) this.motor.spawnMapinguari();
       else this.motor.spawnZombossFinalBoss();
       this.reforcar(antes);
     }
@@ -288,7 +299,7 @@ export class DiretorOndas {
   }
 
   private soltarZumbi(): void {
-    const tipo = sortearTipo(this.onda, this.opcoes.modificadores, this.opcoes.aleatorio);
+    const tipo = sortearTipo(this.onda + (this.opcoes.dificuldade ?? 0), this.opcoes.modificadores, this.opcoes.aleatorio);
     const linha = Math.floor(this.opcoes.aleatorio() * 5);
     const antes = this.motor.zombies.length;
     this.motor.spawnZombieByType(tipo, linha);
