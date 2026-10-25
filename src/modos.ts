@@ -15,8 +15,10 @@ import {
   climaTravado,
   criarAleatorio,
   desafioDoDia,
-  sequenciaDeDias
+  sequenciaDeDias,
+  textoParaCompartilhar
 } from './modo-infinito';
+import type { FimDePartida } from './conquistas';
 import './modos.css';
 
 export type TipoModo = 'infinito' | 'desafio';
@@ -27,7 +29,27 @@ const CHAVE = 'pvz_modos_v1';
 
 interface Registro {
   recordeInfinito: number;
-  desafios: Record<string, { melhor: number; completo: boolean }>;
+  desafios: Record<string, { melhor: number; completo: boolean; tentativas?: number }>;
+}
+
+/** Manda o texto pela folha de compartilhar do celular ou copia para a área de transferência. */
+async function compartilharTexto(texto: string): Promise<'enviado' | 'copiado' | 'falhou'> {
+  const nav = navigator as Navigator & { share?: (d: { text: string }) => Promise<void> };
+  if (nav.share) {
+    try {
+      await nav.share({ text: texto });
+      return 'enviado';
+    } catch (e) {
+      // Cancelou a folha de compartilhar: não é erro
+      if ((e as { name?: string })?.name === 'AbortError') return 'falhou';
+    }
+  }
+  try {
+    await navigator.clipboard.writeText(texto);
+    return 'copiado';
+  } catch {
+    return 'falhou';
+  }
 }
 
 function lerRegistro(): Registro {
@@ -65,6 +87,7 @@ interface Opcoes {
   /** Monta a barra de sementes, atualiza o HUD e fecha o menu. */
   prepararPartida: () => void;
   toast: (msg: string) => void;
+  conquistas?: (fim: FimDePartida) => void;
 }
 
 export class Modos {
@@ -183,7 +206,7 @@ export class Modos {
       regras.push(
         '🌊 As ondas não acabam e cada uma vem mais forte que a anterior.',
         `🧬 A cada ${MUTACAO_A_CADA} ondas vencidas, você escolhe uma mutação.`,
-        `💀 A cada ${CHEFE_A_CADA} ondas, a Colheitadeira Z aparece.`,
+        `💀 A cada ${CHEFE_A_CADA} ondas vem um chefe: a Colheitadeira Z e o Mapinguari se revezam.`,
         '🏠 Acaba quando um zumbi entra na casa.'
       );
       q<HTMLElement>('.modo-placar').innerHTML =
@@ -202,7 +225,11 @@ export class Modos {
       const seq = sequenciaDeDias(reg.desafios);
       q<HTMLElement>('.modo-placar').innerHTML = hoje?.completo
         ? `✅ Você já venceu o desafio de hoje${seq > 0 ? ` · 🔥 ${seq} ${seq === 1 ? 'dia' : 'dias'} seguidos` : ''}`
-        : `${hoje ? `Melhor tentativa hoje: ${hoje.melhor} de ${d.ondas} ondas` : 'Ainda não tentou hoje'}${
+        : `${
+            hoje
+              ? `Melhor tentativa hoje: ${hoje.melhor} de ${d.ondas} ondas${hoje.tentativas ? ` (${hoje.tentativas}ª tentativa)` : ''}`
+              : 'Ainda não tentou hoje'
+          }${
             seq > 0 ? ` · 🔥 ${seq} ${seq === 1 ? 'dia' : 'dias'} seguidos` : ''
           }`;
     }
@@ -261,15 +288,16 @@ export class Modos {
     );
   }
 
-  private registrarProgresso(ondasVencidas: number, completo: boolean): void {
+  private registrarProgresso(ondasVencidas: number, completo: boolean, fimDePartida = false): void {
     const reg = lerRegistro();
     if (this.modo === 'infinito') {
       reg.recordeInfinito = Math.max(reg.recordeInfinito, ondasVencidas);
     } else if (this.desafio) {
-      const atual = reg.desafios[this.desafio.data] ?? { melhor: 0, completo: false };
+      const atual = reg.desafios[this.desafio.data] ?? { melhor: 0, completo: false, tentativas: 0 };
       reg.desafios[this.desafio.data] = {
         melhor: Math.max(atual.melhor, ondasVencidas),
-        completo: atual.completo || completo
+        completo: atual.completo || completo,
+        tentativas: (atual.tentativas ?? 0) + (fimDePartida ? 1 : 0)
       };
     }
     salvarRegistro(reg);
@@ -279,8 +307,17 @@ export class Modos {
   public mostrarResultado(won: boolean): void {
     const e = this.o.engine;
     const vencidas = this.diretor?.ondasVencidas ?? 0;
-    if (won) this.registrarProgresso(vencidas, true);
+    this.registrarProgresso(vencidas, won, true);
     const reg = lerRegistro();
+    this.o.conquistas?.({
+      venceu: won,
+      modo: this.modo === 'infinito' ? 'infinito' : 'desafio',
+      deck: e.activeDeckIds,
+      marcas: e.marcas,
+      derrotadosNaPartida: e.tiposDerrotados,
+      ondasVencidas: vencidas,
+      diasSeguidos: sequenciaDeDias(reg.desafios)
+    });
 
     const icone = document.getElementById('result-icon')!;
     const titulo = document.getElementById('result-title')!;
@@ -304,6 +341,7 @@ export class Modos {
     }
 
     proxima.style.display = 'none';
+    this.montarBotaoCompartilhar(won, vencidas, reg);
     stats.innerHTML = `
       <div class="stat-item"><small>Zumbis Derrotados</small><strong>🧟 ${e.zombiesKilled}</strong></div>
       <div class="stat-item"><small>Sinergias Elementais</small><strong>⚡ ${e.totalCombos}</strong></div>
@@ -311,5 +349,33 @@ export class Modos {
       <div class="stat-item"><small>Modo</small><strong>${this.rotulo()}</strong></div>`;
     document.getElementById('game-over-modal')!.classList.remove('hidden');
     this.atualizarMenu();
+  }
+
+  /** Botão "Compartilhar" no resultado do Desafio do Dia (some nos outros modos). */
+  private montarBotaoCompartilhar(won: boolean, vencidas: number, reg: Registro): void {
+    const rodape = document.querySelector('#game-over-modal .modal-footer-row');
+    if (!rodape) return;
+    document.getElementById('compartilhar-desafio-btn')?.remove();
+    if (!this.desafio) return;
+
+    const texto = textoParaCompartilhar({
+      desafio: this.desafio,
+      ondasVencidas: vencidas,
+      venceu: won,
+      sequencia: sequenciaDeDias(reg.desafios),
+      combos: this.o.engine.totalCombos
+    });
+
+    const btn = document.createElement('button');
+    btn.className = 'primary-btn';
+    btn.id = 'compartilhar-desafio-btn';
+    btn.textContent = '📤 Compartilhar';
+    btn.title = texto;
+    btn.addEventListener('click', async () => {
+      const r = await compartilharTexto(texto);
+      if (r === 'copiado') this.o.toast('📋 Resultado copiado! Cole no grupo.');
+      else if (r === 'falhou') this.o.toast('Não deu para compartilhar aqui. O texto está na dica do botão.');
+    });
+    rodape.prepend(btn);
   }
 }

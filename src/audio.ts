@@ -147,8 +147,20 @@ class SoundManager {
     g.gain.setValueAtTime(0.0001, t);
     g.gain.exponentialRampToValueAtTime(pico, t + ataque);
     g.gain.exponentialRampToValueAtTime(0.0001, fim);
-    g.connect(this.musica!);
+    g.connect(this.destinoEnvelope ?? this.musica ?? ctx.destination);
     return g;
+  }
+
+  /** Saída dos efeitos: separada da música, para tocar mesmo com a trilha desligada ou parada. */
+  private destinoEnvelope: AudioNode | null = null;
+  private saidaEfeitos: GainNode | null = null;
+  private efeitosSaida(ctx: AudioContext): GainNode {
+    if (!this.saidaEfeitos) {
+      this.saidaEfeitos = ctx.createGain();
+      this.saidaEfeitos.gain.value = 0.9;
+      this.saidaEfeitos.connect(ctx.destination);
+    }
+    return this.saidaEfeitos;
   }
 
   private instrumento(ctx: AudioContext, inst: Instrumento, freq: number, t: number, dur: number, vol: number): void {
@@ -405,6 +417,183 @@ class SoundManager {
     }
   }
 
+  // ---------------------------------------------------------------- Efeitos por personagem
+  // Cada efeito é sintetizado na hora (sem arquivo de áudio). O limitador evita que vinte
+  // mordidas na mesma cerca virem um zumbido.
+
+  private ultimoEfeito = new Map<string, number>();
+
+  /** Toca um efeito do catálogo, no máximo uma vez a cada `minIntervalo` segundos. */
+  public efeito(nome: Efeito, minIntervalo = 0.08): void {
+    const ctx = this.ensureContext();
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const ultimo = this.ultimoEfeito.get(nome) ?? -9;
+    if (t - ultimo < minIntervalo) return;
+    this.ultimoEfeito.set(nome, t);
+    this.destinoEnvelope = this.efeitosSaida(ctx);
+    try {
+      this.tocarEfeito(ctx, nome, t);
+    } finally {
+      this.destinoEnvelope = null;
+    }
+  }
+
+  private tocarEfeito(ctx: AudioContext, nome: Efeito, t: number): void {
+    const g = (vol: number, ataque: number, fim: number) => this.envelope(ctx, t, ataque, vol, t + fim);
+
+    switch (nome) {
+      case 'mordida_cerca': {
+        // "Plec" de folha arrancada: ruído curto + tom grave
+        this.ruidoFiltrado(ctx, t, 0.07, 0.22, 'bandpass', 900);
+        this.osc(ctx, 'triangle', 140, t, t + 0.06, g(0.12, 0.002, 0.06));
+        break;
+      }
+      case 'cerca_quebra': {
+        // Galhos estalando e um baque
+        for (let i = 0; i < 4; i++) this.ruidoFiltrado(ctx, t + i * 0.05, 0.05, 0.3, 'bandpass', 1400 + i * 300);
+        const o = this.osc(ctx, 'sine', 120, t, t + 0.35, g(0.35, 0.003, 0.35));
+        o.frequency.exponentialRampToValueAtTime(40, t + 0.3);
+        break;
+      }
+      case 'cerca_floresce':
+      case 'floresceu': {
+        // Arpejo subindo, como um sininho de flor abrindo
+        [523.25, 659.25, 783.99, 1046.5].forEach((f, i) => this.osc(ctx, 'sine', f, t + i * 0.06, t + i * 0.06 + 0.3, this.envelope(ctx, t + i * 0.06, 0.005, 0.1, t + i * 0.06 + 0.3)));
+        break;
+      }
+      case 'muda_cresce': {
+        const o = this.osc(ctx, 'triangle', 260, t, t + 0.18, g(0.12, 0.004, 0.18));
+        o.frequency.exponentialRampToValueAtTime(520, t + 0.15);
+        break;
+      }
+      case 'replantar': {
+        this.ruidoFiltrado(ctx, t, 0.12, 0.2, 'lowpass', 500);
+        const o = this.osc(ctx, 'triangle', 180, t + 0.08, t + 0.25, this.envelope(ctx, t + 0.08, 0.004, 0.14, t + 0.25));
+        o.frequency.exponentialRampToValueAtTime(380, t + 0.22);
+        break;
+      }
+      case 'bolha': {
+        // Bolha do Aguapé estourando: "blup"
+        const o = this.osc(ctx, 'sine', 300, t, t + 0.12, g(0.14, 0.003, 0.12));
+        o.frequency.exponentialRampToValueAtTime(900, t + 0.1);
+        break;
+      }
+      case 'bolha_estoura': {
+        this.ruidoFiltrado(ctx, t, 0.04, 0.18, 'highpass', 3000);
+        const o = this.osc(ctx, 'sine', 700, t, t + 0.06, g(0.1, 0.002, 0.06));
+        o.frequency.exponentialRampToValueAtTime(250, t + 0.05);
+        break;
+      }
+      case 'rugido': {
+        // Mapinguari: serra grave com vibrato
+        const o = this.osc(ctx, 'sawtooth', 70, t, t + 0.9, g(0.3, 0.02, 0.9));
+        o.frequency.setValueAtTime(70, t);
+        o.frequency.linearRampToValueAtTime(110, t + 0.25);
+        o.frequency.linearRampToValueAtTime(55, t + 0.9);
+        this.ruidoFiltrado(ctx, t, 0.8, 0.12, 'lowpass', 300);
+        break;
+      }
+      case 'pisao': {
+        const o = this.osc(ctx, 'sine', 90, t, t + 0.3, g(0.45, 0.002, 0.3));
+        o.frequency.exponentialRampToValueAtTime(30, t + 0.25);
+        this.ruidoFiltrado(ctx, t, 0.15, 0.2, 'lowpass', 400);
+        break;
+      }
+      case 'curupira': {
+        // Assobio de mata: dois tons rápidos
+        this.osc(ctx, 'sine', 1200, t, t + 0.12, g(0.09, 0.004, 0.12));
+        this.osc(ctx, 'sine', 1600, t + 0.13, t + 0.3, this.envelope(ctx, t + 0.13, 0.004, 0.09, t + 0.3));
+        break;
+      }
+      case 'siri_lado': {
+        // Patinhas: três cliques secos
+        for (let i = 0; i < 3; i++) this.ruidoFiltrado(ctx, t + i * 0.045, 0.02, 0.18, 'bandpass', 2600);
+        break;
+      }
+      case 'mare_sobe': {
+        this.ruidoFiltrado(ctx, t, 1.2, 0.14, 'lowpass', 900);
+        const o = this.osc(ctx, 'sine', 160, t, t + 1.0, g(0.07, 0.3, 1.0));
+        o.frequency.linearRampToValueAtTime(260, t + 1.0);
+        break;
+      }
+      case 'mare_desce': {
+        this.ruidoFiltrado(ctx, t, 1.2, 0.12, 'lowpass', 700);
+        const o = this.osc(ctx, 'sine', 260, t, t + 1.0, g(0.07, 0.3, 1.0));
+        o.frequency.linearRampToValueAtTime(140, t + 1.0);
+        break;
+      }
+      case 'congelar': {
+        // Cristal: tons altos em degraus
+        [1400, 1900, 2500].forEach((f, i) => this.osc(ctx, 'sine', f, t + i * 0.04, t + i * 0.04 + 0.15, this.envelope(ctx, t + i * 0.04, 0.002, 0.07, t + i * 0.04 + 0.15)));
+        break;
+      }
+      case 'derrete': {
+        this.ruidoFiltrado(ctx, t, 0.3, 0.1, 'highpass', 4000);
+        const o = this.osc(ctx, 'sine', 900, t, t + 0.3, g(0.07, 0.01, 0.3));
+        o.frequency.exponentialRampToValueAtTime(300, t + 0.28);
+        break;
+      }
+      case 'capacete_cai': {
+        // Metal batendo e quicando
+        this.osc(ctx, 'square', 1800, t, t + 0.05, g(0.07, 0.001, 0.05));
+        this.osc(ctx, 'square', 1500, t + 0.11, t + 0.15, this.envelope(ctx, t + 0.11, 0.001, 0.05, t + 0.15));
+        this.osc(ctx, 'square', 1700, t + 0.2, t + 0.23, this.envelope(ctx, t + 0.2, 0.001, 0.03, t + 0.23));
+        break;
+      }
+      case 'zumbi_cai': {
+        const o = this.osc(ctx, 'triangle', 220, t, t + 0.2, g(0.12, 0.003, 0.2));
+        o.frequency.exponentialRampToValueAtTime(70, t + 0.18);
+        this.ruidoFiltrado(ctx, t + 0.05, 0.08, 0.12, 'lowpass', 600);
+        break;
+      }
+      case 'vento': {
+        this.ruidoFiltrado(ctx, t, 0.35, 0.16, 'bandpass', 1200);
+        break;
+      }
+      case 'veneno': {
+        // Borbulhas ácidas
+        for (let i = 0; i < 3; i++) {
+          const o = this.osc(ctx, 'sine', 380 + i * 90, t + i * 0.06, t + i * 0.06 + 0.08, this.envelope(ctx, t + i * 0.06, 0.003, 0.07, t + i * 0.06 + 0.08));
+          o.frequency.exponentialRampToValueAtTime(700 + i * 90, t + i * 0.06 + 0.07);
+        }
+        break;
+      }
+      case 'mina_arma': {
+        this.osc(ctx, 'square', 880, t, t + 0.05, g(0.08, 0.001, 0.05));
+        this.osc(ctx, 'square', 1320, t + 0.08, t + 0.14, this.envelope(ctx, t + 0.08, 0.001, 0.08, t + 0.14));
+        break;
+      }
+      case 'conquista': {
+        [659.25, 783.99, 987.77, 1318.5].forEach((f, i) => this.osc(ctx, 'triangle', f, t + i * 0.09, t + i * 0.09 + 0.4, this.envelope(ctx, t + i * 0.09, 0.005, 0.14, t + i * 0.09 + 0.4)));
+        break;
+      }
+      case 'cancao': {
+        // Canção de ninar da Cuca: três notas lentas, descendo
+        [523.25, 493.88, 392].forEach((f, i) => this.osc(ctx, 'sine', f, t + i * 0.28, t + i * 0.28 + 0.4, this.envelope(ctx, t + i * 0.28, 0.02, 0.12, t + i * 0.28 + 0.4)));
+        break;
+      }
+      case 'ronco': {
+        const o = this.osc(ctx, 'sawtooth', 90, t, t + 0.5, g(0.07, 0.05, 0.5));
+        o.frequency.linearRampToValueAtTime(60, t + 0.5);
+        break;
+      }
+      case 'buu': {
+        // "Buu!": sobe e desce rápido, com um sopro
+        const o = this.osc(ctx, 'triangle', 300, t, t + 0.3, g(0.12, 0.01, 0.3));
+        o.frequency.exponentialRampToValueAtTime(520, t + 0.1);
+        o.frequency.exponentialRampToValueAtTime(240, t + 0.3);
+        this.ruidoFiltrado(ctx, t, 0.25, 0.08, 'bandpass', 900);
+        break;
+      }
+      case 'fala': {
+        this.osc(ctx, 'sine', 740, t, t + 0.05, g(0.06, 0.002, 0.05));
+        this.osc(ctx, 'sine', 880, t + 0.06, t + 0.12, this.envelope(ctx, t + 0.06, 0.002, 0.06, t + 0.12));
+        break;
+      }
+    }
+  }
+
   public playMutationUnlock(): void {
     const ctx = this.ensureContext();
     if (!ctx) return;
@@ -424,5 +613,10 @@ class SoundManager {
     });
   }
 }
+
+export type Efeito =
+  | 'mordida_cerca' | 'cerca_quebra' | 'cerca_floresce' | 'floresceu' | 'muda_cresce' | 'replantar'
+  | 'bolha' | 'bolha_estoura' | 'rugido' | 'pisao' | 'curupira' | 'siri_lado' | 'mare_sobe' | 'mare_desce'
+  | 'congelar' | 'derrete' | 'capacete_cai' | 'zumbi_cai' | 'vento' | 'veneno' | 'mina_arma' | 'conquista' | 'fala' | 'cancao' | 'ronco' | 'buu';
 
 export const sound = new SoundManager();

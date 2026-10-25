@@ -106,3 +106,20 @@
     gap: 3px;
   }
 }
+
+/* Botão do Herbário: contagem embaixo do nome */
+.menu-sec-btn .menu-btn-info {
+  display: block;
+  width: 100%;
+  font-size: 0.58rem;
+  font-weight: 800;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+/* 🎃 Noite da Cuca (evento sazonal) */
+.menu-halloween { border-color: #f97316 !important; background: linear-gradient(135deg, rgba(124, 45, 18, 0.75), rgba(49, 10, 60, 0.85)) !important; }
+.menu-halloween strong { color: #fdba74; }
+.menu-halloween .mode-icon { animation: abobora-pisca 2.4s ease-in-out infinite; }
+@keyframes abobora-pisca { 0%, 100% { filter: drop-shadow(0 0 2px #fb923c); } 50% { filter: drop-shadow(0 0 9px #fbbf24); } }
+.menu-halloween.hidden { display: none !important; }

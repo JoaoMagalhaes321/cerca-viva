@@ -1,6 +1,8 @@
 # Conferência automática das branches de trabalho (sem publicar nada).
 # Roda o mesmo que um contribuidor roda no PC: tsc + build do Vite e os testes (Vitest).
-# O deploy para o GitHub Pages e o APK continuam só no deploy.yml, em push na main.
+# O deploy para o GitHub Pages e a publicação do APK continuam só no deploy.yml, em push na main.
+# Nos pull requests (e quando rodado à mão) também compila o APK, sem publicar, para um erro no
+# Android aparecer antes do merge.
 name: CI (build e testes)
 
 on:
@@ -39,3 +41,35 @@ jobs:
 
       - name: Testes
         run: npm test
+
+  apk:
+    if: github.event_name == 'pull_request' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build web e sincronizar com o Android
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Compilar o APK (sem publicar)
+        working-directory: ./android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleDebug

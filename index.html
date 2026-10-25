@@ -9,6 +9,8 @@
     <title>Cerca Viva</title>
     <link rel="icon" type="image/svg+xml" href="marca/icone.svg" />
     <link rel="apple-touch-icon" href="marca/icone-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Cerca Viva" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lilita+One&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
@@ -175,6 +177,20 @@
                   <small id="menu-desafio-info">Um desafio novo por dia</small>
                 </span>
               </button>
+              <button class="menu-sec-btn menu-mode-btn" id="menu-expedicao-btn">
+                <span class="mode-icon">🧭</span>
+                <span class="mode-text">
+                  <strong>Expedição</strong>
+                  <small id="menu-expedicao-info">Uma corrida com mapa de caminhos</small>
+                </span>
+              </button>
+              <button class="menu-sec-btn menu-mode-btn menu-halloween hidden" id="menu-halloween-btn">
+                <span class="mode-icon">🎃</span>
+                <span class="mode-text">
+                  <strong>Noite da Cuca</strong>
+                  <small id="menu-halloween-info">Evento de Halloween</small>
+                </span>
+              </button>
             </div>
 
             <div class="menu-secondary-row">
@@ -187,8 +203,17 @@
               <button class="menu-sec-btn" id="menu-almanac-btn">
                 <span>📖</span> Almanaque
               </button>
+              <button class="menu-sec-btn" id="menu-herbario-btn" title="Tudo o que você já descobriu">
+                <span>📗</span> Herbário <small id="menu-herbario-info" class="menu-btn-info"></small>
+              </button>
+              <button class="menu-sec-btn" id="menu-zen-btn" title="Regue suas plantas todo dia e ganhe sol nas batalhas">
+                <span>🪴</span> Jardim Zen <small id="menu-zen-info" class="menu-btn-info"></small>
+              </button>
               <button class="menu-sec-btn" id="menu-sound-btn">
                 <span>🎵</span> Trilha Sonora
+              </button>
+              <button class="menu-sec-btn" id="menu-acess-btn">
+                <span>♿</span> Acessibilidade
               </button>
             </div>
           </div>
@@ -219,7 +244,7 @@
             <small>Clique em uma planta abaixo para adicionar ou remover do seu Deck</small>
           </div>
 
-          <!-- All 10 Plants Grid with Live 2.5D Portraits -->
+          <!-- All Plants Grid with Live 2.5D Portraits -->
           <div class="deck-plant-grid" id="deck-plant-grid"></div>
 
           <div class="modal-footer-row">
@@ -242,8 +267,8 @@
 
           <div class="almanac-tabs">
             <button class="tab-btn active" data-tab="synergies">⚡ Reações Elementais (Combos)</button>
-            <button class="tab-btn" data-tab="plants">🌻 Plantas (10)</button>
-            <button class="tab-btn" data-tab="zombies">🧟 Zumbis & Chefe (8)</button>
+            <button class="tab-btn" data-tab="plants">🌻 Plantas (11)</button>
+            <button class="tab-btn" data-tab="zombies">🧟 Zumbis & Chefe (9)</button>
           </div>
 
           <div id="almanac-content" class="almanac-content"></div>
@@ -321,6 +346,10 @@
           <h2 id="result-title">Jardim Defendido!</h2>
           <p id="result-subtitle">Você dominou as sinergias elementais!</p>
           <div class="result-stats" id="result-stats"></div>
+          <div class="result-replay hidden" id="result-replay">
+            <span class="result-replay-titulo">🎬 Melhor momento: <b id="result-replay-motivo"></b></span>
+            <canvas id="result-replay-canvas" width="480" height="270"></canvas>
+          </div>
           <div class="modal-footer-row" style="justify-content: center; gap: 10px; flex-wrap: wrap;">
             <button class="primary-btn" id="game-over-next-btn">▶️ Próxima Fase</button>
             <button class="secondary-btn" id="change-deck-btn">🎒 Deck / Bioma</button>

@@ -9,7 +9,7 @@ export type ElementType =
   | 'toxin'
   | 'explosive';
 
-export type WeatherType = 'sunny' | 'rain' | 'night_storm' | 'spore_fog';
+export type WeatherType = 'sunny' | 'rain' | 'night_storm' | 'spore_fog' | 'lua_cheia';
 
 export type TileHazard =
   | 'none'
@@ -18,7 +18,9 @@ export type TileHazard =
   | 'scorched'
   | 'ice_patch'
   | 'toxic_pool'
-  | 'swamp_mud';
+  | 'swamp_mud'
+  /** Cinza que fica depois do chão queimado apagar: a próxima planta nasce adubada. */
+  | 'ash';
 
 export interface PlantDefinition {
   id: string;
@@ -34,6 +36,12 @@ export interface PlantDefinition {
   description: string;
   overdriveDesc: string;
   color: string;
+  /** Onde a planta pode ser plantada: terra (padrão), só na água do rio ou nos dois. */
+  habitat?: 'terra' | 'agua' | 'ambos';
+  /** Carta de efeito imediato (o Curupira): age na hora e não fica no gramado. */
+  instantanea?: boolean;
+  /** Planta de evento sazonal: só entra no deck durante o evento. */
+  evento?: 'halloween';
 }
 
 export interface MutationDefinition {
@@ -62,8 +70,19 @@ export interface BiomeDefinition {
     | 'gargantuar'
     | 'rubber_hazard'
     | 'pyro_scavenger'
+    | 'canoeiro'
+    | 'mapinguari'
+    | 'siri'
+    | 'mumia'
+    | 'cuca'
   )[];
   description: string;
+  /** Linhas que são rio (Mundo 3): só plantas aquáticas crescem nelas. */
+  riverRows?: number[];
+  /** Linhas de maré (Mundo 4): ora água (maré alta), ora lama (maré baixa). */
+  tideRows?: number[];
+  /** Bioma de evento sazonal (não aparece na escolha livre). */
+  evento?: 'halloween';
 }
 
 export interface SynergyRecipe {
@@ -92,6 +111,12 @@ export interface LevelConfig {
   availableLanes: number;
   unlockedPlantOnClear?: string;
   spawns: ZombieSpawnEvent[];
+  /** Regras especiais da fase (ids de regras-fase.ts). */
+  regras?: string[];
+  /** Com a regra deck_fixo: as sementes que a fase impõe. */
+  deckFixo?: string[];
+  /** Fase de evento sazonal: não entra na progressão da Aventura. */
+  evento?: 'halloween';
 }
 
 export interface PlayerProgress {
@@ -154,6 +179,48 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     toxicCount: 2,
     zombiePreviews: ['rubber_hazard', 'pyro_scavenger', 'cone', 'bucket'],
     description: 'Pântano sombrio repleto de névoa fluorescente e lodo denso. Zumbis com trajes isoladores e lança-chamas exigem contra-ataque de Ácido e Água!'
+  },
+  {
+    id: 'igarape',
+    name: '5. Igarapé Amazônico',
+    subtitle: 'Rios no Gramado & Canoas Zumbis',
+    icon: '🛶',
+    startingSun: 250,
+    maxWaves: 7,
+    defaultWeather: 'sunny',
+    puddlesCount: 0,
+    toxicCount: 0,
+    zombiePreviews: ['canoeiro', 'mapinguari', 'cone', 'cyber_sprinter'],
+    description: 'Dois braços de rio cortam o quintal. Na água só crescem plantas aquáticas, os zumbis do rio estão sempre molhados e os canoeiros descem a correnteza. Na chuva, os raios do Junco Tesla pulam para dentro do rio!',
+    riverRows: [1, 3]
+  },
+  {
+    id: 'mangue',
+    name: '6. Mangue da Maré',
+    subtitle: 'A Maré Sobe e Desce & Siris que Trocam de Linha',
+    icon: '🦀',
+    startingSun: 275,
+    maxWaves: 7,
+    defaultWeather: 'sunny',
+    puddlesCount: 0,
+    toxicCount: 0,
+    zombiePreviews: ['siri', 'canoeiro', 'bucket', 'gargantuar'],
+    description: 'Três linhas de mangue enchem e secam com a maré. Na maré alta só plantas aquáticas vivem nelas e os canoeiros descem; na baixa vira lama que atola zumbis e encalha o Aguapé. Zumbis Siri andam de lado e trocam de linha.',
+    tideRows: [0, 2, 4]
+  },
+  {
+    id: 'assombrado',
+    name: '🎃 Jardim Assombrado',
+    subtitle: 'Noite da Cuca — evento de Halloween',
+    icon: '🎃',
+    startingSun: 250,
+    maxWaves: 10,
+    defaultWeather: 'lua_cheia',
+    puddlesCount: 0,
+    toxicCount: 0,
+    zombiePreviews: ['mumia', 'basic', 'cone', 'cuca'],
+    description: 'Lua cheia sobre um jardim de abóboras. Múmias enfaixadas não sentem gelo, mas o fogo pega nas faixas. No fim, a Cuca chega cantando: quem ouve a canção dela dorme — acorde as plantas com luz solar.',
+    evento: 'halloween'
   }
 ];
 
@@ -193,6 +260,15 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     color: '#a3e635',
     description: 'O ácido da Nepentes Ácida derrete armaduras 2x mais rápido e, ao contato com Fogo, detona uma nuvem inflamável em área!',
     hint: 'Ácido perto do fogo é uma péssima ideia (para os zumbis).'
+  },
+  {
+    id: 'cinzas_ferteis',
+    title: 'Cinzas Férteis',
+    badges: '🔥 Fogo → 🌫️ Cinza + 🌱 Planta',
+    comboText: '🌱 ADUBADA!',
+    color: '#a3a3a3',
+    description: 'Quando o chão queimado apaga, sobra cinza. Plante em cima dela e a planta nasce adubada: +30% de dano, +25% de vida e Lírios geram +10 de Sol.',
+    hint: 'O que sobra depois que o fogo apaga ainda serve para alguma coisa.'
   },
   {
     id: 'elemental_gale',
@@ -247,9 +323,10 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     maxHp: 340,
     attackInterval: 1.65,
     damage: 20,
-    description: 'Encharca zumbis (Molhado) e cria poças condutoras no impacto.',
+    description: 'Encharca zumbis (Molhado) e cria poças condutoras no impacto. Cresce na terra e na água.',
     overdriveDesc: 'Tsunami na linha inteira que empurra e encharca todos!',
-    color: '#38bdf8'
+    color: '#38bdf8',
+    habitat: 'ambos'
   },
   {
     id: 'volt_reed',
@@ -355,6 +432,73 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     description: 'Barreira pesada de alta durabilidade para segurar a horda.',
     overdriveDesc: 'Ganha Armadura de Titânio (+2500 HP) e empurra zumbis!',
     color: '#d97706'
+  },
+  {
+    id: 'aguape',
+    name: 'Aguapé',
+    emoji: '🪷',
+    element: 'water',
+    elementBadge: '🌊',
+    cost: 75,
+    cooldown: 6.0,
+    maxHp: 300,
+    attackInterval: 1.5,
+    damage: 16,
+    description: 'Só cresce na água do rio. Atira bolhas que encharcam, e suas raízes prendem os zumbis à frente, que ficam bem mais lentos.',
+    overdriveDesc: 'Tapete de Aguapé: enrola todos os zumbis da linha, que ficam parados por 4 s.',
+    color: '#7dd3fc',
+    habitat: 'agua'
+  },
+  {
+    id: 'abobora_brasa',
+    name: 'Abóbora-Brasa',
+    emoji: '🎃',
+    element: 'fire',
+    elementBadge: '🎃',
+    cost: 150,
+    cooldown: 12,
+    maxHp: 320,
+    attackInterval: 2.4,
+    damage: 48,
+    description: 'Abóbora com uma brasa dentro: cospe bolas de fogo que deixam a casa do zumbi queimando. Múmias e Isolantes pegam fogo fácil.',
+    overdriveDesc: 'Explode uma lanterna gigante: 3 casas à frente viram brasa por 10 s e todo zumbi delas queima.',
+    color: '#fb923c',
+    habitat: 'terra',
+    evento: 'halloween'
+  },
+  {
+    id: 'flor_fantasma',
+    name: 'Flor-Fantasma',
+    emoji: '👻',
+    element: 'wind',
+    elementBadge: '👻',
+    cost: 100,
+    cooldown: 10,
+    maxHp: 260,
+    attackInterval: 5.5,
+    damage: 30,
+    description: 'Flor pálida que grita "BUU!" quando um zumbi chega perto: os zumbis a até 2 casas levam um susto e andam para trás por 2 s.',
+    overdriveDesc: 'Grito de arrepiar: todos os zumbis da linha andam para trás por 4 s e levam 90 de dano.',
+    color: '#e9d5ff',
+    habitat: 'terra',
+    evento: 'halloween'
+  },
+  {
+    id: 'curupira',
+    name: 'Curupira',
+    emoji: '👣',
+    element: 'nature',
+    elementBadge: '👣',
+    cost: 125,
+    cooldown: 30,
+    maxHp: 1,
+    attackInterval: 0,
+    damage: 0,
+    description: 'Aliado do folclore: corre pela linha deixando pegadas ao contrário. Os zumbis da linha andam para trás por 5 segundos.',
+    overdriveDesc: 'Não fica no gramado: age na hora em que é colocado.',
+    color: '#ff4d1f',
+    habitat: 'ambos',
+    instantanea: true
   }
 ];
 

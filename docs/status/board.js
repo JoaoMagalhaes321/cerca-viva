@@ -5,7 +5,7 @@ window.BOARD = {
   title: 'Quadro do agente · PvZ: Evolution',
   subtitle: 'Jogo tower defense 2.5D (Vite + TypeScript + Capacitor) · agente na nuvem, merge do João',
   updatedAt: '2026-10-24',
-  repoUrl: 'https://github.com/JoaoMagalhaes321/pvz-evolution',
+  repoUrl: 'https://github.com/JoaoMagalhaes321/cerca-viva',
   defaultBranch: 'main',
   columns: [
     { id: 'design', label: 'Na fila', hint: 'Planejado, sem código ainda. O agente pega daqui, na ordem da fila' },

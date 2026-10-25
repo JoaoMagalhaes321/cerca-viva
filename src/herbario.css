@@ -1,0 +1,78 @@
+/* Herbário: grades de chips por categoria */
+.herbario-card h2 small {
+  font-size: 0.7rem;
+  color: #94a3b8;
+  font-weight: 700;
+  margin-left: 6px;
+}
+.herbario-corpo {
+  overflow-y: auto;
+  max-height: 62vh;
+  padding-right: 4px;
+}
+.herbario-expedicoes {
+  margin: 0 0 8px;
+  padding: 7px 10px;
+  border-radius: 10px;
+  background: rgba(251, 191, 36, 0.12);
+  border: 1.5px solid rgba(251, 191, 36, 0.35);
+  color: #fde68a;
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+.herbario-secao h3 {
+  margin: 10px 0 6px;
+  font-size: 0.88rem;
+  color: #f0fdf4;
+  display: flex;
+  justify-content: space-between;
+}
+.herbario-secao h3 span {
+  color: #86efac;
+  font-size: 0.74rem;
+}
+.herbario-grade {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(118px, 1fr));
+  gap: 6px;
+}
+.herbario-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 4px;
+  border-radius: 10px;
+  text-align: center;
+  background: rgba(30, 41, 59, 0.8);
+  border: 1.5px solid rgba(148, 163, 184, 0.25);
+}
+.herbario-item strong {
+  font-size: 0.68rem;
+  line-height: 1.15;
+}
+.herbario-item small {
+  font-size: 0.6rem;
+  color: #94a3b8;
+}
+.herbario-item.descoberto {
+  border-color: rgba(74, 222, 128, 0.5);
+  background: rgba(20, 83, 45, 0.45);
+}
+.herbario-item.falta {
+  opacity: 0.55;
+  filter: grayscale(1);
+}
+.herbario-grade.conquistas { grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.herbario-item.conquista.falta { opacity: 0.75; filter: none; }
+.herbario-item.conquista small { color: #cbd5e1; line-height: 1.2; }
+.herbario-item.conquista.descoberto { border-color: rgba(250, 204, 21, 0.7); background: rgba(113, 63, 18, 0.35); }
+.herbario-emoji {
+  font-size: 1.35rem;
+  line-height: 1.1;
+}
+@media (max-height: 480px) {
+  .herbario-corpo { max-height: 56vh; }
+  .herbario-grade { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); gap: 4px; }
+  .herbario-emoji { font-size: 1.1rem; }
+}

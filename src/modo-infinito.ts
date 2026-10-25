@@ -1,7 +1,7 @@
 // Regras do Modo Infinito e do Desafio do Dia (sem interface; a interface fica em modos.ts).
 //
 // Infinito: ondas sem fim que ficam mais fortes; a cada 3 ondas vencidas, uma mutação;
-//           a cada 10 ondas, a Colheitadeira Z. Acaba quando os zumbis entram na casa.
+//           a cada 10 ondas, um chefe (Colheitadeira Z e Mapinguari se alternam). Acaba quando os zumbis entram na casa.
 // Desafio do Dia: mesma estrutura, 8 ondas, com 2 regras especiais e um bioma sorteados pela data.
 //           Todo mundo que jogar no mesmo dia recebe o mesmo desafio e a mesma sequência de zumbis.
 
@@ -28,7 +28,7 @@ export const MODIFICADORES: Record<Modificador, { icone: string; nome: string; d
 
 const TODOS_MODIFICADORES = Object.keys(MODIFICADORES) as Modificador[];
 const CLIMAS: Modificador[] = ['noite', 'chuva'];
-const BIOMAS_DO_DESAFIO = ['front_yard', 'monsoon_patio', 'bio_lab_night', 'bioluminescent_swamp'];
+const BIOMAS_DO_DESAFIO = ['front_yard', 'monsoon_patio', 'bio_lab_night', 'bioluminescent_swamp', 'mangue'];
 
 export const ONDAS_DO_DESAFIO = 8;
 export const MUTACAO_A_CADA = 3;
@@ -100,6 +100,40 @@ export function desafioDoDia(data: string): Desafio {
   return { data, semente, biomaId, modificadores: mods, ondas: ONDAS_DO_DESAFIO };
 }
 
+/** Endereço público do jogo, impresso no texto de compartilhar. */
+export const LINK_DO_JOGO = 'joaomagalhaes321.github.io/cerca-viva/';
+
+export interface ResumoDoDesafio {
+  desafio: Desafio;
+  ondasVencidas: number;
+  venceu: boolean;
+  /** Dias seguidos com o desafio concluído (0 = nenhum). */
+  sequencia: number;
+  combos: number;
+}
+
+/**
+ * Texto curto para mandar no grupo (estilo Wordle): uma linha de quadradinhos por onda.
+ * 🟩 onda vencida · 🟥 onda em que os zumbis entraram · ⬛ ondas que nem começaram.
+ */
+export function textoParaCompartilhar(r: ResumoDoDesafio): string {
+  const { desafio: d } = r;
+  const vencidas = Math.max(0, Math.min(d.ondas, r.ondasVencidas));
+  const quadros =
+    '🟩'.repeat(vencidas) + (r.venceu ? '' : '🟥') + '⬛'.repeat(Math.max(0, d.ondas - vencidas - (r.venceu ? 0 : 1)));
+  const regras = d.modificadores.map((m) => `${MODIFICADORES[m].icone} ${MODIFICADORES[m].nome}`).join(' + ');
+  const [, mes, dia] = d.data.split('-');
+  const linhas = [
+    `🌿 Cerca Viva · Desafio do Dia ${dia}/${mes}`,
+    `${quadros} ${vencidas}/${d.ondas}`,
+    regras
+  ];
+  if (r.combos > 0) linhas.push(`⚡ ${r.combos} ${r.combos === 1 ? 'combo' : 'combos'}`);
+  if (r.sequencia > 1) linhas.push(`🔥 ${r.sequencia} dias seguidos`);
+  linhas.push(LINK_DO_JOGO);
+  return linhas.join('\n');
+}
+
 /** Clima travado pelas regras do dia, se houver. */
 export function climaTravado(mods: Modificador[]): WeatherType | null {
   if (mods.includes('noite')) return 'night_storm';
@@ -134,6 +168,7 @@ export function pesosDaOnda(onda: number, mods: Modificador[] = []): [string, nu
   if (onda >= 4) pesos.push(['bucket', 2 + onda * 0.3]);
   if (onda >= 5) pesos.push(['rubber_hazard', 2]);
   if (onda >= 6) pesos.push(['pyro_scavenger', 2]);
+  if (onda >= 6) pesos.push(['siri', 2]);
   if (onda >= colossoDesde) pesos.push(['gargantuar', mods.includes('colossos') ? 2.5 : 0.6 + onda * 0.08]);
   return pesos;
 }
@@ -161,11 +196,16 @@ export function sortearTipo(onda: number, mods: Modificador[], rand: () => numbe
 export interface MotorDasOndas {
   zombies: { variant: string; hp: number; maxHp: number; speed: number }[];
   gameOver: boolean;
+  marcas?: { combosNaOnda: number };
+  /** Chance de zumbi elite; o diretor sobe conforme a onda. */
+  chanceElite?: number;
   wave: number;
   maxWaves: number;
   waveProgress: number;
   spawnZombieByType(type: string, lane?: number): void;
   spawnZombossFinalBoss(): void;
+  /** O chefe do Igarapé; se existir, os chefes se alternam (onda 10 Colheitadeira, 20 Mapinguari…). */
+  spawnMapinguari?(): void;
   offerMutation(): void;
   finishGame(won: boolean): void;
   updateBossSkills(dt: number): void;
@@ -180,6 +220,10 @@ export interface OpcoesDiretor {
   /** Avisos para a interface. */
   aoComecarOnda?: (onda: number, plano: PlanoDaOnda) => void;
   aoVencerOnda?: (onda: number) => void;
+  /** Soma à onda para calcular a força dos zumbis (Expedição: a corrida vai ficando mais dura). */
+  dificuldade?: number;
+  /** Se definido, decide qual chefe (ou nenhum) abre cada onda, no lugar da regra de 10 em 10. */
+  chefeDaOnda?: (onda: number) => 'colheitadeira' | 'mapinguari' | null;
 }
 
 const PAUSA_INICIAL = 9;
@@ -234,14 +278,25 @@ export class DiretorOndas {
   private comecarOnda(): void {
     this.onda++;
     this.estado = 'onda';
-    this.plano = planoDaOnda(this.onda);
+    const forca = this.onda + (this.opcoes.dificuldade ?? 0);
+    this.plano = planoDaOnda(forca);
+    let chefe: 'colheitadeira' | 'mapinguari' | null = null;
+    if (this.opcoes.chefeDaOnda) {
+      chefe = this.opcoes.chefeDaOnda(this.onda);
+      this.plano = { ...this.plano, chefe: chefe !== null, quantidade: chefe ? Math.ceil(this.plano.quantidade / 2) : this.plano.quantidade };
+    } else if (this.plano.chefe) {
+      chefe = Math.round(this.onda / CHEFE_A_CADA) % 2 === 0 && this.motor.spawnMapinguari ? 'mapinguari' : 'colheitadeira';
+    }
     this.restantes = this.plano.quantidade;
     this.timer = 1.2;
     this.motor.wave = this.onda;
+    if (this.motor.marcas) this.motor.marcas.combosNaOnda = 0;
+    if (this.motor.chanceElite !== undefined) this.motor.chanceElite = Math.min(0.45, Math.max(0, (forca - 4) * 0.035));
     this.motor.waveProgress = 0;
-    if (this.plano.chefe) {
+    if (chefe) {
       const antes = this.motor.zombies.length;
-      this.motor.spawnZombossFinalBoss();
+      if (chefe === 'mapinguari' && this.motor.spawnMapinguari) this.motor.spawnMapinguari();
+      else this.motor.spawnZombossFinalBoss();
       this.reforcar(antes);
     }
     this.opcoes.aoComecarOnda?.(this.onda, this.plano);
@@ -249,7 +304,7 @@ export class DiretorOndas {
   }
 
   private soltarZumbi(): void {
-    const tipo = sortearTipo(this.onda, this.opcoes.modificadores, this.opcoes.aleatorio);
+    const tipo = sortearTipo(this.onda + (this.opcoes.dificuldade ?? 0), this.opcoes.modificadores, this.opcoes.aleatorio);
     const linha = Math.floor(this.opcoes.aleatorio() * 5);
     const antes = this.motor.zombies.length;
     this.motor.spawnZombieByType(tipo, linha);
