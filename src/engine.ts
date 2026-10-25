@@ -25,6 +25,7 @@ import {
   novaCerca,
   replantarCerca
 } from './cerca';
+import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
 export const GRID_ROWS = 5;
 export const GRID_COLS = 9;
@@ -48,6 +49,8 @@ export interface PlantEntity {
   animPhase: number;
   scaleKick: number;
   armored: boolean;
+  /** Plantada em cima de cinza: mais dano, mais vida e mais sol. */
+  adubada: boolean;
   // Potato Mine state
   armTimer: number;
   armed: boolean;
@@ -966,6 +969,15 @@ export class GameEngine {
     }
 
     this.sun -= def.cost;
+    const tile = this.tiles[row][col];
+    const adubada = plantarConsomeCinza(tile.hazard);
+    if (adubada) {
+      tile.hazard = 'none';
+      tile.hazardTimer = 0;
+      this.registerCombo('cinzas_ferteis');
+      this.spawnFloatingText('🌱 ADUBADA!', col + 0.5, row + 0.1, '#bef264', 1.2);
+      this.spawnParticles(col + 0.5, row + 0.7, '#a3a3a3', 10);
+    }
     const cdMultiplier = this.unlockedMutations.has('overclock_roots') ? 0.7 : 1.0;
     this.seedCooldowns[def.id] = def.cooldown * cdMultiplier;
 
@@ -976,13 +988,14 @@ export class GameEngine {
       def,
       row,
       col,
-      hp: def.maxHp,
-      maxHp: def.maxHp,
+      hp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1)),
+      maxHp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1)),
       attackTimer: def.attackInterval * 0.4,
       overdriveTimer: 0,
       animPhase: Math.random() * Math.PI * 2,
       scaleKick: 0.35,
       armored: false,
+      adubada,
       armTimer: def.id === 'plasma_mine' ? armDuration : 0,
       armed: def.id !== 'plasma_mine'
     });
@@ -1072,7 +1085,9 @@ export class GameEngine {
         if (tile.hazard !== 'none') {
           tile.hazardTimer -= dt;
           if (tile.hazardTimer <= 0) {
-            tile.hazard = 'none';
+            const proximo = aoExpirar(tile.hazard);
+            tile.hazard = proximo;
+            tile.hazardTimer = DURACAO[proximo] ?? 0;
           }
         }
       }
@@ -1098,6 +1113,17 @@ export class GameEngine {
         p.hp = Math.min(p.maxHp, p.hp + regenRate * dt);
       }
 
+      // O terreno mexe com a planta: poça cura, chão queimado e veneno machucam, gelo muda o ritmo
+      const terreno = efeitoNaPlanta(this.tiles[p.row][p.col].hazard, p.def.element);
+      if (terreno.vidaPorSeg !== 0) {
+        p.hp = Math.min(p.maxHp, p.hp + terreno.vidaPorSeg * dt);
+        if (p.hp <= 0) {
+          this.spawnParticles(p.col + 0.5, p.row + 0.5, '#78716c', 10);
+          this.plants.splice(i, 1);
+          continue;
+        }
+      }
+
       // Ouriço-Mina: arma sob a terra e explode quando um zumbi pisa
       if (p.def.id === 'plasma_mine') {
         if (!p.armed) {
@@ -1120,7 +1146,7 @@ export class GameEngine {
             this.sacudir(7, 0.35, 'medio');
             for (const z of this.zombies) {
               if (z.row === p.row && Math.abs(z.x - (p.col + 0.5)) <= 1.25) {
-                this.applyElementalDamage(z, p.def.damage, 'explosive');
+                this.applyElementalDamage(z, Math.round(p.def.damage * (p.adubada ? ADUBADA.dano : 1)), 'explosive');
               }
             }
             this.plants.splice(i, 1);
@@ -1132,14 +1158,14 @@ export class GameEngine {
       if (p.overdriveTimer > 0 && p.def.id === 'peashooter') {
         p.attackTimer -= dt * 6;
       } else {
-        p.attackTimer -= dt * speedMultiplier;
+        p.attackTimer -= dt * speedMultiplier * terreno.ritmo;
       }
 
       if (p.def.id === 'sunflower') {
         if (p.attackTimer <= 0) {
           p.attackTimer = p.def.attackInterval;
           p.scaleKick = 0.25;
-          const extraSun = this.unlockedMutations.has('solar_nova') ? 10 : 0;
+          const extraSun = (this.unlockedMutations.has('solar_nova') ? 10 : 0) + (p.adubada ? ADUBADA.solExtra : 0);
           this.suns.push({
             id: this.nextEntityId++,
             x: p.col + 0.5 + (Math.random() - 0.5) * 0.4,
@@ -1229,6 +1255,8 @@ export class GameEngine {
         } else if (tile.hazard === 'toxic_pool') {
           z.poisonTimer = Math.max(z.poisonTimer, 3.0);
           z.hp -= 28 * dt;
+        } else if (tile.hazard === 'ice_patch') {
+          z.chilledTimer = Math.max(z.chilledTimer, 1.5);
         }
       }
 
@@ -1248,12 +1276,12 @@ export class GameEngine {
         // Swamp Mud hazard deceleration on zombies
         const currentTileCol = Math.floor(z.x);
         let mudSpeedMult = 1.0;
-        if (
-          currentTileCol >= 0 &&
-          currentTileCol < GRID_COLS &&
-          this.tiles[z.row][currentTileCol]?.hazard === 'swamp_mud'
-        ) {
+        const chaoAtual = currentTileCol >= 0 && currentTileCol < GRID_COLS ? this.tiles[z.row][currentTileCol]?.hazard : 'none';
+        if (chaoAtual === 'swamp_mud') {
           mudSpeedMult = z.variant === 'rubber_hazard' ? 0.85 : 0.6;
+        } else if (chaoAtual === 'ice_patch') {
+          // Escorrega no gelo: anda mais rápido, sem controle (e resfriado pelo chão)
+          mudSpeedMult = GELO.velocidade;
         }
 
         // Rio: quem anda com água na canela vai mais devagar; o canoeiro desce a correnteza.
@@ -1491,7 +1519,7 @@ export class GameEngine {
       yOffset: 0,
       vx: plant.def.element === 'wind' ? 6.2 : 5.2,
       vy: 0,
-      damage: plant.def.damage,
+      damage: Math.round(plant.def.damage * (plant.adubada ? ADUBADA.dano : 1)),
       element: plant.def.element,
       color: plant.def.color,
       radius: plant.def.element === 'fire' || plant.def.element === 'wind' ? 9 : 7
@@ -1569,14 +1597,12 @@ export class GameEngine {
       }
     }
 
+    // 0. O TERRENO REAGE: a casa onde o zumbi está muda com o elemento (fogo derrete gelo, etc.)
+    this.reagirTerreno(target.row, Math.floor(target.x), element);
+
     // 1. WATER APPLICATION
     if (element === 'water') {
       target.wetTimer = 9.0;
-      const col = Math.floor(target.x);
-      if (col >= 0 && col < GRID_COLS && Math.random() < 0.45) {
-        this.tiles[target.row][col].hazard = 'puddle';
-        this.tiles[target.row][col].hazardTimer = 14;
-      }
     }
 
     // 2. TOXIN / ACID APPLICATION (Melts Cone/Bucket armor 2x faster!)
@@ -1585,16 +1611,14 @@ export class GameEngine {
       if (!target.lostHeadgear && (target.variant === 'cone' || target.variant === 'bucket')) {
         finalDamage = Math.floor(baseDamage * 2.1);
       }
-      const col = Math.floor(target.x);
-      if (col >= 0 && col < GRID_COLS && Math.random() < 0.4) {
-        this.tiles[target.row][col].hazard = 'toxic_pool';
-        this.tiles[target.row][col].hazardTimer = 12;
-      }
     }
 
     // 3. WIND APPLICATION (Knockback + Elemental Contagion Spread!)
     if (element === 'wind') {
-      const pushDist = target.variant === 'gargantuar' ? 0.25 : 0.72;
+      const colVento = Math.floor(target.x);
+      const noGelo = colVento >= 0 && colVento < GRID_COLS && this.tiles[target.row][colVento].hazard === 'ice_patch';
+      const pushDist = (target.variant === 'gargantuar' ? 0.25 : 0.72) * (noGelo ? GELO.empurraoDoVento : 1);
+      if (noGelo) this.spawnFloatingText('🧊 ESCORREGOU!', target.x, target.row + 0.3, '#a5f3fc', 1.0);
       target.x = Math.min(GRID_COLS + 0.3, target.x + pushDist);
 
       // Synergy: Wind spreads Fire, Poison, Wet, or Ice from this zombie to others behind it!
@@ -1633,10 +1657,19 @@ export class GameEngine {
         if (
           col >= 0 &&
           col < GRID_COLS &&
-          (this.tiles[target.row][col].hazard === 'puddle' || this.isRiverRow(target.row))
+          (this.tiles[target.row][col].hazard === 'puddle' ||
+            this.tiles[target.row][col].hazard === 'electrified_puddle' ||
+            this.isRiverRow(target.row))
         ) {
           this.tiles[target.row][col].hazard = 'electrified_puddle';
-          this.tiles[target.row][col].hazardTimer = 8.0;
+          this.tiles[target.row][col].hazardTimer = DURACAO.electrified_puddle ?? 8;
+          // O raio corre pela água: as poças encostadas também eletrificam
+          const linha = this.tiles[target.row].map((t) => t.hazard);
+          for (const c of pocasQueEletrificam(linha, col)) {
+            this.tiles[target.row][c].hazard = 'electrified_puddle';
+            this.tiles[target.row][c].hazardTimer = DURACAO.electrified_puddle ?? 8;
+            this.arcs.push({ x1: col + 0.5, y1: target.row + 0.6, x2: c + 0.5, y2: target.row + 0.6, color: '#7dd3fc', life: 0.3 });
+          }
         }
 
         this.spawnFloatingText('⚡ ELETROCUSSÃO!', target.x, target.row + 0.15, '#c084fc', 1.15);
@@ -1738,6 +1771,22 @@ export class GameEngine {
     }
 
     target.hp -= finalDamage;
+  }
+
+  /** Aplica a reação do terreno numa casa (gelo derrete com fogo, água congela com gelo, etc.). */
+  private reagirTerreno(row: number, col: number, element: ElementType): void {
+    if (row < 0 || row >= GRID_ROWS || col < 0 || col >= GRID_COLS) return;
+    if (this.isRiverRow(row)) return; // o rio é água sempre
+    const tile = this.tiles[row][col];
+    if (tile.hazard === 'swamp_mud') return; // lodo do pântano não muda
+    const r = reacaoDoTerreno(tile.hazard, element);
+    if (!r) return;
+    tile.hazard = r.hazard;
+    tile.hazardTimer = DURACAO[r.hazard] ?? 0;
+    if (r.texto) {
+      this.spawnFloatingText(r.texto, col + 0.5, row + 0.75, r.cor, 1.0);
+      this.spawnParticles(col + 0.5, row + 0.7, r.cor, 8);
+    }
   }
 
   private handleZombieDeath(z: ZombieEntity, index: number): void {
@@ -2385,6 +2434,40 @@ export class GameEngine {
           ctx.strokeStyle = '#bef264';
           ctx.stroke();
           ctx.restore();
+        } else if (tile.hazard === 'ice_patch') {
+          ctx.save();
+          ctx.beginPath();
+          ctx.ellipse(x + this.cellW * 0.5, y + this.cellH * 0.58, this.cellW * 0.4, this.cellH * 0.27, 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(207, 250, 254, 0.78)';
+          ctx.fill();
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = '#67e8f9';
+          ctx.stroke();
+          // Rachaduras
+          ctx.strokeStyle = 'rgba(14, 116, 144, 0.55)';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.moveTo(x + this.cellW * 0.3, y + this.cellH * 0.5);
+          ctx.lineTo(x + this.cellW * 0.45, y + this.cellH * 0.62);
+          ctx.lineTo(x + this.cellW * 0.62, y + this.cellH * 0.52);
+          ctx.lineTo(x + this.cellW * 0.7, y + this.cellH * 0.66);
+          ctx.stroke();
+          ctx.restore();
+        } else if (tile.hazard === 'ash') {
+          ctx.save();
+          ctx.beginPath();
+          ctx.ellipse(x + this.cellW * 0.5, y + this.cellH * 0.6, this.cellW * 0.38, this.cellH * 0.25, 0, 0, Math.PI * 2);
+          ctx.fillStyle = 'rgba(82, 82, 91, 0.62)';
+          ctx.fill();
+          // Brasinhas que ainda piscam
+          const brasa = 0.4 + Math.sin(agora * 0.004 + c * 1.3) * 0.3;
+          ctx.fillStyle = `rgba(251, 146, 60, ${brasa})`;
+          for (const [dx, dy] of [[0.36, 0.56], [0.58, 0.64], [0.5, 0.5]]) {
+            ctx.beginPath();
+            ctx.arc(x + this.cellW * dx, y + this.cellH * dy, 2, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.restore();
         } else if (tile.hazard === 'swamp_mud') {
           ctx.save();
           ctx.beginPath();
@@ -2473,6 +2556,18 @@ export class GameEngine {
         this.cellH,
         isNightScene
       );
+
+      if (p.adubada) {
+        // Montinho de terra escura e brilho: planta adubada
+        ctx.fillStyle = 'rgba(68, 64, 60, 0.7)';
+        ctx.beginPath();
+        ctx.ellipse(cx, cy + this.cellH * 0.36, this.cellW * 0.3, this.cellH * 0.08, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(190, 242, 100, ${0.5 + Math.sin(agora * 0.005 + p.id) * 0.3})`;
+        ctx.beginPath();
+        ctx.arc(cx + this.cellW * 0.3, cy - this.cellH * 0.3, 3, 0, Math.PI * 2);
+        ctx.fill();
+      }
 
       if (p.hp < p.maxHp) {
         const bw = this.cellW * 0.56;

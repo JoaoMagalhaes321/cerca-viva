@@ -18,7 +18,9 @@ export type TileHazard =
   | 'scorched'
   | 'ice_patch'
   | 'toxic_pool'
-  | 'swamp_mud';
+  | 'swamp_mud'
+  /** Cinza que fica depois do chão queimado apagar: a próxima planta nasce adubada. */
+  | 'ash';
 
 export interface PlantDefinition {
   id: string;
@@ -212,6 +214,15 @@ export const SYNERGY_RECIPES: SynergyRecipe[] = [
     color: '#a3e635',
     description: 'O ácido da Nepentes Ácida derrete armaduras 2x mais rápido e, ao contato com Fogo, detona uma nuvem inflamável em área!',
     hint: 'Ácido perto do fogo é uma péssima ideia (para os zumbis).'
+  },
+  {
+    id: 'cinzas_ferteis',
+    title: 'Cinzas Férteis',
+    badges: '🔥 Fogo → 🌫️ Cinza + 🌱 Planta',
+    comboText: '🌱 ADUBADA!',
+    color: '#a3a3a3',
+    description: 'Quando o chão queimado apaga, sobra cinza. Plante em cima dela e a planta nasce adubada: +30% de dano, +25% de vida e Lírios geram +10 de Sol.',
+    hint: 'O que sobra depois que o fogo apaga ainda serve para alguma coisa.'
   },
   {
     id: 'elemental_gale',
