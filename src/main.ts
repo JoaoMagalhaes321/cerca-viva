@@ -174,6 +174,7 @@ function buildSeedPackets(): void {
           animPhase: 0.4,
           scaleKick: 0,
           armored: false,
+          adubada: false,
           armTimer: 0,
           armed: true
         },
@@ -368,6 +369,7 @@ function renderDeckModalContents(): void {
           animPhase: 0.4,
           scaleKick: 0,
           armored: false,
+          adubada: false,
           armTimer: 0,
           armed: true
         },
@@ -451,6 +453,7 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
             animPhase: 0.4,
             scaleKick: 0,
             armored: false,
+            adubada: false,
             armTimer: 0,
             armed: true
           },
@@ -666,6 +669,7 @@ function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): v
         animPhase: 0.5,
         scaleKick: 0.35,
         armored: false,
+        adubada: false,
         armTimer: 0,
         armed: true
       },
