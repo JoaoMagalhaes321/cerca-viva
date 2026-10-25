@@ -25,6 +25,7 @@ import {
   novaCerca,
   replantarCerca
 } from './cerca';
+import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
 export const GRID_ROWS = 5;
@@ -51,6 +52,12 @@ export interface PlantEntity {
   armored: boolean;
   /** Plantada em cima de cinza: mais dano, mais vida e mais sol. */
   adubada: boolean;
+  /** Segundos de vida: muda nos primeiros segundos, depois adulta, depois pode florescer. */
+  idade: number;
+  /** Caminho de floração escolhido (id de florescer.ts) ou null. */
+  caminho: string | null;
+  /** Relógio dos efeitos periódicos da floração (vulcão, torre tesla, nascente). */
+  caminhoTimer: number;
   // Potato Mine state
   armTimer: number;
   armed: boolean;
@@ -120,6 +127,8 @@ export interface ProjectileEntity {
   color: string;
   radius: number;
   isRicochet?: boolean;
+  /** Caminho de floração da planta que atirou (muda o que o acerto faz). */
+  caminho?: string | null;
 }
 
 export interface SunOrb {
@@ -252,6 +261,8 @@ export class GameEngine {
   private bossSkillTimer = 5.5;
 
   private nextEntityId = 1;
+  /** Já avisou nesta partida que dá para tocar na planta com ✨. */
+  private avisouFlorescer = false;
   private skySunTimer = 5.0;
   /** Tutorial: segura o relógio das ondas enquanto o jogador aprende o básico. */
   public holdWaves = false;
@@ -265,6 +276,7 @@ export class GameEngine {
   private onGameEnd: (won: boolean) => void;
   private onToast: (msg: string) => void;
   private onCombo?: (synergyId: string) => void;
+  private onBloomPrompt?: (plant: PlantEntity) => void;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -275,6 +287,8 @@ export class GameEngine {
       onToast: (msg: string) => void;
       /** Chamado toda vez que um combo (sinergia) acontece, com o id da receita. */
       onCombo?: (synergyId: string) => void;
+      /** Chamado quando o jogador toca numa planta pronta para florescer. */
+      onBloomPrompt?: (plant: PlantEntity) => void;
     }
   ) {
     this.canvas = canvas;
@@ -288,6 +302,7 @@ export class GameEngine {
     this.onGameEnd = callbacks.onGameEnd;
     this.onToast = callbacks.onToast;
     this.onCombo = callbacks.onCombo;
+    this.onBloomPrompt = callbacks.onBloomPrompt;
 
     this.initBoard();
     this.setupInputs();
@@ -412,6 +427,7 @@ export class GameEngine {
     this.waveElapsed = 0;
     this.zombieSpawnTimer = 3.5;
     this.sunsCollected = 0;
+    this.avisouFlorescer = false;
     this.holdWaves = false;
     this.boardCacheDirty = true;
     this.onUiUpdate();
@@ -691,6 +707,12 @@ export class GameEngine {
         return;
       }
 
+      const plantaAqui = this.plants.find((p) => p.row === pos.gridRow && p.col === pos.gridCol);
+      if (plantaAqui && prontaParaFlorescer(plantaAqui.idade, plantaAqui.caminho)) {
+        this.onBloomPrompt?.(plantaAqui);
+        return;
+      }
+
       if (this.selectedPlantId) {
         this.tryPlacePlant(this.selectedPlantId, pos.gridRow, pos.gridCol);
       }
@@ -725,6 +747,30 @@ export class GameEngine {
     sound.playPlantPlace();
     this.spawnParticles(-0.3, row + 0.6, '#4ade80', 14);
     this.spawnFloatingText('🌱 MUDA PLANTADA!', 0.4, row + 0.2, '#86efac', 1.1);
+    this.onUiUpdate();
+  }
+
+  /** Estágio de vida de uma planta (muda, adulta ou florida). */
+  public estagioDe(p: PlantEntity): 'muda' | 'adulta' | 'florida' {
+    return estagioDaPlanta(p.idade, p.caminho);
+  }
+
+  /** Aplica o caminho de floração escolhido pelo jogador numa planta. */
+  public florescer(plantId: number, caminhoId: string): void {
+    const p = this.plants.find((x) => x.id === plantId);
+    const c = caminhoPorId(caminhoId);
+    if (!p || !c || p.caminho) return;
+    p.caminho = c.id;
+    p.caminhoTimer = 0;
+    p.scaleKick = 0.45;
+    if (c.id === 'rocha') {
+      p.maxHp = Math.round(p.maxHp * 1.6);
+      p.hp = p.maxHp;
+    }
+    sound.playMutationUnlock();
+    this.spawnParticles(p.col + 0.5, p.row + 0.4, p.def.color, 20);
+    this.spawnParticles(p.col + 0.5, p.row + 0.4, '#fde047', 12);
+    this.spawnFloatingText(`${c.icone} ${c.nome.toUpperCase()}!`, p.col + 0.5, p.row, '#fef9c3', 1.2);
     this.onUiUpdate();
   }
 
@@ -996,6 +1042,9 @@ export class GameEngine {
       scaleKick: 0.35,
       armored: false,
       adubada,
+      idade: 0,
+      caminho: null,
+      caminhoTimer: 0,
       armTimer: def.id === 'plasma_mine' ? armDuration : 0,
       armed: def.id !== 'plasma_mine'
     });
@@ -1106,6 +1155,20 @@ export class GameEngine {
     for (let i = this.plants.length - 1; i >= 0; i--) {
       const p = this.plants[i];
       p.animPhase += dt * 3.5;
+      const idadeAntes = p.idade;
+      p.idade += dt;
+      if (idadeAntes < MUDA_SEGUNDOS && p.idade >= MUDA_SEGUNDOS) {
+        p.scaleKick = 0.35;
+        this.spawnParticles(p.col + 0.5, p.row + 0.6, '#86efac', 8);
+      }
+      if (idadeAntes < FLORESCER_EM && p.idade >= FLORESCER_EM && !p.caminho) {
+        this.spawnFloatingText('✨ PRONTA PARA FLORESCER!', p.col + 0.5, p.row, '#fef08a', 1.0);
+        if (!this.avisouFlorescer) {
+          this.avisouFlorescer = true;
+          this.onToast('✨ Uma planta está pronta para florescer! Toque nela para escolher o caminho.');
+        }
+      }
+      if (p.caminho) this.efeitoPeriodicoDoCaminho(p, dt);
       if (p.scaleKick > 0) p.scaleKick = Math.max(0, p.scaleKick - dt * 2.5);
       if (p.overdriveTimer > 0) p.overdriveTimer = Math.max(0, p.overdriveTimer - dt);
 
@@ -1144,21 +1207,31 @@ export class GameEngine {
             this.spawnParticles(p.col + 0.5, p.row + 0.5, '#facc15', 20);
             this.spawnFloatingText('💥 BUM!', p.col + 0.5, p.row, '#fef08a', 1.45);
             this.sacudir(7, 0.35, 'medio');
+            const raioMina = p.caminho === 'mina_pesada' ? 2.0 : 1.25;
+            const danoMina = p.def.damage * (p.adubada ? ADUBADA.dano : 1) * (p.caminho === 'mina_pesada' ? 1.3 : 1);
             for (const z of this.zombies) {
-              if (z.row === p.row && Math.abs(z.x - (p.col + 0.5)) <= 1.25) {
-                this.applyElementalDamage(z, Math.round(p.def.damage * (p.adubada ? ADUBADA.dano : 1)), 'explosive');
+              if (z.row === p.row && Math.abs(z.x - (p.col + 0.5)) <= raioMina) {
+                this.applyElementalDamage(z, Math.round(danoMina), 'explosive');
               }
             }
             this.plants.splice(i, 1);
+            if (p.caminho === 'ninhada') {
+              // Deixa outra mina armando no lugar
+              this.plants.push({ ...p, id: this.nextEntityId++, hp: p.def.maxHp, maxHp: p.def.maxHp, armed: false, armTimer: 4.5, idade: MUDA_SEGUNDOS, caminho: null, caminhoTimer: 0, scaleKick: 0.4 });
+              this.spawnFloatingText('🥚 NINHADA!', p.col + 0.5, p.row + 0.3, '#fde68a', 1.0);
+            }
             continue;
           }
         }
       }
 
+      const polinizada = this.plants.some(
+        (q) => q.caminho === 'polinizadora' && q.id !== p.id && Math.abs(q.row - p.row) <= 1 && Math.abs(q.col - p.col) <= 1
+      );
       if (p.overdriveTimer > 0 && p.def.id === 'peashooter') {
         p.attackTimer -= dt * 6;
       } else {
-        p.attackTimer -= dt * speedMultiplier * terreno.ritmo;
+        p.attackTimer -= dt * speedMultiplier * terreno.ritmo * (polinizada ? 1.2 : 1);
       }
 
       if (p.def.id === 'sunflower') {
@@ -1166,15 +1239,18 @@ export class GameEngine {
           p.attackTimer = p.def.attackInterval;
           p.scaleKick = 0.25;
           const extraSun = (this.unlockedMutations.has('solar_nova') ? 10 : 0) + (p.adubada ? ADUBADA.solExtra : 0);
-          this.suns.push({
-            id: this.nextEntityId++,
-            x: p.col + 0.5 + (Math.random() - 0.5) * 0.4,
-            y: p.row + 0.3,
-            targetY: p.row + 0.65,
-            value: 25 + extraSun,
-            life: 14,
-            collected: false
-          });
+          const quantos = p.caminho === 'lirio_sol' ? 2 : 1;
+          for (let k = 0; k < quantos; k++) {
+            this.suns.push({
+              id: this.nextEntityId++,
+              x: p.col + 0.5 + (Math.random() - 0.5) * 0.4 + (quantos > 1 ? (k - 0.5) * 0.5 : 0),
+              y: p.row + 0.3,
+              targetY: p.row + 0.65,
+              value: 25 + extraSun,
+              life: 14,
+              collected: false
+            });
+          }
 
           if (this.unlockedMutations.has('solar_nova')) {
             this.spawnParticles(p.col + 0.5, p.row + 0.5, '#f97316', 14);
@@ -1290,7 +1366,11 @@ export class GameEngine {
         if (this.isRiverRow(z.row)) {
           riverMult = z.variant === 'canoeiro' ? 1.0 : 0.85;
           const raizes = this.plants.some(
-            (p) => p.row === z.row && p.def.id === 'aguape' && z.x - (p.col + 0.5) > 0 && z.x - (p.col + 0.5) <= 1.8
+            (p) =>
+              p.row === z.row &&
+              p.def.id === 'aguape' &&
+              z.x - (p.col + 0.5) > 0 &&
+              z.x - (p.col + 0.5) <= (p.caminho === 'tapete' ? 3.0 : 1.8)
           );
           if (raizes) riverMult *= 0.55;
         }
@@ -1340,6 +1420,7 @@ export class GameEngine {
           ) {
             z.hp -= 35 * dt;
           }
+          if (targetPlant.caminho === 'espinhoso') z.hp -= 30 * dt;
           if (targetPlant.hp <= 0) {
             const pIdx = this.plants.indexOf(targetPlant);
             if (pIdx !== -1) this.plants.splice(pIdx, 1);
@@ -1512,23 +1593,70 @@ export class GameEngine {
 
   private fireProjectile(plant: PlantEntity): void {
     sound.playShoot(plant.def.element);
-    this.projectiles.push({
-      id: this.nextEntityId++,
-      row: plant.row,
-      x: plant.col + 0.65,
-      yOffset: 0,
-      vx: plant.def.element === 'wind' ? 6.2 : 5.2,
-      vy: 0,
-      damage: Math.round(plant.def.damage * (plant.adubada ? ADUBADA.dano : 1)),
-      element: plant.def.element,
-      color: plant.def.color,
-      radius: plant.def.element === 'fire' || plant.def.element === 'wind' ? 9 : 7
-    });
+    let mult = plant.adubada ? ADUBADA.dano : 1;
+    if (this.estagioDe(plant) === 'muda') mult *= MUDA.dano;
+    const c = plant.caminho;
+    if (c === 'quiabo_pesado') mult *= 1.8;
+    else if (c === 'estalactite') mult *= 1.6;
+    else if (c === 'dragao') mult *= 1.5;
+    else if (c === 'bolhao') mult *= 1.5;
+    if (c === 'quiabo_pesado') plant.attackTimer *= 1.3;
+    const tiros = c === 'quiabo_duplo' ? 2 : 1;
+    for (let k = 0; k < tiros; k++) {
+      this.projectiles.push({
+        id: this.nextEntityId++,
+        row: plant.row,
+        x: plant.col + 0.65 - k * 0.3,
+        yOffset: k * 4,
+        vx: plant.def.element === 'wind' ? 6.2 : 5.2,
+        vy: 0,
+        damage: Math.round(plant.def.damage * mult),
+        element: plant.def.element,
+        color: plant.def.color,
+        radius: (plant.def.element === 'fire' || plant.def.element === 'wind' ? 9 : 7) * (c === 'quiabo_pesado' ? 1.3 : 1),
+        caminho: c
+      });
+    }
   }
 
   private onProjectileHit(proj: ProjectileEntity, target: ZombieEntity): void {
-    this.applyElementalDamage(target, proj.damage, proj.element);
+    let dano = proj.damage;
+    if (proj.caminho === 'corrosiva' && !target.lostHeadgear && (target.variant === 'cone' || target.variant === 'bucket')) {
+      dano = Math.round(dano * 1.5);
+    }
+    this.applyElementalDamage(target, dano, proj.element);
     this.spawnParticles(target.x, target.row + 0.5, proj.color, 8);
+
+    // Efeitos extras do caminho de floração da planta que atirou
+    switch (proj.caminho) {
+      case 'geiser':
+        target.x = Math.min(GRID_COLS + 0.3, target.x + 0.3);
+        target.wetTimer = Math.max(target.wetTimer, 12);
+        break;
+      case 'tesla_bateria':
+        target.stunTimer = Math.max(target.stunTimer, 0.4);
+        break;
+      case 'estalactite':
+        if (target.frozenTimer > 0) target.frozenTimer = Math.max(target.frozenTimer, 4.5);
+        break;
+      case 'dragao':
+        target.burnTimer = Math.max(target.burnTimer, 7);
+        break;
+      case 'furacao':
+        target.x = Math.min(GRID_COLS + 0.3, target.x + 0.72);
+        break;
+      case 'pantano': {
+        const col = Math.floor(target.x);
+        if (col >= 0 && col < GRID_COLS && !this.isRiverRow(target.row) && this.tiles[target.row][col].hazard !== 'swamp_mud') {
+          this.tiles[target.row][col].hazard = 'toxic_pool';
+          this.tiles[target.row][col].hazardTimer = DURACAO.toxic_pool ?? 12;
+        }
+        break;
+      }
+      case 'bolhao':
+        target.stunTimer = Math.max(target.stunTimer, 0.3);
+        break;
+    }
 
     if (
       !proj.isRicochet &&
@@ -1771,6 +1899,69 @@ export class GameEngine {
     }
 
     target.hp -= finalDamage;
+  }
+
+  /** Auras e efeitos de tempos em tempos dos caminhos de floração. */
+  private efeitoPeriodicoDoCaminho(p: PlantEntity, dt: number): void {
+    p.caminhoTimer += dt;
+    switch (p.caminho) {
+      case 'lirio_luz':
+        for (const q of this.plants) {
+          if (q.id !== p.id && Math.abs(q.row - p.row) <= 1 && Math.abs(q.col - p.col) <= 1 && q.hp < q.maxHp) {
+            q.hp = Math.min(q.maxHp, q.hp + 8 * dt);
+          }
+        }
+        break;
+      case 'nascente':
+        for (const q of this.plants) {
+          if (q.row === p.row && q.id !== p.id && q.hp < q.maxHp) q.hp = Math.min(q.maxHp, q.hp + 6 * dt);
+        }
+        if (p.caminhoTimer >= 3) {
+          p.caminhoTimer = 0;
+          for (const c of [p.col - 1, p.col + 1]) {
+            if (c < 0 || c >= GRID_COLS || this.isRiverRow(p.row)) continue;
+            const t = this.tiles[p.row][c];
+            if (t.hazard === 'none' || t.hazard === 'puddle') {
+              t.hazard = 'puddle';
+              t.hazardTimer = DURACAO.puddle ?? 14;
+            }
+          }
+        }
+        break;
+      case 'tesla_torre':
+        if (p.caminhoTimer >= 4) {
+          p.caminhoTimer = 0;
+          let acertou = false;
+          for (const z of this.zombies) {
+            if (z.wetTimer > 0 && Math.hypot(z.x - (p.col + 0.5), z.row - p.row) <= 2.2) {
+              acertou = true;
+              this.arcs.push({ x1: p.col + 0.5, y1: p.row + 0.3, x2: z.x, y2: z.row + 0.5, color: '#c084fc', life: 0.35 });
+              this.applyElementalDamage(z, 30, 'electric');
+            }
+          }
+          if (acertou) sound.playShoot('electric');
+        }
+        break;
+      case 'nevasca':
+        for (const z of this.zombies) {
+          if (Math.hypot(z.x - (p.col + 0.5), z.row - p.row) <= 1.5) z.chilledTimer = Math.max(z.chilledTimer, 1.0);
+        }
+        break;
+      case 'vulcao':
+        if (p.caminhoTimer >= 6) {
+          p.caminhoTimer = 0;
+          const c = p.col + 2;
+          if (c < GRID_COLS && !this.isRiverRow(p.row) && this.tiles[p.row][c].hazard !== 'swamp_mud') {
+            this.tiles[p.row][c].hazard = 'scorched';
+            this.tiles[p.row][c].hazardTimer = DURACAO.scorched ?? 7;
+            this.spawnParticles(c + 0.5, p.row + 0.6, '#f97316', 14);
+            for (const z of this.zombies) {
+              if (z.row === p.row && Math.abs(z.x - (c + 0.5)) <= 0.6) this.applyElementalDamage(z, 40, 'fire');
+            }
+          }
+        }
+        break;
+    }
   }
 
   /** Aplica a reação do terreno numa casa (gelo derrete com fogo, água congela com gelo, etc.). */

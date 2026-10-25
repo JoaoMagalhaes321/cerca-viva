@@ -4,6 +4,7 @@
 
 import { PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engine';
 import { CERCA, CercaViva } from './cerca';
+import { MUDA, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { getSprite, SpriteImage } from './sprites';
 
 // Brilho redondo (degradê radial) desenhado uma vez por cor e reaproveitado: criar o degradê
@@ -430,7 +431,8 @@ export class CharacterRenderer {
     cellH: number,
     isNight: boolean
   ): void {
-    const s = (cellH / 92) * (1 + p.scaleKick * 0.7);
+    const estagio = estagioDaPlanta(p.idade, p.caminho);
+    const s = (cellH / 92) * (1 + p.scaleKick * 0.7) * (estagio === 'muda' ? MUDA.tamanho : 1);
     const t = p.animPhase;
     const sway = Math.sin(t) * 3.2;
     const breathe = 1 + Math.sin(t * 1.3) * 0.035;
@@ -485,9 +487,48 @@ export class CharacterRenderer {
       if (p.def.id === 'wallnut') {
         this.drawWallDamage(ctx, p.hp / p.maxHp);
       }
+
+      if (estagio === 'florida') {
+        // Coroa de flores por cima da planta florida
+        const cor = p.def.color;
+        const pontos: [number, number][] = [[-31, -22], [31, -22], [0, -56]];
+        for (let k = 0; k < 3; k++) {
+          const fx = pontos[k][0];
+          const fy = pontos[k][1] + Math.sin(t * 1.2 + k) * 2;
+          ctx.fillStyle = '#fff6c9';
+          ctx.strokeStyle = '#2a2416';
+          ctx.lineWidth = 1.6;
+          for (let q = 0; q < 5; q++) {
+            const a = (q / 5) * Math.PI * 2 + t * 0.15;
+            ctx.beginPath();
+            ctx.ellipse(fx + Math.cos(a) * 4, fy + Math.sin(a) * 4, 3.2, 2, a, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+          ctx.fillStyle = cor;
+          ctx.beginPath();
+          ctx.arc(fx, fy, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
     }
 
     ctx.restore();
+
+    if (prontaParaFlorescer(p.idade, p.caminho)) {
+      // ✨ pulsando: toque para escolher o caminho
+      const pulso = 1 + Math.sin(performance.now() * 0.006) * 0.15;
+      ctx.save();
+      ctx.translate(cx + cellW * 0.3, cy - cellH * 0.46);
+      ctx.scale(pulso, pulso);
+      ctx.drawImage(this.brilho('#fde047', '99'), -16, -16, 32, 32);
+      ctx.font = `${Math.max(13, cellH * 0.19)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✨', 0, 1);
+      ctx.restore();
+    }
   }
 
   // Rachaduras do Cacto-Muralha conforme perde vida

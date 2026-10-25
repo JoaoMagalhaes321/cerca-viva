@@ -1,4 +1,4 @@
-import { GameEngine, ZombieVariant } from './engine';
+import { GameEngine, PlantEntity, ZombieVariant } from './engine';
 import { CharacterRenderer } from './renderer';
 import { preloadSprites } from './sprites';
 import { confete, vibrar } from './feedback';
@@ -13,11 +13,13 @@ import {
   LevelConfig,
   MUTATION_CATALOG,
   MutationDefinition,
-  PLANT_CATALOG
+  PLANT_CATALOG,
+  PlantDefinition
 } from './types';
 import { ProgressionManager } from './progression';
 import { LEVEL_CATALOG, biomaDoMundo, getNextLevel } from './levels';
 import { Tutorial } from './tutorial';
+import { BalaoFlorescer } from './florescer-ui';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -117,6 +119,15 @@ function showToast(msg: string): void {
   }, 3200);
 }
 
+/** Planta adulta e inteira, só para desenhar retratos (cards, almanaque, recompensa). */
+function plantaDeRetrato(def: PlantDefinition): PlantEntity {
+  return {
+    id: 0, def, row: 0, col: 0, hp: def.maxHp, maxHp: def.maxHp, attackTimer: 0, overdriveTimer: 0,
+    animPhase: 0.4, scaleKick: 0, armored: false, adubada: false, idade: 99, caminho: null, caminhoTimer: 0,
+    armTimer: 0, armed: true
+  };
+}
+
 let engine!: GameEngine;
 
 engine = new GameEngine(canvas, {
@@ -125,9 +136,16 @@ engine = new GameEngine(canvas, {
     if (engine) syncHud();
   },
   onMutationPrompt: (choices) => openMutationModal(choices),
+  onBloomPrompt: (plant) => balaoFlorescer.abrir(plant),
   onGameEnd: (won) => openGameOverModal(won),
   onToast: (msg) => showToast(msg)
 });
+
+const balaoFlorescer = new BalaoFlorescer(
+  engine,
+  document.getElementById('canvas-container') as HTMLElement,
+  canvas
+);
 
 const tutorial = new Tutorial(
   engine,
@@ -162,22 +180,7 @@ function buildSeedPackets(): void {
     if (pCtx) {
       CharacterRenderer.drawPlant(
         pCtx,
-        {
-          id: 0,
-          def: plant,
-          row: 0,
-          col: 0,
-          hp: plant.maxHp,
-          maxHp: plant.maxHp,
-          attackTimer: 0,
-          overdriveTimer: 0,
-          animPhase: 0.4,
-          scaleKick: 0,
-          armored: false,
-          adubada: false,
-          armTimer: 0,
-          armed: true
-        },
+        plantaDeRetrato(plant),
         22,
         24,
         46,
@@ -357,22 +360,7 @@ function renderDeckModalContents(): void {
     if (pCtx) {
       CharacterRenderer.drawPlant(
         pCtx,
-        {
-          id: 0,
-          def: plant,
-          row: 0,
-          col: 0,
-          hp: plant.maxHp,
-          maxHp: plant.maxHp,
-          attackTimer: 0,
-          overdriveTimer: 0,
-          animPhase: 0.4,
-          scaleKick: 0,
-          armored: false,
-          adubada: false,
-          armTimer: 0,
-          armed: true
-        },
+        plantaDeRetrato(plant),
         28,
         30,
         54,
@@ -441,22 +429,7 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
       if (pCtx) {
         CharacterRenderer.drawPlant(
           pCtx,
-          {
-            id: 0,
-            def: plant,
-            row: 0,
-            col: 0,
-            hp: plant.maxHp,
-            maxHp: plant.maxHp,
-            attackTimer: 0,
-            overdriveTimer: 0,
-            animPhase: 0.4,
-            scaleKick: 0,
-            armored: false,
-            adubada: false,
-            armTimer: 0,
-            armed: true
-          },
+          plantaDeRetrato(plant),
           32,
           36,
           62,
@@ -657,22 +630,7 @@ function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): v
     ctx.clearRect(0, 0, rewardPlantCanvas.width, rewardPlantCanvas.height);
     CharacterRenderer.drawPlant(
       ctx,
-      {
-        id: 0,
-        def: plant,
-        row: 0,
-        col: 0,
-        hp: plant.maxHp,
-        maxHp: plant.maxHp,
-        attackTimer: 0,
-        overdriveTimer: 0,
-        animPhase: 0.5,
-        scaleKick: 0.35,
-        armored: false,
-        adubada: false,
-        armTimer: 0,
-        armed: true
-      },
+      plantaDeRetrato(plant),
       65,
       68,
       110,
@@ -970,6 +928,7 @@ restartBtn.addEventListener('click', () => {
 function showMainMenu(): void {
   engine.paused = true;
   tutorial.parar();
+  balaoFlorescer.fechar();
   updateMenuStageInfo();
   mainMenuScreen.classList.remove('hidden');
 }
@@ -1062,6 +1021,7 @@ function loop(now: number): void {
   if (now - lastHudSync > 100) {
     updateCooldownOverlays();
     tutorial.tick();
+    balaoFlorescer.tick();
     lastHudSync = now;
   }
 
