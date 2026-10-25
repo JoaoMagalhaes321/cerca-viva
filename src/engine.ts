@@ -27,6 +27,7 @@ import {
 } from './cerca';
 import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { Foto, Gravador } from './replay';
+import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
 export const GRID_ROWS = 5;
@@ -2945,6 +2946,7 @@ export class GameEngine {
   private spawnParticles(x: number, y: number, color: string, count: number): void {
     // Teto de partículas: numa luta cheia de combos elas passavam de 250 ao mesmo tempo
     if (this.qualidade === 'economica') count = Math.ceil(count / 2);
+    if (acessibilidade.reduzirEfeitos) count = Math.ceil(count / 3);
     count = Math.min(count, this.maxParticulas - this.particles.length);
     for (let i = 0; i < count; i++) {
       const angle = Math.random() * Math.PI * 2;
@@ -3157,6 +3159,10 @@ export class GameEngine {
           ctx.fill();
           ctx.restore();
         }
+        if (acessibilidade.daltonico && tile.hazard !== 'none' && !(tile.hazard === 'puddle' && this.isRiverRow(r))) {
+          const letra = LETRA_DO_TERRENO[tile.hazard];
+          if (letra) desenharLetra(ctx, letra, x + this.cellW * 0.14, y + this.cellH * 0.16, Math.max(10, this.cellH * 0.17));
+        }
 
         if (r === this.hoverRow && c === this.hoverCol && !this.paused) {
           ctx.save();
@@ -3301,6 +3307,7 @@ export class GameEngine {
         ctx.strokeStyle = '#99f6e4';
         ctx.lineWidth = 4;
         ctx.stroke();
+        if (acessibilidade.daltonico) desenharLetra(ctx, 'V', px, py, 11);
       } else {
         const r = proj.radius;
         if (CharacterRenderer.efeitos) {
@@ -3328,6 +3335,7 @@ export class GameEngine {
         ctx.lineWidth = 2.5;
         ctx.strokeStyle = proj.color;
         ctx.stroke();
+        if (acessibilidade.daltonico) desenharLetra(ctx, LETRA_DO_ELEMENTO[proj.element], px, py + 0.5, Math.max(9, r * 1.5));
       }
       ctx.restore();
     }
