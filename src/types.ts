@@ -105,6 +105,10 @@ export interface LevelConfig {
   availableLanes: number;
   unlockedPlantOnClear?: string;
   spawns: ZombieSpawnEvent[];
+  /** Regras especiais da fase (ids de regras-fase.ts). */
+  regras?: string[];
+  /** Com a regra deck_fixo: as sementes que a fase impõe. */
+  deckFixo?: string[];
 }
 
 export interface PlayerProgress {

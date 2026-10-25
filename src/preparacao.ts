@@ -8,6 +8,7 @@ import type { PlantEntity, ZombieVariant } from './engine';
 import { LevelConfig, PLANT_CATALOG, PlantDefinition, BIOME_CATALOG } from './types';
 import { ZUMBIS_DO_HERBARIO } from './herbario';
 import { biomaDoMundo } from './levels';
+import { infoDaRegra, regrasDaFase } from './regras-fase';
 import './preparacao.css';
 
 const CHEFES: ZombieVariant[] = ['zomboss_mech', 'mapinguari', 'gargantuar'];
@@ -95,6 +96,7 @@ export class Preparacao {
         </div>
         <div class="prep-colunas">
           <section class="prep-zumbis">
+            <div class="prep-regras"></div>
             <h3>🧟 Quem vem aí</h3>
             <div class="prep-zumbis-lista"></div>
             <p class="prep-dica"></p>
@@ -128,11 +130,27 @@ export class Preparacao {
     return m;
   }
 
+  private deckFixo: string[] | null = null;
+
   private render(): void {
     const level = this.level!;
+    const liberadas = this.o.liberadas();
     const bioma = BIOME_CATALOG.find((b) => b.id === biomaDoMundo(level.world));
     this.q<HTMLElement>('.prep-badge').textContent = `⚔️ PREPARAÇÃO · FASE ${level.world}-${level.stage} · ${bioma?.icon ?? ''} ${bioma?.name.replace(/^\d+\.\s*/, '') ?? ''}`;
     this.q<HTMLElement>('.prep-titulo').textContent = level.name.replace(/^Fase \d+-\d+:\s*/, '');
+
+    // Regras especiais da fase
+    const regras = regrasDaFase(level);
+    const caixaRegras = this.q<HTMLElement>('.prep-regras');
+    caixaRegras.innerHTML = regras
+      .map((r) => {
+        const i = infoDaRegra(r);
+        return `<div class="prep-regra" title="${i.descricao}"><b>${i.icone} ${i.nome}</b><small>${i.descricao}</small></div>`;
+      })
+      .join('');
+    caixaRegras.classList.toggle('hidden', regras.length === 0);
+    this.deckFixo = regras.includes('deck_fixo') && level.deckFixo ? level.deckFixo.filter((id) => liberadas.includes(id)) : null;
+    if (this.deckFixo && this.deckFixo.length > 0) this.deck = [...this.deckFixo];
 
     // Zumbis da fase
     const lista = this.q<HTMLElement>('.prep-zumbis-lista');
@@ -202,7 +220,12 @@ export class Preparacao {
         <strong>${plant.elementBadge} ${plant.name}</strong>`;
       const ctx = (item.querySelector('canvas') as HTMLCanvasElement).getContext('2d');
       if (ctx) CharacterRenderer.drawPlant(ctx, this.o.retrato(plant), 26, 28, 50, 56, false);
+      if (this.deckFixo) item.classList.add('fixa');
       item.addEventListener('click', () => {
+        if (this.deckFixo) {
+          this.o.toast('🎴 Nesta fase as sementes são escolhidas pela própria fase.');
+          return;
+        }
         if (!liberada) {
           this.o.toast(`🔒 ${plant.name}: ${this.o.dicaBloqueada(plant.id)}`);
           return;

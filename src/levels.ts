@@ -144,6 +144,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     world: 1,
     stage: 6,
     name: 'Fase 1-6: Invasão Veloz',
+    regras: ['corrida'],
     initialSun: 225,
     availableLanes: 5,
     unlockedPlantOnClear: 'frost_shroom',
@@ -306,6 +307,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     world: 2,
     stage: 2,
     name: 'Fase 2-2: Incêndio no Lodo',
+    regras: ['sem_sol_do_ceu'],
     initialSun: 225,
     availableLanes: 5,
     spawns: createSpawns([
@@ -355,6 +357,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     world: 2,
     stage: 4,
     name: 'Fase 2-4: Esporos Densos',
+    regras: ['blindados'],
     initialSun: 250,
     availableLanes: 5,
     spawns: createSpawns([
@@ -468,6 +471,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     world: 3,
     stage: 3,
     name: 'Fase 3-3: Fogo na Mata',
+    regras: ['cerca_quebrada'],
     initialSun: 300,
     availableLanes: 5,
     spawns: createSpawns([
@@ -495,6 +499,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     world: 3,
     stage: 4,
     name: 'Fase 3-4: Cheia do Rio',
+    regras: ['chuva'],
     initialSun: 325,
     availableLanes: 5,
     spawns: createSpawns([
@@ -586,6 +591,8 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     world: 4,
     stage: 2,
     name: 'Fase 4-2: Siris na Lama',
+    regras: ['deck_fixo'],
+    deckFixo: ['sunflower', 'peashooter', 'venom_pitcher', 'pyro_pepper', 'wallnut', 'aquashooter'],
     initialSun: 300,
     availableLanes: 5,
     spawns: createSpawns([
@@ -642,6 +649,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     world: 4,
     stage: 4,
     name: 'Fase 4-4: Lua Cheia',
+    regras: ['noite'],
     initialSun: 325,
     availableLanes: 5,
     spawns: createSpawns([
