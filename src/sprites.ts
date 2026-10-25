@@ -15,6 +15,7 @@ const PLANT_IDS = [
   'venom_pitcher',
   'plasma_mine',
   'wallnut',
+  'musgo_esponja',
   'aguape',
   'curupira',
   'abobora_brasa',

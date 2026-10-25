@@ -434,6 +434,21 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     color: '#d97706'
   },
   {
+    id: 'musgo_esponja',
+    name: 'Musgo-Esponja',
+    emoji: '🧽',
+    element: 'water',
+    elementBadge: '🛡️',
+    cost: 75,
+    cooldown: 9.0,
+    maxHp: 1500,
+    attackInterval: 0,
+    damage: 0,
+    description: 'Barreira encharcada do pântano. Quem morde fica Molhado (prepara combos com Elétrico e Gelo), e o lança-chamas apaga ao encostar nela.',
+    overdriveDesc: 'Espreme a água: encharca a linha inteira, cria poças, apaga as tochas e recupera 600 de vida.',
+    color: '#5eead4'
+  },
+  {
     id: 'aguape',
     name: 'Aguapé',
     emoji: '🪷',

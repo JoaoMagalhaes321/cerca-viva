@@ -17,7 +17,7 @@ import {
   PlantDefinition
 } from './types';
 import { ProgressionManager } from './progression';
-import { LEVEL_CATALOG, biomaDoMundo, getNextLevel } from './levels';
+import { LEVEL_CATALOG, biomaDoMundo, fechaMundo, getNextLevel } from './levels';
 import { Tutorial } from './tutorial';
 import { aplicarModoDev, modoDevDaPagina } from './modo-dev';
 
@@ -699,8 +699,11 @@ function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): v
   if (!plant) return;
   preparacao.marcarNova(plantId);
 
-  rewardBannerTitle.textContent = 'NOVA SEMENTE DESBLOQUEADA!';
-  rewardDialogHeading.textContent = 'Você obteve uma nova planta!';
+  const mundoFechado = currentLevel && !currentLevel.evento && fechaMundo(currentLevel.id) ? currentLevel.world : null;
+  rewardBannerTitle.textContent = mundoFechado ? `🏆 MUNDO ${mundoFechado} CONCLUÍDO! NOVA SEMENTE` : 'NOVA SEMENTE DESBLOQUEADA!';
+  rewardDialogHeading.textContent = mundoFechado
+    ? `Você salvou o Mundo ${mundoFechado}! De presente, uma nova planta:`
+    : 'Você obteve uma nova planta!';
   rewardPlantBadge.textContent = `${plant.elementBadge} ${plant.element.toUpperCase()}`;
   rewardPlantCost.textContent = `☀️ ${plant.cost} Sol`;
   rewardPlantName.textContent = plant.name;
@@ -881,7 +884,11 @@ function openGameOverModal(won: boolean): void {
   const evento = currentLevel?.evento === 'halloween';
   resultIconEl.textContent = won ? (evento ? '🎃' : '🏆') : evento ? '🐊' : '🧠';
   resultTitleEl.textContent = won
-    ? (evento ? 'A Cuca foi dormir!' : currentLevel ? `${currentLevel.name} Concluída!` : 'Jardim Evoluído e Defendido!')
+    ? (evento
+      ? 'A Cuca foi dormir!'
+      : currentLevel && fechaMundo(currentLevel.id)
+        ? `🏆 Mundo ${currentLevel.world} Concluído!`
+        : currentLevel ? `${currentLevel.name} Concluída!` : 'Jardim Evoluído e Defendido!')
     : evento ? 'A Cuca levou o jardim!' : 'Os Zumbis Invadiram!';
   resultSubtitleEl.textContent = won
     ? (evento ? 'O jardim assombrado está salvo até o ano que vem. Feliz Halloween! 🎃' : currentLevel ? 'Parabéns! Você defendeu seu jardim com maestria tática!' : `Vitória em ${engine.currentBiome.name}!`)
