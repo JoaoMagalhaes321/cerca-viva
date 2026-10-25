@@ -27,6 +27,7 @@ import {
 } from './cerca';
 import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { Foto, Gravador } from './replay';
+import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
@@ -1180,6 +1181,21 @@ export class GameEngine {
         this.spawnFloatingText('👻 GRITO DE ARREPIAR!', plant.col + 1.5, plant.row, '#e9d5ff', 1.35);
         sound.efeito('buu');
         break;
+      case MUSGO_ID:
+        // Espreme a água: encharca a linha, deixa poças, apaga as tochas e recupera vida
+        for (let c = plant.col; c < GRID_COLS; c++) {
+          this.tiles[plant.row][c].hazard = 'puddle';
+          this.tiles[plant.row][c].hazardTimer = MUSGO.pocaDoSuperpoder;
+        }
+        for (const z of this.zombies) {
+          if (z.row === plant.row) {
+            z.wetTimer = Math.max(z.wetTimer, MUSGO.molhadoDoSuperpoder);
+            if (z.variant === 'pyro_scavenger') this.apagarTochaNoMusgo(z);
+          }
+        }
+        plant.hp = Math.min(plant.maxHp, plant.hp + MUSGO.curaDoSuperpoder);
+        this.spawnFloatingText('💦 ESPONJA ESPREMIDA!', plant.col + 1.5, plant.row, '#5eead4', 1.35);
+        break;
       case 'wallnut':
         plant.maxHp = 4500;
         plant.hp = 4500;
@@ -1700,7 +1716,10 @@ export class GameEngine {
           const aheadPlant = this.plants.find(
             (p) => p.row === z.row && z.x - (p.col + 0.5) > 0.3 && z.x - (p.col + 0.5) <= 1.8
           );
-          if (aheadPlant) {
+          if (aheadPlant && aheadPlant.def.id === MUSGO_ID) {
+            // O musgo encharcado não pega fogo: a tocha apaga ao encostar nele
+            this.apagarTochaNoMusgo(z);
+          } else if (aheadPlant) {
             const isNature =
               aheadPlant.def.element === 'nature' ||
               aheadPlant.def.id === 'sunflower' ||
@@ -1743,6 +1762,9 @@ export class GameEngine {
             z.hp -= 35 * dt;
           }
           if (targetPlant.caminho === 'espinhoso') z.hp -= 30 * dt;
+          if (targetPlant.def.id === MUSGO_ID) {
+            z.wetTimer = Math.max(z.wetTimer, molhadoAoMorder(targetPlant.caminho));
+          }
           if (targetPlant.hp <= 0) {
             const pIdx = this.plants.indexOf(targetPlant);
             if (pIdx !== -1) this.plants.splice(pIdx, 1);
@@ -2326,10 +2348,23 @@ export class GameEngine {
     target.hp -= finalDamage;
   }
 
+  /** Musgo-Esponja: o lança-chamas que encosta nele apaga (como levar um jato d'água). */
+  private apagarTochaNoMusgo(z: ZombieEntity): void {
+    if (z.torchDoused) return;
+    z.torchDoused = true;
+    z.burnTimer = 0;
+    z.wetTimer = Math.max(z.wetTimer, MUSGO.molhadoAoMorder);
+    this.spawnFloatingText('💨 TOCHA APAGADA!', z.x, z.row + 0.15, '#38bdf8', 1.35);
+    this.spawnParticles(z.x, z.row + 0.5, '#94a3b8', 16);
+  }
+
   /** Auras e efeitos de tempos em tempos dos caminhos de floração. */
   private efeitoPeriodicoDoCaminho(p: PlantEntity, dt: number): void {
     p.caminhoTimer += dt;
     switch (p.caminho) {
+      case 'esponja_viva':
+        if (p.hp < p.maxHp) p.hp = Math.min(p.maxHp, p.hp + MUSGO.regeneracaoEsponjaViva * dt);
+        break;
       case 'lirio_luz':
         for (const q of this.plants) {
           if (q.id !== p.id && Math.abs(q.row - p.row) <= 1 && Math.abs(q.col - p.col) <= 1 && q.hp < q.maxHp) {

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CAMINHOS } from '../src/florescer';
 import { herbarioVazio, itensDoHerbario, lerHerbario, progressoDoHerbario, registrar, registrarDerrota, salvarHerbario } from '../src/herbario';
 
 function memoria() {
@@ -20,7 +21,7 @@ describe('Herbário', () => {
     const h = herbarioVazio();
     registrar(h, 'caminhos', 'vulcao');
     const caminhos = itensDoHerbario(h, 'caminhos');
-    expect(caminhos).toHaveLength(26);
+    expect(caminhos).toHaveLength(Object.values(CAMINHOS).flat().length);
     expect(caminhos.find((c) => c.id === 'vulcao')?.descoberto).toBe(true);
     expect(caminhos.find((c) => c.id === 'vulcao')?.detalhe).toBe('Draco-Pimenta');
     expect(itensDoHerbario(h, 'zumbis')).toHaveLength(13);

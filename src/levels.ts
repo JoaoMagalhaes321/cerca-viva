@@ -380,6 +380,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
 
   // NÍVEL 2-5: O Cerco no Pântano
   // Clímax do Mundo 2: Ataque combinado com Titãs Devoradores, Lança-chamas e Isoladores!
+  // Recompensa: Musgo-Esponja, que encharca quem morde e apaga o lança-chamas.
   {
     id: 15,
     world: 2,
@@ -387,6 +388,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     name: 'Fase 2-5: O Cerco no Pântano',
     initialSun: 325,
     availableLanes: 5,
+    unlockedPlantOnClear: 'musgo_esponja', // Recompensa do Mundo 2 (D-20261025-7)
     spawns: createSpawns([
       { time: 6, type: 'rubber_hazard' },
       { time: 16, type: 'pyro_scavenger' },
@@ -717,4 +719,12 @@ export function getLevelById(id: number): LevelConfig {
 
 export function getNextLevel(currentId: number): LevelConfig | null {
   return LEVEL_CATALOG.find((l) => l.id === currentId + 1) || null;
+}
+
+/** true quando a fase é a última do mundo dela (vencer fecha o mundo). Fases de evento não fecham mundo. */
+export function fechaMundo(levelId: number): boolean {
+  const fase = LEVEL_CATALOG.find((l) => l.id === levelId);
+  if (!fase) return false;
+  const proxima = getNextLevel(levelId);
+  return !proxima || proxima.world !== fase.world;
 }

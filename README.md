@@ -90,7 +90,8 @@ branch e no pull request, para você saber antes do merge se o build e os testes
 | `src/renderer.ts` | Desenho 2.5D dos personagens, animações e partículas |
 | `src/audio.ts` | Efeitos e trilha sonora sintetizados com Web Audio |
 | `src/types.ts` | Tipos e catálogos: plantas, biomas, sinergias, mutações |
-| `src/levels.ts` | Fases do modo aventura (Mundo 1: fases 1-1 a 1-10; Mundo 2: 2-1 a 2-5) e ondas |
+| `src/levels.ts` | Fases do modo aventura (Mundo 1: 1-1 a 1-10; Mundos 2 a 4: cinco fases cada) e ondas |
+| `src/musgo.ts` | Musgo-Esponja, recompensa do Mundo 2 (fase 2-5): números da planta num lugar só |
 | `src/progresso-sanitizar.ts` | Confere o progresso carregado contra os catálogos (fase que não existe, planta desconhecida, repetida) |
 | `src/progression.ts` | Progresso do jogador salvo no `localStorage` (chave `pvz_player_progress_v1`) |
 | `src/updater.ts` | Registro do service worker e recarga quando chega versão nova |
@@ -99,7 +100,8 @@ branch e no pull request, para você saber antes do merge se o build e os testes
 
 ## Regras do jogo: onde mudar
 
-- **Fases, ondas e planta liberada por fase:** `src/levels.ts` (`LEVEL_CATALOG`).
+- **Fases, ondas e planta liberada por fase:** `src/levels.ts` (`LEVEL_CATALOG`). Vencer a última fase de um
+  mundo (`fechaMundo`) mostra "Mundo N concluído"; o Mundo 2 dá o Musgo-Esponja (`src/musgo.ts`).
 - **Plantas, custo, dano, biomas, sinergias e mutações:** catálogos em `src/types.ts`.
 - **Progresso inicial e desbloqueios:** `src/progression.ts` (`DEFAULT_PLAYER_PROGRESS`).
 - **Conserto do progresso salvo:** `src/progresso-sanitizar.ts`. Se o progresso salvo tiver algo
