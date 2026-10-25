@@ -55,6 +55,41 @@ window.BOARD = {
   },
   "cards": [
     {
+      "id": "evento-opcional",
+      "title": "Evento só quando escolhido e gráfico sem redução automática",
+      "domain": "jogo",
+      "column": "qas",
+      "env": "branch",
+      "updated": "2026-10-25",
+      "risk": "MEDIDO na main ad4f490: depois de jogar a Noite da Cuca, INICIAR JOGO volta para o evento (main.ts: menuPlayBtn usa currentLevel, que o evento troca); reduzir efeitos liga e grava sozinho com reduzir movimento do sistema (acessibilidade.ts carregar/aplicar); qualidade econômica mede quadros também no menu e na abertura (engine.ts medirDesempenho). Corrigido na branch claude/evento-opcional, vale até o merge. Que isso seja a causa do gráfico reduzido no seu celular: SUPOSIÇÃO, NÃO MEDIDO no aparelho.",
+      "summary": "Pedido seu (25/10). Na branch claude/evento-opcional: INICIAR JOGO sempre abre a Aventura e o evento fica só no botão Noite da Cuca (D-20261025-9, regra do jogo). Reduzir efeitos só liga por escolha do jogador; o valor gravado sozinho é ignorado (D-20261025-10, muda decisão sua de 25/10). Qualidade econômica só mede com a partida rodando e depois de 6 s lentos (D-20261025-11, muda decisão sua de 24/10). 132 testes passando; conferido no Chromium. Esperando seu merge.",
+      "delivered": [
+        "Correções + 4 testes (8003308 e 91f9d76, 25/10)",
+        "Conferido no Chromium: evento → Menu → INICIAR JOGO abre a Fase 1-1; com reduzir movimento os efeitos continuam (25/10)"
+      ],
+      "pending": [
+        "Seu merge de claude/evento-opcional na main",
+        "Conferir o gráfico no seu celular depois do merge (se continuar reduzido, mandar print)"
+      ],
+      "links": [
+        {
+          "label": "main.ts",
+          "path": "src/main.ts",
+          "branch": "claude/evento-opcional"
+        },
+        {
+          "label": "acessibilidade.ts",
+          "path": "src/acessibilidade.ts",
+          "branch": "claude/evento-opcional"
+        },
+        {
+          "label": "Relatório",
+          "path": "docs/status/relatorios/2026-10-25-evento-opcional.md",
+          "branch": "claude/quadro"
+        }
+      ]
+    },
+    {
       "id": "mundo2-recompensas",
       "title": "Recompensas do Mundo 2: Musgo-Esponja",
       "domain": "jogo",

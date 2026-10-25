@@ -3,6 +3,52 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261025-11 · Qualidade econômica só mede com a partida rodando, e depois de 6 s lentos
+- Card: evento-opcional · Branch: claude/evento-opcional · Data: 2026-10-25
+- Regra de negócio? não
+- Muda decisão anterior? **sim, muda uma decisão sua de 24/10** (desempenho, PR #17: 3 s lentos em qualquer tela)
+- Escolha: o medidor que baixa a qualidade (canvas com menos pixels, sem brilhos, menos partículas) não conta quadros
+  com o jogo pausado, com menu ou abertura por cima, nem com a aba escondida; e precisa de 6 s seguidos lentos (eram 3).
+- Por quê: você notou o gráfico reduzido. Com a abertura animada e o menu com desfoque por cima do jogo, alguns
+  segundos lentos no carregamento já bastavam para deixar o jogo borrado a partida inteira (a troca não volta atrás).
+  NÃO MEDIDO no seu celular: não tenho como abrir o app daqui.
+- Outras opções:
+  - A) Desligar a qualidade automática — sempre nítido / celular fraco trava.
+  - B) Botão "Gráficos: alto/econômico" na Acessibilidade — controle seu / mais uma opção na tela.
+  - C) Voltar para alta quando melhorar — automático / pode ficar trocando e piscando.
+- Como trocar depois: `SEGUNDOS_LENTO_PARA_ECONOMIZAR` e `medirDesempenho` em `src/engine.ts`.
+- Fácil de reverter? sim
+
+### D-20261025-10 · "Reduzir efeitos" só liga quando o jogador marca
+- Card: evento-opcional · Branch: claude/evento-opcional · Data: 2026-10-25
+- Regra de negócio? não
+- Muda decisão anterior? **sim, muda uma decisão sua de 25/10** (acessibilidade, PR #37: quem tem "reduzir movimento"
+  no sistema começava com "reduzir efeitos" ligado)
+- Escolha: o "reduzir movimento" do sistema continua tirando o que se mexe (tremida de tela, animações do menu), mas não
+  apaga mais brilhos e partículas. "Reduzir efeitos" só liga pela tela de Acessibilidade. O valor que a versão anterior
+  gravou sozinha é ignorado; o modo daltônico salvo é mantido. A opção agora só é gravada quando o jogador mexe nela.
+- Por quê: muitos Android ligam "remover animações" no modo de economia ou na acessibilidade; aí o jogo ficava sem
+  brilhos sem o jogador pedir, e a versão anterior ainda gravava isso como escolha dele.
+- Outras opções:
+  - A) Manter como estava — respeita mais o sistema / gráfico pobre sem aviso.
+  - B) Perguntar na primeira abertura — escolha clara / mais uma tela no começo.
+- Como trocar depois: `lerOpcoes` e `aplicarAcessibilidade` em `src/acessibilidade.ts`.
+- Fácil de reverter? sim
+
+### D-20261025-9 · INICIAR JOGO é sempre a Aventura; a Noite da Cuca é só o botão do evento
+- Card: evento-opcional · Branch: claude/evento-opcional · Data: 2026-10-25
+- Regra de negócio? **sim** (regra do jogo: como o jogador entra no evento)
+- Muda decisão anterior? não (conserta um defeito)
+- Escolha: jogar a Noite da Cuca não troca mais a fase do menu. Antes, depois de entrar no evento uma vez, o menu passava
+  a mostrar "Aventura: Noite da Cuca" e INICIAR JOGO levava de novo para o evento até fechar o app. O botão do evento
+  continua no menu, liberado desde o começo, como escolha.
+- Outras opções:
+  - A) Liberar o evento só depois da Fase 1-1 (como Infinito e Desafio pedem a 1-3) — o novato passa pelo tutorial
+    antes / quem baixou por causa do evento espera uma fase.
+  - B) Perguntar "Aventura ou Evento?" ao tocar em INICIAR JOGO — escolha explícita / um toque a mais sempre.
+- Como trocar depois: `faseDaAventura` e o clique de `menuPlayBtn` em `src/main.ts`.
+- Fácil de reverter? sim
+
 ### D-20261025-8 · Quem já passou da 2-5 ganha o Musgo-Esponja sozinho
 - Card: mundo2-recompensas · Branch: claude/mundo2-recompensas · Data: 2026-10-25
 - Regra de negócio? **sim** (regra do jogo: desbloqueio)
