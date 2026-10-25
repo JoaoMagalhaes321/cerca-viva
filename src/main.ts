@@ -22,6 +22,7 @@ import { Tutorial } from './tutorial';
 import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
+import { Preparacao } from './preparacao';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -613,9 +614,29 @@ function updateMenuStageInfo(): void {
   }
 }
 
+/** Abre a tela de preparação (zumbis da fase + sementes) e só então começa a fase. */
 function startLevel(level: LevelConfig): void {
   modos.sair();
   expedicao.sair();
+  currentLevel = level;
+  ProgressionManager.setCurrentLevel(level.id);
+  updateMenuStageInfo();
+  // A 1-1 tem uma planta só e o tutorial: vai direto
+  if (level.id === 1) {
+    iniciarFase(level);
+    return;
+  }
+  engine.paused = true;
+  preparacao.abrir(
+    level,
+    () => iniciarFase(level),
+    () => {
+      if (mainMenuScreen.classList.contains('hidden')) showMainMenu();
+    }
+  );
+}
+
+function iniciarFase(level: LevelConfig): void {
   currentLevel = level;
   ProgressionManager.setCurrentLevel(level.id);
 
@@ -639,6 +660,7 @@ function startLevel(level: LevelConfig): void {
 function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): void {
   const plant = PLANT_CATALOG.find((p) => p.id === plantId);
   if (!plant) return;
+  preparacao.marcarNova(plantId);
 
   rewardBannerTitle.textContent = 'NOVA SEMENTE DESBLOQUEADA!';
   rewardDialogHeading.textContent = 'Você obteve uma nova planta!';
@@ -1029,6 +1051,26 @@ const modos = new Modos({
     hideMainMenuAndPlay();
   },
   toast: (msg) => showToast(msg)
+});
+
+// Tela de preparação antes de cada fase
+const preparacao = new Preparacao({
+  maxDeck: MAX_DECK_SIZE,
+  retrato: plantaDeRetrato,
+  liberadas: () => ProgressionManager.getProgress().unlockedPlants,
+  deck: () => draftDeckIds,
+  definirDeck: (ids) => {
+    draftDeckIds = [...ids];
+  },
+  dicaBloqueada: (id) => {
+    const lvl = LEVEL_CATALOG.find((l) => l.unlockedPlantOnClear === id);
+    return lvl ? `libera ao vencer a Fase ${lvl.world}-${lvl.stage}.` : 'libera na Aventura.';
+  },
+  toast: (msg) => showToast(msg),
+  abrirAlmanaque: () => {
+    almanacReturnTo = 'main-menu';
+    openAlmanacModal('plants');
+  }
 });
 
 // Modo Expedição (corrida com mapa de caminhos)
