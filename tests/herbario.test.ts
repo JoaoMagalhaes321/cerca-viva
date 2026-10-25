@@ -20,11 +20,11 @@ describe('Herbário', () => {
     const h = herbarioVazio();
     registrar(h, 'caminhos', 'vulcao');
     const caminhos = itensDoHerbario(h, 'caminhos');
-    expect(caminhos).toHaveLength(22);
+    expect(caminhos).toHaveLength(26);
     expect(caminhos.find((c) => c.id === 'vulcao')?.descoberto).toBe(true);
     expect(caminhos.find((c) => c.id === 'vulcao')?.detalhe).toBe('Draco-Pimenta');
-    expect(itensDoHerbario(h, 'zumbis')).toHaveLength(11);
-    expect(itensDoHerbario(h, 'biomas')).toHaveLength(6);
+    expect(itensDoHerbario(h, 'zumbis')).toHaveLength(13);
+    expect(itensDoHerbario(h, 'biomas')).toHaveLength(7);
     expect(itensDoHerbario(h, 'combos', ['electro_chain']).filter((c) => c.descoberto)).toHaveLength(1);
   });
 

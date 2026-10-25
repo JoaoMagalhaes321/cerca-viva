@@ -3,6 +3,7 @@
 // Só regras e armazenamento; a tela fica no Herbário.
 
 import { CAMINHOS } from './florescer';
+import { PLANT_CATALOG } from './types';
 import type { Herbario } from './herbario';
 
 export interface Conquista {
@@ -17,7 +18,8 @@ export const CONQUISTAS: Conquista[] = [
   { id: 'cerca_intacta', nome: 'Cerca de pé', icone: '🌿', descricao: 'Vença uma fase sem nenhuma cerca quebrar.' },
   { id: 'cinco_combos', nome: 'Reação em cadeia', icone: '⚡', descricao: 'Faça 5 combos numa única onda.' },
   { id: 'sem_perder_planta', nome: 'Jardineiro cuidadoso', icone: '🧤', descricao: 'Vença uma fase sem perder nenhuma planta.' },
-  { id: 'jardim_florido', nome: 'Jardim florido', icone: '🌼', descricao: 'Floresça as 11 plantas (qualquer caminho).' },
+  { id: 'jardim_florido', nome: 'Jardim florido', icone: '🌼', descricao: 'Floresça as 11 plantas da Aventura (qualquer caminho).' },
+  { id: 'noite_da_cuca', nome: 'A Cuca foi dormir', icone: '🎃', descricao: 'Derrote a Cuca na Noite da Cuca (evento de outubro).' },
   { id: 'cinco_adubadas', nome: 'Terra boa', icone: '🌫️', descricao: 'Tenha 5 plantas adubadas ao mesmo tempo.' },
   { id: 'curupira_cheio', nome: 'Pegadas em todos', icone: '👣', descricao: 'Confunda 4 zumbis de uma vez com o Curupira.' },
   { id: 'mapinguari_fogo', nome: 'Pelo em chamas', icone: '🔥', descricao: 'Derrote o Mapinguari com um deck só de Lírio, Draco-Pimenta e Cacto-Muralha.' },
@@ -51,7 +53,7 @@ export function salvarConquistas(ids: string[], armazenamento: Pick<Storage, 'se
 /** O que a checagem olha no fim de uma partida. */
 export interface FimDePartida {
   venceu: boolean;
-  modo: 'aventura' | 'infinito' | 'desafio' | 'expedicao';
+  modo: 'aventura' | 'infinito' | 'desafio' | 'expedicao' | 'evento';
   /** Mundo da fase (Aventura). */
   mundo?: number;
   deck: string[];
@@ -93,11 +95,13 @@ export function verificarConquistas(ganhas: string[], fim: FimDePartida | null, 
     ok('infinito_20', fim.modo === 'infinito' && (fim.ondasVencidas ?? 0) >= 20);
     ok('desafio_7', fim.modo === 'desafio' && (fim.diasSeguidos ?? 0) >= 7);
     ok('expedicao', fim.modo === 'expedicao' && !!fim.expedicaoConcluida);
+    ok('noite_da_cuca', fim.venceu && fim.derrotadosNaPartida.includes('cuca'));
   }
 
   const h = ctx.herbario;
-  const plantasFloridas = Object.entries(CAMINHOS).filter(([, par]) => par.some((c) => h.caminhos.includes(c.id))).length;
-  ok('jardim_florido', plantasFloridas >= Object.keys(CAMINHOS).length);
+  const caminhosDaAventura = Object.entries(CAMINHOS).filter(([planta]) => !PLANT_CATALOG.find((p) => p.id === planta)?.evento);
+  const plantasFloridas = caminhosDaAventura.filter(([, par]) => par.some((c) => h.caminhos.includes(c.id))).length;
+  ok('jardim_florido', plantasFloridas >= caminhosDaAventura.length);
   const total = Object.values(h.derrotados).reduce((a, b) => a + b, 0);
   ok('cem_zumbis', total >= 100);
   ok('herbario_completo', ctx.totalDoHerbario.total > 0 && ctx.totalDoHerbario.feitos >= ctx.totalDoHerbario.total);

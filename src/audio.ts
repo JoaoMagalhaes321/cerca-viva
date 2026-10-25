@@ -568,6 +568,24 @@ class SoundManager {
         [659.25, 783.99, 987.77, 1318.5].forEach((f, i) => this.osc(ctx, 'triangle', f, t + i * 0.09, t + i * 0.09 + 0.4, this.envelope(ctx, t + i * 0.09, 0.005, 0.14, t + i * 0.09 + 0.4)));
         break;
       }
+      case 'cancao': {
+        // Canção de ninar da Cuca: três notas lentas, descendo
+        [523.25, 493.88, 392].forEach((f, i) => this.osc(ctx, 'sine', f, t + i * 0.28, t + i * 0.28 + 0.4, this.envelope(ctx, t + i * 0.28, 0.02, 0.12, t + i * 0.28 + 0.4)));
+        break;
+      }
+      case 'ronco': {
+        const o = this.osc(ctx, 'sawtooth', 90, t, t + 0.5, g(0.07, 0.05, 0.5));
+        o.frequency.linearRampToValueAtTime(60, t + 0.5);
+        break;
+      }
+      case 'buu': {
+        // "Buu!": sobe e desce rápido, com um sopro
+        const o = this.osc(ctx, 'triangle', 300, t, t + 0.3, g(0.12, 0.01, 0.3));
+        o.frequency.exponentialRampToValueAtTime(520, t + 0.1);
+        o.frequency.exponentialRampToValueAtTime(240, t + 0.3);
+        this.ruidoFiltrado(ctx, t, 0.25, 0.08, 'bandpass', 900);
+        break;
+      }
       case 'fala': {
         this.osc(ctx, 'sine', 740, t, t + 0.05, g(0.06, 0.002, 0.05));
         this.osc(ctx, 'sine', 880, t + 0.06, t + 0.12, this.envelope(ctx, t + 0.06, 0.002, 0.06, t + 0.12));
@@ -599,6 +617,6 @@ class SoundManager {
 export type Efeito =
   | 'mordida_cerca' | 'cerca_quebra' | 'cerca_floresce' | 'floresceu' | 'muda_cresce' | 'replantar'
   | 'bolha' | 'bolha_estoura' | 'rugido' | 'pisao' | 'curupira' | 'siri_lado' | 'mare_sobe' | 'mare_desce'
-  | 'congelar' | 'derrete' | 'capacete_cai' | 'zumbi_cai' | 'vento' | 'veneno' | 'mina_arma' | 'conquista' | 'fala';
+  | 'congelar' | 'derrete' | 'capacete_cai' | 'zumbi_cai' | 'vento' | 'veneno' | 'mina_arma' | 'conquista' | 'fala' | 'cancao' | 'ronco' | 'buu';
 
 export const sound = new SoundManager();

@@ -704,6 +704,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
 
 /** Bioma de cada mundo da Aventura. */
 export function biomaDoMundo(world: number): string {
+  if (world === 13) return 'assombrado'; // 🎃 Noite da Cuca (evento)
   if (world === 4) return 'mangue';
   if (world === 3) return 'igarape';
   if (world === 2) return 'bioluminescent_swamp';

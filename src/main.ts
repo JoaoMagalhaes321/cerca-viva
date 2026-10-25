@@ -28,6 +28,7 @@ import { JardimZen } from './zen-ui';
 import { mostrarAbertura } from './abertura';
 import { tocarReplay } from './replay';
 import { aplicarAcessibilidade } from './acessibilidade';
+import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
 import { AcessibilidadeUi } from './acessibilidade-ui';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
@@ -240,6 +241,10 @@ function syncHud(): void {
     weatherIconEl.textContent = '🌧️';
     weatherNameEl.textContent = 'Chuva Tática';
     weatherDescEl.textContent = 'Zumbis Molhados (+Combo ⚡/❄️)';
+  } else if (engine.weather === 'lua_cheia') {
+    weatherIconEl.textContent = '🌕';
+    weatherNameEl.textContent = 'Lua Cheia';
+    weatherDescEl.textContent = 'Noite da Cuca: pouco sol do céu';
   } else {
     weatherIconEl.textContent = '⛈️';
     weatherNameEl.textContent = 'Tempestade Noturna';
@@ -298,8 +303,14 @@ function updateCooldownOverlays(): void {
 }
 
 // Deck só com plantas já liberadas; se nenhuma do deck estiver liberada, usa as liberadas
+/** Plantas liberadas agora: as da Aventura e, na fase do evento, as do evento. */
+function plantasLiberadas(): string[] {
+  const base = ProgressionManager.getProgress().unlockedPlants;
+  return currentLevel?.evento === 'halloween' ? [...base, ...PLANTAS_HALLOWEEN] : base;
+}
+
 function unlockedDeck(ids: string[]): string[] {
-  const unlocked = ProgressionManager.getProgress().unlockedPlants;
+  const unlocked = plantasLiberadas();
   const deck = ids.filter((id) => unlocked.includes(id));
   return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
 }
@@ -346,7 +357,7 @@ function renderDeckModalContents(): void {
     const isUnlocked = progress.unlockedPlants.includes(plant.id);
     const inDeck = draftDeckIds.includes(plant.id);
     const unlockLevel = LEVEL_CATALOG.find((l) => l.unlockedPlantOnClear === plant.id);
-    const unlockHint = unlockLevel ? `Fase ${unlockLevel.world}-${unlockLevel.stage}` : 'Aventura';
+    const unlockHint = plant.evento ? '🎃 Noite da Cuca' : unlockLevel ? `Fase ${unlockLevel.world}-${unlockLevel.stage}` : 'Aventura';
 
     const item = document.createElement('div');
     item.className = `deck-plant-item ${inDeck ? 'in-deck' : ''} ${!isUnlocked ? 'locked' : ''}`;
@@ -629,7 +640,7 @@ function startLevel(level: LevelConfig): void {
   modos.sair();
   expedicao.sair();
   currentLevel = level;
-  ProgressionManager.setCurrentLevel(level.id);
+  if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
   // A 1-1 tem uma planta só e o tutorial: vai direto
   if (level.id === 1) {
@@ -648,25 +659,25 @@ function startLevel(level: LevelConfig): void {
 
 function iniciarFase(level: LevelConfig): void {
   currentLevel = level;
-  ProgressionManager.setCurrentLevel(level.id);
+  if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
 
   draftBiome = BIOME_CATALOG.find((b) => b.id === biomaDoMundo(level.world)) || BIOME_CATALOG[0];
 
-  const progress = ProgressionManager.getProgress();
-  draftDeckIds = draftDeckIds.filter((id) => progress.unlockedPlants.includes(id));
+  const liberadas = plantasLiberadas();
+  draftDeckIds = draftDeckIds.filter((id) => liberadas.includes(id));
   if (draftDeckIds.length === 0) {
-    draftDeckIds = [...progress.unlockedPlants].slice(0, MAX_DECK_SIZE);
+    draftDeckIds = [...liberadas].slice(0, MAX_DECK_SIZE);
   }
   // Regra "deck da fase": a fase impõe as sementes (só as já liberadas)
   const deckDaPartida =
     regrasDaFase(level).includes('deck_fixo') && level.deckFixo
-      ? level.deckFixo.filter((id) => progress.unlockedPlants.includes(id))
+      ? level.deckFixo.filter((id) => liberadas.includes(id))
       : draftDeckIds;
 
   engine.initBoard(draftBiome, deckDaPartida.length > 0 ? deckDaPartida : draftDeckIds, currentLevel);
   aplicarRegrasDaFase(engine, level);
-  // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns
-  engine.chanceElite = level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
+  // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns (no evento, fixo)
+  engine.chanceElite = level.evento ? 0.15 : level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
   // Jardim Zen: regou ontem ou hoje, começa com mais sol
   const bonusZen = jardimZen.bonusDeHoje();
   if (bonusZen > 0) {
@@ -849,13 +860,13 @@ function openGameOverModal(won: boolean): void {
   }
   herbario.checarConquistas({
     venceu: won,
-    modo: 'aventura',
+    modo: currentLevel?.evento ? 'evento' : 'aventura',
     mundo: currentLevel?.world,
     deck: engine.activeDeckIds,
     marcas: engine.marcas,
     derrotadosNaPartida: engine.tiposDerrotados
   });
-  if (won && currentLevel) {
+  if (won && currentLevel && !currentLevel.evento) {
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
 
@@ -865,15 +876,16 @@ function openGameOverModal(won: boolean): void {
     }
   }
 
-  resultIconEl.textContent = won ? '🏆' : '🧠';
+  const evento = currentLevel?.evento === 'halloween';
+  resultIconEl.textContent = won ? (evento ? '🎃' : '🏆') : evento ? '🐊' : '🧠';
   resultTitleEl.textContent = won
-    ? (currentLevel ? `${currentLevel.name} Concluída!` : 'Jardim Evoluído e Defendido!')
-    : 'Os Zumbis Invadiram!';
+    ? (evento ? 'A Cuca foi dormir!' : currentLevel ? `${currentLevel.name} Concluída!` : 'Jardim Evoluído e Defendido!')
+    : evento ? 'A Cuca levou o jardim!' : 'Os Zumbis Invadiram!';
   resultSubtitleEl.textContent = won
-    ? (currentLevel ? 'Parabéns! Você defendeu seu jardim com maestria tática!' : `Vitória em ${engine.currentBiome.name}!`)
-    : 'Experimente ajustar seu Deck de Sementes ou consultar o Guia de Sinergias!';
+    ? (evento ? 'O jardim assombrado está salvo até o ano que vem. Feliz Halloween! 🎃' : currentLevel ? 'Parabéns! Você defendeu seu jardim com maestria tática!' : `Vitória em ${engine.currentBiome.name}!`)
+    : evento ? 'Dica: Abóbora-Brasa queima múmias em dobro, e o Feixe Orbital acorda a Cuca.' : 'Experimente ajustar seu Deck de Sementes ou consultar o Guia de Sinergias!';
 
-  const nextLvl = currentLevel ? getNextLevel(currentLevel.id) : null;
+  const nextLvl = currentLevel && !evento ? getNextLevel(currentLevel.id) : null;
   if (won && nextLvl) {
     gameOverNextBtn.style.display = 'inline-block';
     gameOverNextBtn.textContent = `▶️ Próxima Fase (${nextLvl.world}-${nextLvl.stage})`;
@@ -1079,6 +1091,20 @@ menuAlmanacBtn.addEventListener('click', () => {
 
 aplicarAcessibilidade();
 const acessUi = new AcessibilidadeUi(showToast);
+
+// 🎃 Noite da Cuca: botão do menu só na época do evento (1/out a 2/nov)
+const menuHalloweenBtn = document.getElementById('menu-halloween-btn') as HTMLButtonElement;
+if (halloweenAtivo()) {
+  menuHalloweenBtn.classList.remove('hidden');
+  const dias = diasRestantesDoHalloween();
+  document.getElementById('menu-halloween-info')!.textContent = dias > 0 ? `Evento: faltam ${dias} ${dias === 1 ? 'dia' : 'dias'}` : 'Último dia do evento!';
+  menuHalloweenBtn.addEventListener('click', () => {
+    // As duas plantas do evento já entram no deck; o resto é o deck de sempre
+    draftDeckIds = [...PLANTAS_HALLOWEEN, ...draftDeckIds.filter((id) => !PLANTAS_HALLOWEEN.includes(id))].slice(0, MAX_DECK_SIZE);
+    preparacao.marcarNova(PLANTAS_HALLOWEEN[0]);
+    startLevel(NIVEL_HALLOWEEN);
+  });
+}
 document.getElementById('menu-acess-btn')!.addEventListener('click', () => acessUi.abrir());
 
 menuSoundBtn.addEventListener('click', () => {
@@ -1118,12 +1144,13 @@ const jardimZen = new JardimZen(plantaDeRetrato, (msg) => showToast(msg));
 const preparacao = new Preparacao({
   maxDeck: MAX_DECK_SIZE,
   retrato: plantaDeRetrato,
-  liberadas: () => ProgressionManager.getProgress().unlockedPlants,
+  liberadas: () => plantasLiberadas(),
   deck: () => draftDeckIds,
   definirDeck: (ids) => {
     draftDeckIds = [...ids];
   },
   dicaBloqueada: (id) => {
+    if (PLANTAS_HALLOWEEN.includes(id)) return 'só na 🎃 Noite da Cuca (evento de outubro).';
     const lvl = LEVEL_CATALOG.find((l) => l.unlockedPlantOnClear === id);
     return lvl ? `libera ao vencer a Fase ${lvl.world}-${lvl.stage}.` : 'libera na Aventura.';
   },

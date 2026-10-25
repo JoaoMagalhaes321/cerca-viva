@@ -11,7 +11,7 @@ import { biomaDoMundo } from './levels';
 import { infoDaRegra, regrasDaFase } from './regras-fase';
 import './preparacao.css';
 
-const CHEFES: ZombieVariant[] = ['zomboss_mech', 'mapinguari', 'gargantuar'];
+const CHEFES: ZombieVariant[] = ['zomboss_mech', 'mapinguari', 'gargantuar', 'cuca'];
 
 export interface OpcoesPreparacao {
   maxDeck: number;
@@ -136,7 +136,9 @@ export class Preparacao {
     const level = this.level!;
     const liberadas = this.o.liberadas();
     const bioma = BIOME_CATALOG.find((b) => b.id === biomaDoMundo(level.world));
-    this.q<HTMLElement>('.prep-badge').textContent = `⚔️ PREPARAÇÃO · FASE ${level.world}-${level.stage} · ${bioma?.icon ?? ''} ${bioma?.name.replace(/^\d+\.\s*/, '') ?? ''}`;
+    this.q<HTMLElement>('.prep-badge').textContent = level.evento
+      ? `🎃 EVENTO · ${bioma?.name ?? ''}`
+      : `⚔️ PREPARAÇÃO · FASE ${level.world}-${level.stage} · ${bioma?.icon ?? ''} ${bioma?.name.replace(/^\d+\.\s*/, '') ?? ''}`;
     this.q<HTMLElement>('.prep-titulo').textContent = level.name.replace(/^Fase \d+-\d+:\s*/, '');
 
     // Regras especiais da fase
@@ -163,7 +165,7 @@ export class Preparacao {
       el.innerHTML = `<canvas width="56" height="60"></canvas><strong>${info?.nome ?? z.variant}</strong><small>${z.chefe ? '👑 Chefe' : `×${z.quantidade}`}</small>`;
       const ctx = (el.querySelector('canvas') as HTMLCanvasElement).getContext('2d');
       if (ctx) {
-        const escala = z.variant === 'zomboss_mech' ? 0.4 : z.variant === 'gargantuar' || z.variant === 'mapinguari' ? 0.62 : 0.9;
+        const escala = z.variant === 'zomboss_mech' ? 0.4 : z.variant === 'gargantuar' || z.variant === 'mapinguari' || z.variant === 'cuca' ? 0.62 : 0.9;
         CharacterRenderer.drawZombie(
           ctx,
           {
@@ -196,6 +198,8 @@ export class Preparacao {
     if (tipos.has('mapinguari')) dicas.push('Mapinguari: fogo queima o pelo; congele para acertar o olho.');
     if (tipos.has('zomboss_mech')) dicas.push('A Colheitadeira troca de linha: tenha ataque em várias.');
     if (tipos.has('gargantuar')) dicas.push('Colossos aguentam muito: combine elementos e Cacto-Muralha.');
+    if (tipos.has('cuca')) dicas.unshift('A Cuca canta e as plantas dormem; quando ela cochila, só o Feixe Orbital (75☀️) acorda e machuca.');
+    if (tipos.has('mumia')) dicas.push('Múmias não sentem gelo: fogo queima as faixas em dobro.');
     if (level.availableLanes < 5) dicas.push(`Só ${level.availableLanes} ${level.availableLanes === 1 ? 'linha aberta' : 'linhas abertas'} nesta fase.`);
     return dicas.slice(0, 2).join(' ') || 'Plante Lírios cedo para ter sol e segure a fila com um atirador por linha.';
   }

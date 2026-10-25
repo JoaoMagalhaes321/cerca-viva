@@ -24,6 +24,14 @@ export interface Caminho {
 
 /** Os dois caminhos de floração de cada planta. */
 export const CAMINHOS: Record<string, [Caminho, Caminho]> = {
+  abobora_brasa: [
+    { id: 'lanterna', nome: 'Lanterna Viva', icone: '🏮', descricao: 'As bolas de fogo deixam a casa do alvo em brasa por mais tempo (6 s).' },
+    { id: 'abobora_bomba', nome: 'Abóbora-Bomba', icone: '💥', descricao: 'Bolas de fogo maiores, com 50% mais dano, um pouco mais lentas.' }
+  ],
+  flor_fantasma: [
+    { id: 'assombracao', nome: 'Assombração', icone: '🌫️', descricao: 'O susto alcança 3 casas e dura 3 s.' },
+    { id: 'grito_gelado', nome: 'Grito Gelado', icone: '🥶', descricao: 'Quem leva o susto também fica lento por 4 s.' }
+  ],
   sunflower: [
     { id: 'lirio_sol', nome: 'Lírio Duplo', icone: '🌞', descricao: 'Solta dois sóis de cada vez.' },
     { id: 'lirio_luz', nome: 'Farol Vivo', icone: '🔆', descricao: 'Cura as plantas vizinhas (8 de vida por segundo).' }

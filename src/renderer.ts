@@ -131,6 +131,80 @@ export class CharacterRenderer {
     ctx.restore();
   }
 
+  // Jardim Assombrado: abóbora pequena ou vela num canto de algumas casas (vai no cache do tabuleiro)
+  public static drawAbobora(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number): void {
+    const seed = ((row * 7 + col * 13) * 2654435761) >>> 0;
+    const r = (seed % 1000) / 1000;
+    if (r > 0.34) return;
+    const cx = x + w * (0.78 + (r - 0.17) * 0.3);
+    const cy = y + h * 0.82;
+    const s = Math.max(6, h * 0.11);
+    ctx.save();
+    if (r < 0.24) {
+      // Abóbora com cara
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + s * 0.9, s * 1.3, s * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#2a1608';
+      ctx.fillStyle = '#e8701b';
+      for (const dx of [-0.6, 0.6, 0]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + dx * s, cy, s * 0.75, s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#3f8a2a';
+      ctx.fillRect(cx - s * 0.15, cy - s * 1.35, s * 0.3, s * 0.5);
+      ctx.strokeRect(cx - s * 0.15, cy - s * 1.35, s * 0.3, s * 0.5);
+      // Olhos e boca acesos
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.5, cy - s * 0.1);
+      ctx.lineTo(cx - s * 0.2, cy - s * 0.45);
+      ctx.lineTo(cx - s * 0.1, cy - s * 0.1);
+      ctx.moveTo(cx + s * 0.5, cy - s * 0.1);
+      ctx.lineTo(cx + s * 0.2, cy - s * 0.45);
+      ctx.lineTo(cx + s * 0.1, cy - s * 0.1);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.5, cy + s * 0.25);
+      ctx.lineTo(cx - s * 0.3, cy + s * 0.5);
+      ctx.lineTo(cx - s * 0.1, cy + s * 0.3);
+      ctx.lineTo(cx + s * 0.1, cy + s * 0.5);
+      ctx.lineTo(cx + s * 0.3, cy + s * 0.3);
+      ctx.lineTo(cx + s * 0.5, cy + s * 0.25);
+      ctx.lineTo(cx + s * 0.35, cy + s * 0.55);
+      ctx.lineTo(cx - s * 0.35, cy + s * 0.55);
+      ctx.fill();
+    } else {
+      // Lápide torta
+      ctx.translate(cx, cy);
+      ctx.rotate((r - 0.29) * 2);
+      ctx.fillStyle = '#6b7280';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.7, s * 0.6);
+      ctx.lineTo(-s * 0.7, -s * 0.5);
+      ctx.arc(0, -s * 0.5, s * 0.7, Math.PI, 0);
+      ctx.lineTo(s * 0.7, s * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.3, -s * 0.5);
+      ctx.lineTo(s * 0.3, -s * 0.5);
+      ctx.moveTo(0, -s * 0.8);
+      ctx.lineTo(0, -s * 0.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
   // Casa de terra (linha fechada na fase): sulcos e pedrinhas, sem grama
   public static drawDirtTile(
     ctx: CanvasRenderingContext2D,
@@ -652,7 +726,7 @@ export class CharacterRenderer {
     // Linha d'água: quem anda no rio fica com a água na canela; a canoa flutua; quem nada afunda até o peito
     const waterY = zy + cellH * 0.24 - (naAgua && !canoeiro ? cellH * 0.13 : 0);
     const afunda = nadando ? cellH * 0.3 : 0;
-    const mapinguari = z.variant === 'mapinguari';
+    const mapinguari = z.variant === 'mapinguari' || z.variant === 'cuca';
     const isBoss = z.variant === 'gargantuar' || isZomboss || mapinguari;
     const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96) * (z.elite === 'gigante' ? 1.3 : 1);
     const walk = z.walkPhase;
@@ -1018,5 +1092,7 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   // Canoeiro: "feet" é a linha d'água do casco; o casco abaixo dela fica escondido pela água
   canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 30, k: 0.5, halfW: 30, pivot: [94, 120], sleeve: '#2c9c8f' },
   mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#7a4a2a' },
-  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 6, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#3f5f6a' }
+  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 6, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#3f5f6a' },
+  mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 20, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#d6cfb4' },
+  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 20, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#2f7a3a' }
 };
