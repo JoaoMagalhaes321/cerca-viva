@@ -780,6 +780,7 @@ function renderLevelsGrid(): void {
 }
 
 function openGameOverModal(won: boolean): void {
+  document.getElementById('compartilhar-desafio-btn')?.remove();
   if (modos.ativo()) {
     modos.mostrarResultado(won);
     return;
