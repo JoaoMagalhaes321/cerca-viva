@@ -27,9 +27,6 @@ import {
 } from './cerca';
 import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { Foto, Gravador } from './replay';
-
-/** Segundos seguidos abaixo de ~38 qps, com a partida rodando, antes de baixar a qualidade gráfica. */
-const SEGUNDOS_LENTO_PARA_ECONOMIZAR = 6;
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
@@ -3123,6 +3120,9 @@ export class GameEngine {
     });
   }
 
+  /** Segundos seguidos abaixo de ~38 qps, com a partida rodando, antes de baixar a qualidade gráfica. */
+  private static readonly SEGUNDOS_LENTO_PARA_ECONOMIZAR = 6;
+
   /**
    * Mede o tempo de cada quadro. Se o jogo ficar abaixo de ~38 quadros por segundo por 3 s seguidos,
    * passa para a qualidade econômica: menos pixels no canvas, sem brilhos extras e menos partículas.
@@ -3140,7 +3140,7 @@ export class GameEngine {
     this.quadroMedioMs = this.quadroMedioMs * 0.94 + dtMs * 0.06;
     if (this.quadroMedioMs > 26) {
       this.tempoLento += dtMs / 1000;
-      if (this.tempoLento > SEGUNDOS_LENTO_PARA_ECONOMIZAR) this.usarQualidadeEconomica(true);
+      if (this.tempoLento > GameEngine.SEGUNDOS_LENTO_PARA_ECONOMIZAR) this.usarQualidadeEconomica(true);
     } else {
       this.tempoLento = Math.max(0, this.tempoLento - dtMs / 2000);
     }
