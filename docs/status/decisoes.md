@@ -3,6 +3,44 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261025-8 · Quem já passou da 2-5 ganha o Musgo-Esponja sozinho
+- Card: mundo2-recompensas · Branch: claude/mundo2-recompensas · Data: 2026-10-25
+- Regra de negócio? **sim** (regra do jogo: desbloqueio)
+- Muda decisão anterior? não (é a D-20261025-2 funcionando)
+- Escolha: nenhum código novo. A conferência do progresso (D-20261025-2) devolve a planta de toda fase já vencida;
+  como a 2-5 agora dá o Musgo, quem já está no Mundo 3 ou 4 recebe a planta ao abrir o jogo (sem a tela de
+  recompensa). Conferido no Chromium com progresso na fase 3-1.
+- Outras opções:
+  - A) Mostrar a tela de recompensa para quem recebeu assim — mais festa / mais código para um caso de uma vez só.
+  - B) Exigir jogar a 2-5 de novo — "justo" / pune quem já venceu.
+- Como trocar depois: o laço "Fases já vencidas" em `src/progresso-sanitizar.ts`.
+- Fácil de reverter? sim
+
+### D-20261025-7 · Recompensa do Mundo 2: Musgo-Esponja na 2-5 e aviso de mundo concluído
+- Card: mundo2-recompensas · Branch: claude/mundo2-recompensas · Data: 2026-10-25
+- Regra de negócio? **sim** (regra do jogo: recompensa, planta nova e balanceamento)
+- Muda decisão anterior? não
+- Escolha: uma planta nova, o **Musgo-Esponja** (🧽, água, 75 de sol, recarga 9 s, 1500 de vida, não ataca),
+  liberada ao vencer a **2-5**. Quem morde fica Molhado por 4 s (prepara Choque Elétrico e Congelamento); o
+  Zumbi Lança-Chamas que encosta nele apaga a tocha em vez de queimá-lo. Superpoder: encharca a linha inteira,
+  deixa poças por 12 s, apaga tochas e recupera 600 de vida. Floração: Musgo Encharcado (Molhado por 8 s) ou
+  Esponja Viva (recupera 14 de vida por segundo). As fases 2-1 a 2-4 continuam sem recompensa. Vencer a última
+  fase de qualquer mundo mostra "🏆 Mundo N Concluído!" (e, na 2-5, "Mundo 2 concluído! Nova semente").
+- Por quê: o Mundo 2 ensina a lidar com lança-chamas e isoladores; uma barreira que apaga o fogo e molha os
+  zumbis (o isolador é imune a elétrico, mas o combo de gelo funciona) é a resposta natural e fecha o mundo. Ela
+  é mais barata e mais fraca que o Cacto-Muralha (50 de sol, 2200 de vida) em vida por sol, para não substituí-lo:
+  vale pelo efeito, não pela vida. Uma planta só, bem feita, cabe numa rodada; cinco recompensas não.
+- Outras opções:
+  - A) Uma recompensa por fase (5 coisas) — mais motivo para jogar cada fase / 5 plantas ou efeitos novos, muito
+    mais desenho e balanceamento.
+  - B) Mutação permanente em vez de planta — reaproveita o que existe / as mutações hoje são escolhas dentro da
+    partida, mudar isso mexe no roguelite.
+  - C) Só a tela de "Mundo 2 concluído", sem planta — mínimo / o mundo continua sem ganho real.
+  - D) Musgo na 2-3 (meio do mundo) — ajuda já na 2-4 e 2-5 / perde o "presente de fechamento".
+- Como trocar depois: números em `src/musgo.ts` e no item `musgo_esponja` de `PLANT_CATALOG` (`src/types.ts`);
+  fase da recompensa em `src/levels.ts` (`unlockedPlantOnClear` da fase 15); textos da floração em `src/florescer.ts`.
+- Fácil de reverter? sim
+
 ### D-20261025-6 · Depois do renomear: Central continua no documento antigo; quadro aponta para o repositório novo
 - Card: renomear / endereco-antigo · Branch: claude/quadro · Data: 2026-10-25
 - Regra de negócio? não

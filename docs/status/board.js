@@ -55,111 +55,37 @@ window.BOARD = {
   },
   "cards": [
     {
-      "id": "sw-versao",
-      "title": "Atualização chegar já na primeira abertura",
-      "domain": "infra",
-      "column": "qas",
-      "env": "branch",
-      "updated": "2026-10-25",
-      "risk": "MEDIDO na main 695b8e4 (25/10): public/sw.js continua com CACHE_NAME fixo (agora cerca-viva-v1, sw.js:1) e cache primeiro, então quem já abriu o jogo continua vendo a versão antiga até o navegador trocar o sw. Corrigido na branch claude/sw-versao, vale até o merge. NÃO MEDIDO no celular.",
-      "summary": "Na branch claude/sw-versao: o build grava no dist/sw.js uma impressão digital dos arquivos gerados (D-20261024-10); o index.html vem da rede primeiro e os assets com hash do cache (D-20261024-11); a página recarrega uma vez quando o service worker novo assume. Atualizada com a main de 25/10 (renomear incluído; o cache passa a se chamar cerca-viva-<versão> e o antigo é apagado). 107 testes passando. Esperando seu merge.",
-      "delivered": [
-        "sw.js versionado no build + updater + README + 5 testes (a8f9851, 24/10)",
-        "Teste de ponta a ponta no Chromium com vite preview (24/10)",
-        "main de 25/10 trazida para a branch, conflito em sw.js resolvido mantendo o sw versionado (f50128a, 25/10)",
-        "Build + 107 testes passando depois do merge (25/10)"
-      ],
-      "pending": [
-        "Seu merge de claude/sw-versao na main"
-      ],
-      "links": [
-        {
-          "label": "sw.js",
-          "path": "public/sw.js",
-          "branch": "claude/sw-versao"
-        },
-        {
-          "label": "sw-versao.ts",
-          "path": "src/sw-versao.ts",
-          "branch": "claude/sw-versao"
-        },
-        {
-          "label": "Relatório",
-          "path": "docs/status/relatorios/2026-10-24-sw-versao.md",
-          "branch": "claude/quadro"
-        }
-      ]
-    },
-    {
-      "id": "progresso-robusto",
-      "title": "Progresso salvo à prova de dados estranhos",
+      "id": "mundo2-recompensas",
+      "title": "Recompensas do Mundo 2: Musgo-Esponja",
       "domain": "jogo",
       "column": "qas",
       "env": "branch",
       "updated": "2026-10-25",
-      "risk": "MEDIDO na main 695b8e4: loadProgress (progression.ts) só confere tipos; fase 999 ou planta inexistente passam e entram no deck. Corrigido na branch claude/progresso-robusto, vale até o merge. NÃO MEDIDO no celular.",
-      "summary": "Na branch claude/progresso-robusto: o progresso carregado é conferido campo por campo contra os catálogos (src/progresso-sanitizar.ts). Fase fora do catálogo vai para a última que existe, fase atual acima da liberada volta para a liberada, plantas desconhecidas, repetidas ou não-texto saem, combos idem (D-20261025-1). Fases já vencidas devolvem a planta delas se ela sumiu (D-20261025-2, regra do jogo). Antes de regravar, o texto original fica guardado em pvz_player_progress_v1_antes_da_correcao (D-20261025-3). Progresso válido não é regravado. Atualizada com a main de 25/10 sem conflito; conferido que as plantas novas (Curupira, Halloween) e as fases do Mundo 4 estão nos catálogos usados na conferência, e que a fase do evento (1301) nunca é gravada como fase atual. 119 testes passando. Esperando seu merge.",
-      "delivered": [
-        "Sanitização + cópia do original + README + 17 testes (7bf875a e ca075e5, 25/10)",
-        "Teste no Chromium com vite preview e progresso estragado (25/10)",
-        "main de 25/10 trazida para a branch, sem conflito (4064521, 25/10)",
-        "Build + 119 testes passando depois do merge (25/10)"
-      ],
+      "summary": "Na branch claude/mundo2-recompensas: vencer a 2-5 libera o Musgo-Esponja (água, 75 de sol, 1500 de vida). Quem morde fica Molhado e o Lança-Chamas apaga a tocha ao encostar nele; superpoder encharca a linha e cura; floração Encharcado ou Esponja Viva (D-20261025-7, regra do jogo). A última fase de cada mundo mostra \"Mundo N Concluído!\". Quem já passou da 2-5 recebe a planta sozinho (D-20261025-8). Sprites de dia e noite novos. 134 testes passando; conferido no Chromium (almanaque e progresso). Esperando seu merge.",
       "pending": [
-        "Seu merge de claude/progresso-robusto na main"
+        "Seu merge de claude/mundo2-recompensas na main",
+        "Balanceamento NÃO MEDIDO jogando de verdade (só por comparação com o Cacto-Muralha)"
       ],
       "links": [
         {
-          "label": "progresso-sanitizar.ts",
-          "path": "src/progresso-sanitizar.ts",
-          "branch": "claude/progresso-robusto"
+          "label": "musgo.ts",
+          "path": "src/musgo.ts",
+          "branch": "claude/mundo2-recompensas"
         },
         {
-          "label": "progression.ts",
-          "path": "src/progression.ts",
-          "branch": "claude/progresso-robusto"
+          "label": "levels.ts",
+          "path": "src/levels.ts",
+          "branch": "claude/mundo2-recompensas"
         },
         {
           "label": "Relatório",
-          "path": "docs/status/relatorios/2026-10-25-progresso-robusto.md",
+          "path": "docs/status/relatorios/2026-10-25-mundo2-recompensas.md",
           "branch": "claude/quadro"
         }
-      ]
-    },
-    {
-      "id": "botoes-debug",
-      "title": "Esconder botões de teste (💀 Chefe e 🌦️ Clima)",
-      "domain": "jogo",
-      "column": "qas",
-      "env": "branch",
-      "updated": "2026-10-25",
-      "risk": "MEDIDO na main 695b8e4: os botões \"💀 Chefe\" e \"🌦️\" continuam visíveis para qualquer jogador (index.html) e invocam o chefe ou trocam o clima a qualquer momento, quebrando a fase. Corrigido na branch claude/botoes-debug, vale até o merge.",
-      "summary": "Na branch claude/botoes-debug: os dois botões só aparecem no modo dev, que liga no npm run dev ou abrindo o jogo publicado com ?dev=1 no endereço (D-20261025-4, regra do jogo). Fora do modo dev, além de escondidos, os cliques não fazem nada. Para esconder outro elemento basta a classe so-dev. Atualizada com a main de 25/10: o conflito de imports em src/main.ts e de estilos em src/style.css foi resolvido mantendo os dois lados. 106 testes passando. Esperando seu merge.",
+      ],
       "delivered": [
-        "src/modo-dev.ts + README + 4 testes (346d44d, 25/10)",
-        "Conferido no Chromium com vite preview, com e sem ?dev=1 (25/10)",
-        "main de 25/10 trazida para a branch, conflitos em main.ts e style.css resolvidos (2c0a8b3, 25/10)",
-        "Build + 106 testes passando depois do merge (25/10)"
-      ],
-      "pending": [
-        "Seu merge de claude/botoes-debug na main"
-      ],
-      "links": [
-        {
-          "label": "modo-dev.ts",
-          "path": "src/modo-dev.ts",
-          "branch": "claude/botoes-debug"
-        },
-        {
-          "label": "index.html",
-          "path": "index.html",
-          "branch": "claude/botoes-debug"
-        },
-        {
-          "label": "Relatório",
-          "path": "docs/status/relatorios/2026-10-25-botoes-debug.md",
-          "branch": "claude/quadro"
-        }
+        "Musgo-Esponja + fechaMundo + sprites + README + 6 testes (59c9ec6, 25/10)",
+        "Conferido no Chromium com vite preview: jogo abre sem erro, planta no Almanaque, progresso antigo recebe a planta (25/10)"
       ]
     },
     {
@@ -304,26 +230,100 @@ window.BOARD = {
       ]
     },
     {
-      "id": "mundo2-recompensas",
-      "fila": 1,
-      "title": "Recompensas do Mundo 2",
-      "domain": "jogo",
-      "column": "design",
-      "env": "none",
+      "id": "sw-versao",
+      "title": "Atualização chegar já na primeira abertura",
+      "domain": "infra",
+      "column": "prod",
+      "env": "main",
       "updated": "2026-10-25",
-      "summary": "Fila do agente: 1º (começa quando houver menos de 3 cards esperando seu merge). Conferido na main 695b8e4: as fases 2-1 a 2-5 (levels.ts, ids 11 a 15) continuam sem recompensa; o Mundo 3 dá a Aguapé na 3-1 e o Curupira na 3-2. Definir recompensa por fase (planta nova ou mutação) e um fechamento do mundo, sem repetir o que já existe (Herbário, Conquistas, Expedição).",
+      "summary": "Na main: o build grava no dist/sw.js uma impressão digital dos arquivos gerados (D-20261024-10); o index.html vem da rede primeiro e os assets com hash do cache (D-20261024-11); a página recarrega uma vez quando o service worker novo assume. Atualizada com a main de 25/10 (renomear incluído; o cache passa a se chamar cerca-viva-<versão> e o antigo é apagado). 107 testes passando.",
+      "delivered": [
+        "sw.js versionado no build + updater + README + 5 testes (a8f9851, 24/10)",
+        "Teste de ponta a ponta no Chromium com vite preview (24/10)",
+        "main de 25/10 trazida para a branch, conflito em sw.js resolvido mantendo o sw versionado (f50128a, 25/10)",
+        "Build + 107 testes passando depois do merge (25/10)",
+        "Mergeado na main por você (PR #43, ad4f490, 25/10); main com build ok e 128 testes passando"
+      ],
       "pending": [
-        "Decidir recompensas (regra do jogo, registrar em decisoes.md)",
-        "Implementar e testar"
+        "Quem tem o sw antigo ainda vê a versão nova só na 2ª abertura, uma única vez"
       ],
       "links": [
         {
-          "label": "levels.ts",
-          "path": "src/levels.ts"
+          "label": "sw.js",
+          "path": "public/sw.js"
         },
         {
-          "label": "types.ts",
-          "path": "src/types.ts"
+          "label": "sw-versao.ts",
+          "path": "src/sw-versao.ts"
+        },
+        {
+          "label": "Relatório",
+          "path": "docs/status/relatorios/2026-10-24-sw-versao.md",
+          "branch": "claude/quadro"
+        }
+      ]
+    },
+    {
+      "id": "progresso-robusto",
+      "title": "Progresso salvo à prova de dados estranhos",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-25",
+      "summary": "Na main: o progresso carregado é conferido campo por campo contra os catálogos (src/progresso-sanitizar.ts). Fase fora do catálogo vai para a última que existe, fase atual acima da liberada volta para a liberada, plantas desconhecidas, repetidas ou não-texto saem, combos idem (D-20261025-1). Fases já vencidas devolvem a planta delas se ela sumiu (D-20261025-2, regra do jogo). Antes de regravar, o texto original fica guardado em pvz_player_progress_v1_antes_da_correcao (D-20261025-3). Progresso válido não é regravado. Atualizada com a main de 25/10 sem conflito; conferido que as plantas novas (Curupira, Halloween) e as fases do Mundo 4 estão nos catálogos usados na conferência, e que a fase do evento (1301) nunca é gravada como fase atual. 119 testes passando.",
+      "delivered": [
+        "Sanitização + cópia do original + README + 17 testes (7bf875a e ca075e5, 25/10)",
+        "Teste no Chromium com vite preview e progresso estragado (25/10)",
+        "main de 25/10 trazida para a branch, sem conflito (4064521, 25/10)",
+        "Build + 119 testes passando depois do merge (25/10)",
+        "Mergeado na main por você (PR #41, c45290f, 25/10); main com build ok e 128 testes passando"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "progresso-sanitizar.ts",
+          "path": "src/progresso-sanitizar.ts"
+        },
+        {
+          "label": "progression.ts",
+          "path": "src/progression.ts"
+        },
+        {
+          "label": "Relatório",
+          "path": "docs/status/relatorios/2026-10-25-progresso-robusto.md",
+          "branch": "claude/quadro"
+        }
+      ]
+    },
+    {
+      "id": "botoes-debug",
+      "title": "Esconder botões de teste (💀 Chefe e 🌦️ Clima)",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-25",
+      "summary": "Na main: os dois botões só aparecem no modo dev, que liga no npm run dev ou abrindo o jogo publicado com ?dev=1 no endereço (D-20261025-4, regra do jogo). Fora do modo dev, além de escondidos, os cliques não fazem nada. Para esconder outro elemento basta a classe so-dev. Atualizada com a main de 25/10: o conflito de imports em src/main.ts e de estilos em src/style.css foi resolvido mantendo os dois lados. 106 testes passando.",
+      "delivered": [
+        "src/modo-dev.ts + README + 4 testes (346d44d, 25/10)",
+        "Conferido no Chromium com vite preview, com e sem ?dev=1 (25/10)",
+        "main de 25/10 trazida para a branch, conflitos em main.ts e style.css resolvidos (2c0a8b3, 25/10)",
+        "Build + 106 testes passando depois do merge (25/10)",
+        "Mergeado na main por você (PR #42, cf10c14, 25/10); main com build ok e 128 testes passando"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "modo-dev.ts",
+          "path": "src/modo-dev.ts"
+        },
+        {
+          "label": "index.html",
+          "path": "index.html"
+        },
+        {
+          "label": "Relatório",
+          "path": "docs/status/relatorios/2026-10-25-botoes-debug.md",
+          "branch": "claude/quadro"
         }
       ]
     },
