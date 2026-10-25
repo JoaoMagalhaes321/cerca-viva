@@ -1,0 +1,77 @@
+/* Balão de floração: aparece em cima da planta tocada */
+.florescer-balao {
+  position: absolute;
+  z-index: 40;
+  width: min(380px, calc(100% - 16px));
+  padding: 10px 10px 8px;
+  border-radius: 14px;
+  background: #fff8e6;
+  border: 3px solid #2a2416;
+  box-shadow: 0 6px 0 #2a2416, 0 14px 30px rgba(0, 0, 0, 0.35);
+  color: #2a2416;
+  animation: florescer-entra 0.18s ease-out;
+}
+.florescer-balao::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  bottom: -14px;
+  width: 20px;
+  height: 20px;
+  margin-left: -10px;
+  background: #fff8e6;
+  border-right: 3px solid #2a2416;
+  border-bottom: 3px solid #2a2416;
+  transform: rotate(45deg);
+}
+.florescer-balao.abaixo::after {
+  bottom: auto;
+  top: -14px;
+  transform: rotate(-135deg);
+}
+@keyframes florescer-entra {
+  from { transform: translateY(6px) scale(0.96); opacity: 0; }
+  to { transform: none; opacity: 1; }
+}
+.florescer-titulo {
+  font-family: 'Lilita One', 'Outfit', sans-serif;
+  font-size: 1.02rem;
+  text-align: center;
+  margin-bottom: 8px;
+  letter-spacing: 0.3px;
+}
+.florescer-opcoes {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+.florescer-opcao {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 6px;
+  border-radius: 10px;
+  border: 2px solid #2a2416;
+  background: #e9f7d9;
+  color: #2a2416;
+  font: inherit;
+  cursor: pointer;
+  text-align: center;
+  transition: transform 0.1s, background 0.1s;
+}
+.florescer-opcao:hover,
+.florescer-opcao:focus-visible {
+  background: #c9f0a5;
+  transform: translateY(-2px);
+}
+.florescer-opcao:active { transform: translateY(1px); }
+.florescer-icone { font-size: 1.6rem; line-height: 1; }
+.florescer-opcao strong { font-size: 0.86rem; }
+.florescer-opcao small { font-size: 0.72rem; line-height: 1.25; opacity: 0.85; }
+
+@media (max-height: 480px) {
+  .florescer-balao { width: min(330px, calc(100% - 16px)); padding: 7px 7px 6px; }
+  .florescer-icone { font-size: 1.3rem; }
+  .florescer-opcao small { font-size: 0.66rem; }
+}
