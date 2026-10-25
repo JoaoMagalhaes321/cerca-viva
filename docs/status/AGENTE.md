@@ -3,11 +3,11 @@
 Este arquivo vale para a tarefa agendada que roda na nuvem e trabalha nos cards de
 `docs/status/board.js`. Ele mora na branch `claude/quadro`, junto do quadro. O projeto é do João.
 
-- Repositório: `JoaoMagalhaes321/pvz-evolution`
+- Repositório: `JoaoMagalhaes321/cerca-viva`
 - Quadro publicado: https://claude.ai/artifact/Xc5hPRYLL4mxTpdtanKHUC
 - Registro de decisões: `docs/status/decisoes.md`
 - Relatórios das rodadas: `docs/status/relatorios/`
-- Central de Agentes: https://claude.ai/artifact/98M4nS3QipRddUH4xe2kRR (documento `projetos/JoaoMagalhaes321~pvz-evolution`)
+- Central de Agentes: https://claude.ai/artifact/98M4nS3QipRddUH4xe2kRR (documento `projetos/JoaoMagalhaes321~cerca-viva`)
 - Para manter o quadro, use a skill status-board (Atualizar, Validar, Publicar). Este arquivo vence a skill
   quando os dois falam da mesma coisa.
 
@@ -74,7 +74,7 @@ Toda escolha não óbvia ganha entrada no topo do arquivo, no formato descrito l
 12. Quadro em `claude/quadro`: reler cada card tocado, subir `updatedAt`, validar, commit;
     `git pull --no-rebase origin claude/quadro` antes do push (em conflito, manter as duas mudanças);
     push; republicar na mesma URL, lendo o artifact antes.
-13. Central: `update` pinado em `projetos/JoaoMagalhaes321~pvz-evolution` com estado, quadroUrl,
+13. Central: `update` pinado em `projetos/JoaoMagalhaes321~cerca-viva` com estado, quadroUrl,
     ultimaRodada, resumo e contagem {fila, trabalhando, revisar, precisa} (cards em design, dev, qas e blocked).
 14. Avisar o João com o relatório.
 

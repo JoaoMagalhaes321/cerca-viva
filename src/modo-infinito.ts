@@ -101,7 +101,7 @@ export function desafioDoDia(data: string): Desafio {
 }
 
 /** Endereço público do jogo, impresso no texto de compartilhar. */
-export const LINK_DO_JOGO = 'joaomagalhaes321.github.io/pvz-evolution/';
+export const LINK_DO_JOGO = 'joaomagalhaes321.github.io/cerca-viva/';
 
 export interface ResumoDoDesafio {
   desafio: Desafio;
