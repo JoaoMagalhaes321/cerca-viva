@@ -2,8 +2,9 @@
 // Modo daltônico: cada elemento ganha uma letra (desenhada nos tiros e nos terrenos), porque cor
 // sozinha não serve para quem não distingue verde/vermelho ou azul/roxo.
 // Reduzir efeitos: sem tremida de tela, sem brilhos, menos partículas, sem confete, sem abertura
-// animada e animações do menu quase instantâneas. Quem pediu "reduzir movimento" no sistema já
-// começa com isso ligado.
+// animada e animações do menu quase instantâneas. Só liga quando o jogador marca a opção (D-20261025-10):
+// "reduzir movimento" do sistema tira apenas o que se mexe (tremida de tela, animações do menu), sem
+// apagar brilhos e partículas do jogo.
 
 import type { ElementType, TileHazard } from './types';
 import { setMovimentoReduzido, movimentoReduzidoDoSistema } from './feedback';
@@ -14,6 +15,25 @@ const CHAVE = 'pvz_acessibilidade_v1';
 export interface OpcoesAcessibilidade {
   daltonico: boolean;
   reduzirEfeitos: boolean;
+}
+
+/** Formato salvo. `escolhido` marca que o jogador mexeu na opção (salvo pela tela de Acessibilidade). */
+interface OpcoesSalvas extends Partial<OpcoesAcessibilidade> {
+  escolhido?: boolean;
+}
+
+/**
+ * Lê o que estava salvo. Até 25/10/2026 o jogo gravava sozinho "reduzir efeitos" ligado para quem tinha
+ * "reduzir movimento" no sistema; sem a marca `escolhido` esse valor não foi escolha do jogador e é ignorado.
+ */
+export function lerOpcoes(raw: string | null): OpcoesAcessibilidade {
+  if (!raw) return { daltonico: false, reduzirEfeitos: false };
+  try {
+    const o = JSON.parse(raw) as OpcoesSalvas;
+    return { daltonico: !!o.daltonico, reduzirEfeitos: o.escolhido === true && !!o.reduzirEfeitos };
+  } catch {
+    return { daltonico: false, reduzirEfeitos: false };
+  }
 }
 
 /** Letra de cada elemento (a mesma aparece na legenda do menu). */
@@ -54,25 +74,23 @@ export const LETRA_DO_TERRENO: Partial<Record<TileHazard, string>> = {
 
 function carregar(): OpcoesAcessibilidade {
   try {
-    const raw = localStorage.getItem(CHAVE);
-    if (raw) {
-      const o = JSON.parse(raw) as Partial<OpcoesAcessibilidade>;
-      return { daltonico: !!o.daltonico, reduzirEfeitos: !!o.reduzirEfeitos };
-    }
+    return lerOpcoes(localStorage.getItem(CHAVE));
   } catch {
-    /* sem localStorage */
+    return { daltonico: false, reduzirEfeitos: false }; // sem localStorage
   }
-  return { daltonico: false, reduzirEfeitos: movimentoReduzidoDoSistema };
 }
 
 export const acessibilidade: OpcoesAcessibilidade = carregar();
 
 /** Aplica as opções no jogo inteiro (chamado no início e a cada mudança). */
-export function aplicarAcessibilidade(): void {
-  try {
-    localStorage.setItem(CHAVE, JSON.stringify(acessibilidade));
-  } catch {
-    /* sem localStorage */
+export function aplicarAcessibilidade(salvar = false): void {
+  if (salvar) {
+    try {
+      const salvo: OpcoesSalvas = { ...acessibilidade, escolhido: true };
+      localStorage.setItem(CHAVE, JSON.stringify(salvo));
+    } catch {
+      /* sem localStorage */
+    }
   }
   setMovimentoReduzido(acessibilidade.reduzirEfeitos || movimentoReduzidoDoSistema);
   CharacterRenderer.efeitos = !acessibilidade.reduzirEfeitos;
