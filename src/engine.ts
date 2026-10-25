@@ -387,6 +387,7 @@ export class GameEngine {
       if (m.estado === 'baixa') {
         m.estado = 'subindo';
         m.timer = MARE.transicao;
+        sound.efeito('mare_sobe');
         this.onToast('🌊 A maré está subindo! Plantas de terra nas linhas de mangue vão ficar submersas.');
       } else if (m.estado === 'subindo') {
         m.estado = 'alta';
@@ -394,6 +395,7 @@ export class GameEngine {
       } else if (m.estado === 'alta') {
         m.estado = 'baixando';
         m.timer = MARE.transicao;
+        sound.efeito('mare_desce');
         this.onToast('🏖️ A maré está baixando: vira lama, que atola zumbis e encalha o Aguapé.');
       } else {
         m.estado = 'baixa';
@@ -833,7 +835,7 @@ export class GameEngine {
       return;
     }
     this.sun = sobra;
-    sound.playPlantPlace();
+    sound.efeito('replantar');
     this.spawnParticles(-0.3, row + 0.6, '#4ade80', 14);
     this.spawnFloatingText('🌱 MUDA PLANTADA!', 0.4, row + 0.2, '#86efac', 1.1);
     this.onUiUpdate();
@@ -842,7 +844,7 @@ export class GameEngine {
   /** O Curupira entra na linha: pegadas ao contrário e os zumbis dali andam para trás. */
   private invocarCurupira(row: number, col: number): void {
     this.curupiras.push({ row, x: col + 0.2, vida: 2.4 });
-    sound.playMutationUnlock();
+    sound.efeito('curupira');
     this.spawnParticles(col + 0.5, row + 0.6, '#ff4d1f', 14);
     this.spawnFloatingText('👣 PEGADAS AO CONTRÁRIO!', col + 1.2, row + 0.1, '#ffb020', 1.2);
     let confundiu = 0;
@@ -870,6 +872,7 @@ export class GameEngine {
     p.caminhoTimer = 0;
     p.scaleKick = 0.45;
     this.onDescoberta?.('caminhos', c.id);
+    sound.efeito('floresceu');
     if (c.id === 'rocha') {
       p.maxHp = Math.round(p.maxHp * 1.6);
       p.hp = p.maxHp;
@@ -1277,6 +1280,7 @@ export class GameEngine {
       p.idade += dt;
       if (idadeAntes < MUDA_SEGUNDOS && p.idade >= MUDA_SEGUNDOS) {
         p.scaleKick = 0.35;
+        sound.efeito('muda_cresce', 0.3);
         this.spawnParticles(p.col + 0.5, p.row + 0.6, '#86efac', 8);
       }
       if (idadeAntes < FLORESCER_EM && p.idade >= FLORESCER_EM && !p.caminho) {
@@ -1327,7 +1331,7 @@ export class GameEngine {
           if (p.armTimer <= 0) {
             p.armed = true;
             p.scaleKick = 0.45;
-            sound.playPlantPlace();
+            sound.efeito('mina_arma');
             this.spawnFloatingText('💣 ARMADA!', p.col + 0.5, p.row + 0.2, '#ef4444', 1.0);
           }
         } else {
@@ -1496,6 +1500,7 @@ export class GameEngine {
           if (opcoes.length > 0) {
             const nova = opcoes[Math.floor(Math.random() * opcoes.length)];
             this.spawnParticles(z.x, z.row + 0.7, '#e0603a', 8);
+            sound.efeito('siri_lado', 0.3);
             z.row = nova;
             z.walkPhase += 2;
             this.spawnFloatingText('🦀 DE LADO!', z.x, z.row + 0.2, '#fb923c', 0.95);
@@ -1585,6 +1590,7 @@ export class GameEngine {
           z.x = Math.max(z.x, CERCA.xDaMordida);
           const espinhos = espinhosDaCerca(cerca);
           if (espinhos > 0) z.hp -= espinhos * dt;
+          sound.efeito('mordida_cerca', 0.35);
           if (morderCerca(cerca, z.damagePerSec * chillMult, dt) === 'quebrou') this.quebrarCerca(cerca);
         } else if (targetPlant) {
           z.isEating = true;
@@ -1618,9 +1624,11 @@ export class GameEngine {
     for (const c of this.cercas) {
       const evento = atualizarCerca(c, dt);
       if (evento === 'floresceu') {
+        sound.efeito('cerca_floresce');
         this.spawnParticles(-0.3, c.row + 0.5, '#fde047', 12);
         this.spawnFloatingText('🌼 FLORESCEU!', 0.5, c.row + 0.15, '#fde047', 1.1);
       } else if (evento === 'cresceu') {
+        sound.efeito('muda_cresce');
         this.spawnParticles(-0.3, c.row + 0.5, '#4ade80', 10);
         this.spawnFloatingText('🌿 CERCA DE PÉ!', 0.5, c.row + 0.15, '#86efac', 1.0);
       }
@@ -1689,7 +1697,7 @@ export class GameEngine {
 
   /** A cerca caiu: galhos voam, a tela treme e o jogador é avisado de que a linha está aberta. */
   private quebrarCerca(c: CercaViva): void {
-    sound.playSynergyCombo('thermal');
+    sound.efeito('cerca_quebra');
     this.sacudir(5, 0.3, 'medio');
     this.spawnParticles(-0.3, c.row + 0.55, '#4ade80', 18);
     this.spawnParticles(-0.3, c.row + 0.55, '#b9824a', 10);
@@ -1716,6 +1724,7 @@ export class GameEngine {
     // 1. Knock off Cone or Bucket when HP drops below 55%
     if (!z.lostHeadgear && ratio < 0.55 && (z.variant === 'cone' || z.variant === 'bucket')) {
       z.lostHeadgear = true;
+      sound.efeito('capacete_cai', 0.2);
       this.debris.push({
         kind: z.variant === 'cone' ? 'cone' : 'bucket',
         x: z.x,
@@ -1767,7 +1776,10 @@ export class GameEngine {
   }
 
   private fireProjectile(plant: PlantEntity): void {
-    sound.playShoot(plant.def.element);
+    if (plant.def.id === 'aguape') sound.efeito('bolha', 0.2);
+    else if (plant.def.element === 'wind') sound.efeito('vento', 0.25);
+    else if (plant.def.element === 'toxin') sound.efeito('veneno', 0.3);
+    else sound.playShoot(plant.def.element);
     let mult = plant.adubada ? ADUBADA.dano : 1;
     if (this.estagioDe(plant) === 'muda') mult *= MUDA.dano;
     const c = plant.caminho;
@@ -1795,6 +1807,7 @@ export class GameEngine {
   }
 
   private onProjectileHit(proj: ProjectileEntity, target: ZombieEntity): void {
+    if (proj.element === 'water') sound.efeito('bolha_estoura', 0.15);
     let dano = proj.damage;
     if (proj.caminho === 'corrosiva' && !target.lostHeadgear && (target.variant === 'cone' || target.variant === 'bucket')) {
       dano = Math.round(dano * 1.5);
@@ -2030,6 +2043,7 @@ export class GameEngine {
       target.chilledTimer = 7.0;
       if (target.wetTimer > 0 && target.frozenTimer <= 0) {
         this.registerCombo('flash_freeze');
+        sound.efeito('congelar', 0.2);
         target.frozenTimer = 3.2;
         target.wetTimer = 0;
         finalDamage += 20;
@@ -2167,6 +2181,8 @@ export class GameEngine {
     tile.hazard = r.hazard;
     tile.hazardTimer = DURACAO[r.hazard] ?? 0;
     if (r.texto) {
+      if (r.hazard === 'puddle' && element === 'fire') sound.efeito('derrete', 0.3);
+      else if (r.hazard === 'ice_patch') sound.efeito('congelar', 0.3);
       this.spawnFloatingText(r.texto, col + 0.5, row + 0.75, r.cor, 1.0);
       this.spawnParticles(col + 0.5, row + 0.7, r.cor, 8);
     }
@@ -2176,6 +2192,7 @@ export class GameEngine {
     this.zombies.splice(index, 1);
     this.zombiesKilled++;
     this.onDescoberta?.('zumbis', z.variant);
+    sound.efeito('zumbi_cai', 0.12);
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
     // A cabeça do zumbi cai quando ele é derrotado
@@ -2412,7 +2429,7 @@ export class GameEngine {
     if (rios.includes(row)) row = terra[Math.floor(terra.length / 2)] ?? 2;
     this.bossSpawned = true;
     sound.bossMode = true;
-    sound.playBossSiren();
+    sound.efeito('rugido');
     this.lightningFlash = 0.4;
     this.onToast('👁️ O MAPINGUARI SAIU DA MATA! Fogo queima o pelo dele; mire no olho quando ele parar.');
     this.spawnFloatingText('👁️ MAPINGUARI!', 7.5, row + 0.3, '#f97316', 1.5);
@@ -2452,7 +2469,7 @@ export class GameEngine {
       for (const p of this.plants) if (p.row === boss.row) p.attackTimer = Math.max(p.attackTimer, 2.0);
       this.spawnFloatingText('🗣️ RUGIDO!', boss.x - 0.8, boss.row, '#fb923c', 1.35);
       this.sacudir(6, 0.4, 'medio');
-      sound.playBossSiren();
+      sound.efeito('rugido');
     } else if (roll < 0.7) {
       // Pisão: fere as plantas perto dele
       for (let i = this.plants.length - 1; i >= 0; i--) {
@@ -2465,6 +2482,7 @@ export class GameEngine {
       }
       this.spawnParticles(boss.x, boss.row + 0.8, '#78350f', 22);
       this.spawnFloatingText('🦶 PISÃO!', boss.x - 0.6, boss.row + 0.1, '#fde68a', 1.3);
+      sound.efeito('pisao');
       this.sacudir(8, 0.35, 'forte');
     } else {
       // Chama a mata: canoeiros descem o rio (ou zumbis comuns, sem rio)
