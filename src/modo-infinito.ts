@@ -28,7 +28,7 @@ export const MODIFICADORES: Record<Modificador, { icone: string; nome: string; d
 
 const TODOS_MODIFICADORES = Object.keys(MODIFICADORES) as Modificador[];
 const CLIMAS: Modificador[] = ['noite', 'chuva'];
-const BIOMAS_DO_DESAFIO = ['front_yard', 'monsoon_patio', 'bio_lab_night', 'bioluminescent_swamp'];
+const BIOMAS_DO_DESAFIO = ['front_yard', 'monsoon_patio', 'bio_lab_night', 'bioluminescent_swamp', 'mangue'];
 
 export const ONDAS_DO_DESAFIO = 8;
 export const MUTACAO_A_CADA = 3;
@@ -168,6 +168,7 @@ export function pesosDaOnda(onda: number, mods: Modificador[] = []): [string, nu
   if (onda >= 4) pesos.push(['bucket', 2 + onda * 0.3]);
   if (onda >= 5) pesos.push(['rubber_hazard', 2]);
   if (onda >= 6) pesos.push(['pyro_scavenger', 2]);
+  if (onda >= 6) pesos.push(['siri', 2]);
   if (onda >= colossoDesde) pesos.push(['gargantuar', mods.includes('colossos') ? 2.5 : 0.6 + onda * 0.08]);
   return pesos;
 }

@@ -504,6 +504,13 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         desc: 'Gigante com garra de sucata e muita vida. Combine reações elementais e Adubo Supremo!'
       },
       {
+        variant: 'siri',
+        name: 'Zumbi Siri',
+        hp: 420,
+        speedText: 'Normal · rápido na água',
+        desc: '🦀 Do mangue (Mundo 4): anda de lado e troca de linha de tempos em tempos, então não adianta defender uma linha só. A carapaça segura metade do dano de projéteis de Natureza; ☣️ ácido e 🔥 fogo passam direto. Na lama da maré baixa não atola.'
+      },
+      {
         variant: 'mapinguari',
         name: 'Mapinguari (Chefe do Igarapé)',
         hp: 3200,
@@ -688,6 +695,11 @@ const MUNDOS: Record<number, { titulo: string; fundo: string; borda: string }> =
     titulo: '🛶 MUNDO 3: IGARAPÉ AMAZÔNICO',
     fundo: 'linear-gradient(90deg, rgba(3, 105, 161, 0.85), rgba(14, 116, 144, 0.35))',
     borda: '#38bdf8'
+  },
+  4: {
+    titulo: '🦀 MUNDO 4: MANGUE DA MARÉ',
+    fundo: 'linear-gradient(90deg, rgba(120, 53, 15, 0.85), rgba(180, 83, 9, 0.35))',
+    borda: '#fb923c'
   }
 };
 
