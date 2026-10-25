@@ -197,6 +197,8 @@ export interface MotorDasOndas {
   zombies: { variant: string; hp: number; maxHp: number; speed: number }[];
   gameOver: boolean;
   marcas?: { combosNaOnda: number };
+  /** Chance de zumbi elite; o diretor sobe conforme a onda. */
+  chanceElite?: number;
   wave: number;
   maxWaves: number;
   waveProgress: number;
@@ -289,6 +291,7 @@ export class DiretorOndas {
     this.timer = 1.2;
     this.motor.wave = this.onda;
     if (this.motor.marcas) this.motor.marcas.combosNaOnda = 0;
+    if (this.motor.chanceElite !== undefined) this.motor.chanceElite = Math.min(0.45, Math.max(0, (forca - 4) * 0.035));
     this.motor.waveProgress = 0;
     if (chefe) {
       const antes = this.motor.zombies.length;

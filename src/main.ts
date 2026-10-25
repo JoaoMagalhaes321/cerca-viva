@@ -536,6 +536,10 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
       }
     ];
 
+    const nota = document.createElement('p');
+    nota.className = 'almanac-nota';
+    nota.innerHTML = '🧬 <b>Mutações de zumbi:</b> do Mundo 2 em diante (e nas ondas altas do Infinito) alguns zumbis nascem na versão elite, com um selo na cabeça: ⚙️ <b>de Ferro</b> (capacete que segura Natureza — use ácido), 🦀 <b>Gigante</b>, 🛶 <b>em Dupla</b> e 💨 <b>Veloz</b>.';
+    almanacContentEl.appendChild(nota);
     for (const zInfo of zombiesInfo) {
       const card = document.createElement('div');
       card.className = 'almanac-card';
@@ -656,6 +660,8 @@ function iniciarFase(level: LevelConfig): void {
 
   engine.initBoard(draftBiome, deckDaPartida.length > 0 ? deckDaPartida : draftDeckIds, currentLevel);
   aplicarRegrasDaFase(engine, level);
+  // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns
+  engine.chanceElite = level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
   buildSeedPackets();
   syncHud();
   updateMenuStageInfo();

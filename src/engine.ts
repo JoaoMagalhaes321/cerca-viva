@@ -107,7 +107,17 @@ export interface ZombieEntity {
   confusoTimer: number;
   /** Zumbi Siri: segundos até a próxima troca de linha. */
   trocaLinhaTimer?: number;
+  /** Mutação do zumbi (versão elite): ferro, gigante, dupla ou veloz. */
+  elite?: EliteZumbi;
 }
+
+export type EliteZumbi = 'ferro' | 'gigante' | 'dupla' | 'veloz';
+export const ELITES: Record<EliteZumbi, { icone: string; nome: string; descricao: string }> = {
+  ferro: { icone: '⚙️', nome: 'de Ferro', descricao: 'Capacete de ferro: 60% mais vida e só metade do dano de Natureza.' },
+  gigante: { icone: '🦀', nome: 'Gigante', descricao: 'Siri enorme: dobro de vida e mordida mais forte.' },
+  dupla: { icone: '🛶', nome: 'em Dupla', descricao: 'Canoeiros em dupla descem juntos.' },
+  veloz: { icone: '💨', nome: 'Veloz', descricao: 'Mais rápido e com um pouco mais de vida.' }
+};
 
 /** Maré do Mundo 4: nível 0 = lama (maré baixa), 1 = água (maré alta). */
 export interface Mare {
@@ -288,6 +298,8 @@ export class GameEngine {
   public weatherLocked = false;
   /** Regras especiais da fase em andamento (corrida, blindados…), aplicadas nos zumbis que nascem. */
   public regrasAtivas: Set<string> = new Set();
+  /** Chance (0 a 1) de um zumbi nascer na versão elite (mutação). Sobe com a dificuldade. */
+  public chanceElite = 0;
   /** Maré (só no bioma de mangue). */
   public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
@@ -427,6 +439,7 @@ export class GameEngine {
     this.waveDirector = null;
     this.weatherLocked = false;
     this.regrasAtivas = new Set();
+    this.chanceElite = 0;
     this.skySunScale = 1;
     if (deckIds && deckIds.length > 0) {
       this.activeDeckIds = [...deckIds];
@@ -1921,6 +1934,10 @@ export class GameEngine {
     if (target.variant === 'siri' && element === 'nature') {
       finalDamage = Math.floor(baseDamage * 0.5);
     }
+    // CAPACETE DE FERRO (elite): enquanto não cai, metade do dano de Natureza; ácido derrete normal
+    if (target.elite === 'ferro' && !target.lostHeadgear && element === 'nature') {
+      finalDamage = Math.floor(finalDamage * 0.5);
+    }
 
     // MAPINGUARI: o pelo pega fogo; parado (congelado/atordoado), o olho fica exposto
     if (target.variant === 'mapinguari') {
@@ -2422,6 +2439,25 @@ export class GameEngine {
     }
     if (this.regrasAtivas.has('corrida')) speed *= 1.3;
 
+    // Mutação do zumbi (elite): só os tipos que têm versão, e só às vezes
+    let elite: EliteZumbi | undefined;
+    if (Math.random() < this.chanceElite) {
+      if (type === 'cone' || type === 'bucket') elite = 'ferro';
+      else if (type === 'siri') elite = 'gigante';
+      else if (type === 'canoeiro') elite = 'dupla';
+      else if (type === 'basic' || type === 'cyber_sprinter') elite = 'veloz';
+    }
+    if (elite === 'ferro') hp = Math.round(hp * 1.6);
+    else if (elite === 'gigante') {
+      hp *= 2;
+      damage = Math.round(damage * 1.5);
+    } else if (elite === 'veloz') {
+      speed *= 1.35;
+      hp = Math.round(hp * 1.15);
+    }
+    if (elite) {
+      this.spawnFloatingText(`${ELITES[elite].icone} ${name.toUpperCase()} ${ELITES[elite].nome.toUpperCase()}!`, GRID_COLS - 0.6, row + 0.1, '#fca5a5', 1.0);
+    }
     this.zombies.push({
       id: this.nextEntityId++,
       variant,
@@ -2444,8 +2480,14 @@ export class GameEngine {
       isEating: false,
       lostHeadgear: false,
       lostArm: false,
-      confusoTimer: 0
+      confusoTimer: 0,
+      elite
     });
+    if (elite === 'dupla') {
+      // O parceiro vem logo atrás
+      const z = this.zombies[this.zombies.length - 1];
+      this.zombies.push({ ...z, id: this.nextEntityId++, x: z.x + 0.7, walkPhase: z.walkPhase + 1.5 });
+    }
   }
 
   /** O Mapinguari, chefe do Igarapé: sai da mata numa linha de terra. */
