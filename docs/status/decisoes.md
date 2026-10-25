@@ -3,6 +3,29 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261025-4 · Botões de teste só no modo dev (npm run dev ou ?dev=1 no endereço)
+- Card: botoes-debug · Branch: claude/botoes-debug · Data: 2026-10-25
+- Regra de negócio? **sim** (regra do jogo: o jogador comum não pode invocar o chefe nem trocar o clima)
+- Muda decisão anterior? não
+- Escolha: "💀 Chefe" e "🌦️" nascem escondidos no `index.html` (classe `so-dev` + `hidden`, sem piscar na
+  abertura) e só aparecem no modo dev: sempre no `npm run dev` (`import.meta.env.DEV`) e no jogo
+  publicado quando o endereço tem `?dev=1` (aceita também `true` e `sim`). Não fica gravado: recarregar
+  sem o parâmetro esconde de novo. Fora do modo dev o clique também é ignorado (defesa dupla). O clima
+  continua mudando sozinho durante o jogo, como antes (`engine.ts`, ciclo automático).
+- Por quê: os botões quebram a fase de quem está jogando, mas você ainda precisa deles para testar o chefe
+  e o clima no site ou no celular, sem rodar o PC. O parâmetro na URL é o jeito mais simples e não
+  precisa de servidor nem de senha.
+- Outras opções:
+  - A) Só no `npm run dev` — ninguém de fora acha / você não consegue testar no site publicado nem no app.
+  - B) Apagar os botões — HUD mais limpo / perde a ferramenta de teste.
+  - C) Gravar o modo dev no localStorage depois do `?dev=1` — não precisa repetir o parâmetro / fica ligado
+    sem você lembrar, e no app do celular é difícil desligar.
+  - D) Gesto secreto (ex.: tocar 5 vezes no logo) — funciona no app sem mexer no endereço / escondido
+    demais e mais código.
+- Como trocar depois: `modoDevLigado` e as constantes no topo de `src/modo-dev.ts` (apagar o teste do
+  parâmetro = opção A).
+- Fácil de reverter? sim
+
 ### D-20261025-3 · Cópia do progresso original antes de qualquer correção
 - Card: progresso-robusto · Branch: claude/progresso-robusto · Data: 2026-10-25
 - Regra de negócio? não
