@@ -1,0 +1,37 @@
+/* Duelo local: duas pessoas no mesmo aparelho */
+.duelo-card { max-width: 560px; }
+.duelo-badge { background: linear-gradient(90deg, #15803d, #7f1d1d); color: #fef3c7; }
+.duelo-lados { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin: 6px 0 10px; }
+.duelo-lado { padding: 10px; border-radius: 12px; border: 2px solid rgba(148, 163, 184, 0.35); background: rgba(15, 23, 42, 0.7); color: #e2e8f0; }
+.duelo-lado b { display: block; font-size: 0.9rem; margin-bottom: 4px; }
+.duelo-lado small { font-size: 0.7rem; line-height: 1.35; color: #cbd5e1; }
+.duelo-lado.jardineiro { border-color: rgba(74, 222, 128, 0.5); }
+.duelo-lado.horda { border-color: rgba(248, 113, 113, 0.5); }
+.duelo-placar { font-size: 0.8rem; color: #fde68a; text-align: center; margin: 4px 0 8px; }
+
+/* Barra da horda: embaixo, no lugar dos poderes do Guardião */
+.duelo-barra {
+  position: absolute;
+  left: 50%;
+  bottom: 6px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border-radius: 14px;
+  background: rgba(59, 10, 10, 0.92);
+  border: 2px solid rgba(248, 113, 113, 0.6);
+  z-index: 125;
+  max-width: calc(100% - 16px);
+  overflow-x: auto;
+}
+.duelo-barra.hidden { display: none; }
+.duelo-cerebros { color: #fda4af; font-weight: 900; font-size: 0.95rem; white-space: nowrap; padding-right: 6px; border-right: 1px solid rgba(248, 113, 113, 0.4); }
+.duelo-cartas { display: flex; gap: 6px; }
+.duelo-carta { width: 54px; min-width: 54px; height: 64px; }
+body.duelo .guardian-powers { display: none !important; }
+@media (max-width: 600px) {
+  .duelo-lados { grid-template-columns: 1fr; }
+  .duelo-carta { width: 46px; min-width: 46px; height: 58px; }
+}

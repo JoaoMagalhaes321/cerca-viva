@@ -30,6 +30,7 @@ import { Mascote, sapoLiberado } from './mascote';
 import { VasosUi } from './vasos-ui';
 import { LadoZumbiUi } from './lado-zumbi-ui';
 import { VasosEditorUi } from './vasos-editor-ui';
+import { DueloUi } from './duelo-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
@@ -258,6 +259,8 @@ function syncHud(): void {
   if (sunRotulo) sunRotulo.textContent = engine.vasos ? 'VASOS' : ladoZumbi.ativo() ? 'CÉREBROS' : 'SOL';
   waveLabelEl.textContent = ladoZumbi.ativo()
     ? ladoZumbi.rotuloDaOnda()
+    : duelo.ativo()
+    ? '🤝 DUELO · 🌻 × 🧟'
     : engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
   if (modos.ativo()) {
     stageBadgeEl.textContent = modos.rotulo();
@@ -267,6 +270,8 @@ function syncHud(): void {
     stageBadgeEl.textContent = vasos.rotulo();
   } else if (ladoZumbi.ativo()) {
     stageBadgeEl.textContent = ladoZumbi.rotulo();
+  } else if (duelo.ativo()) {
+    stageBadgeEl.textContent = duelo.rotulo();
   } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
@@ -350,6 +355,7 @@ function updateCooldownOverlays(): void {
   }
   waveProgressFillEl.style.width = `${engine.waveProgress}%`;
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
+  if (duelo.ativo()) duelo.sincronizar();
   // Mini-evento em andamento
   const eventoAviso = document.getElementById('evento-aviso');
   const ev = engine.miniEventos?.ativo ?? null;
@@ -740,6 +746,7 @@ function startLevel(level: LevelConfig): void {
   expedicao.sair();
   vasos.sair();
   ladoZumbi.sair();
+  duelo.sair();
   currentLevel = level;
   if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
@@ -970,6 +977,7 @@ function mostrarReplay(): void {
 /** Sementes raras ganhas nesta partida (mostradas na tela de resultado). */
 function darSementes(won: boolean): number {
   const progress = ProgressionManager.getProgress();
+  if (duelo.ativo()) return 0; // duelo entre amigos não dá sementes
   if (ladoZumbi.ativo()) {
     // Do lado zumbi as sementes raras vêm do jardim invadido: 20 por invasão, 5 pela tentativa
     const ganhasZumbi = won ? 20 : 5;
@@ -998,7 +1006,7 @@ function darSementes(won: boolean): number {
 
 function openGameOverModal(won: boolean): void {
   // Fechou um mundo pela primeira vez: o capítulo em quadrinhos vem antes do resultado
-  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && !ladoZumbi.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
+  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && !ladoZumbi.ativo() && !duelo.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
     engine.paused = true;
     quadrinhos.mostrar(`mundo${currentLevel.world}`, () => openGameOverModal(won));
     return;
@@ -1022,6 +1030,10 @@ function openGameOverModal(won: boolean): void {
   }
   if (ladoZumbi.ativo()) {
     ladoZumbi.mostrarResultado(won);
+    return;
+  }
+  if (duelo.ativo()) {
+    duelo.mostrarResultado(won);
     return;
   }
   if (won && engine.plants.length > 0) {
@@ -1131,6 +1143,7 @@ startBattleBtn.addEventListener('click', () => {
     expedicao.abrir();
   } else if (vasos.ativo()) vasos.reiniciar();
   else if (ladoZumbi.ativo()) ladoZumbi.reiniciar();
+  else if (duelo.ativo()) duelo.reiniciar();
   else startLevel(currentLevel);
 });
 
@@ -1244,6 +1257,7 @@ restartBtn.addEventListener('click', () => {
     expedicao.abrir();
   } else if (vasos.ativo()) vasos.reiniciar();
   else if (ladoZumbi.ativo()) ladoZumbi.reiniciar();
+  else if (duelo.ativo()) duelo.reiniciar();
   else startLevel(currentLevel);
 });
 
@@ -1350,6 +1364,7 @@ menuHomeBtn.addEventListener('click', () => {
   expedicao.sair();
   vasos.sair();
   ladoZumbi.sair();
+  duelo.sair();
   showMainMenu();
 });
 
@@ -1365,6 +1380,7 @@ const modos = new Modos({
     expedicao.sair();
     vasos.sair();
     ladoZumbi.sair();
+    duelo.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1409,6 +1425,7 @@ const expedicao = new ExpedicaoUi({
     modos.sair();
     vasos.sair();
     ladoZumbi.sair();
+    duelo.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1426,6 +1443,7 @@ const vasos = new VasosUi({
     modos.sair();
     expedicao.sair();
     ladoZumbi.sair();
+    duelo.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1454,6 +1472,7 @@ const ladoZumbi = new LadoZumbiUi({
     modos.sair();
     expedicao.sair();
     vasos.sair();
+    duelo.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1461,6 +1480,27 @@ const ladoZumbi = new LadoZumbiUi({
   mostrarMenu: () => showMainMenu(),
   toast: (msg) => showToast(msg),
   conquistas: (fim) => herbario.checarConquistas(fim)
+});
+
+// Duelo local (duas pessoas no mesmo aparelho)
+const duelo = new DueloUi({
+  engine,
+  deck: () => {
+    const unlocked = ProgressionManager.getProgress().unlockedPlants;
+    const deck = draftDeckIds.filter((id) => unlocked.includes(id));
+    return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+  },
+  prepararPartida: () => {
+    modos.sair();
+    expedicao.sair();
+    vasos.sair();
+    ladoZumbi.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  mostrarMenu: () => showMainMenu(),
+  toast: (msg) => showToast(msg)
 });
 
 // Start on Main Menu with Progression Info

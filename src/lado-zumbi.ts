@@ -50,7 +50,27 @@ export interface Jardim {
   cartas: string[];
   jardineiro: ConfigJardineiro;
   dica: string;
+  /** Duelo local: o jardineiro é outra pessoa no mesmo aparelho (sem defesa automática). */
+  humano?: boolean;
 }
+
+/** O jardim do Duelo local: a horda contra um jardineiro de carne e osso. */
+export const JARDIM_DUELO: Jardim = {
+  id: 'duelo',
+  numero: 0,
+  nome: 'Duelo local',
+  biomaId: 'front_yard',
+  tempo: 180,
+  cerebrosIniciais: 150,
+  cerebrosPorSeg: 10,
+  cartas: CARTAS.map((c) => c.tipo),
+  jardineiro: { sol: 150, ritmo: 1e9, deck: [], lirios: 0, atiradoresPorLinha: 0 },
+  dica: 'Jardineiro à esquerda, horda à direita. A horda precisa entrar na casa em 3 minutos.',
+  humano: true
+};
+
+/** Coluna a partir da qual o toque é da horda (no Duelo). */
+export const DUELO_COLUNA = 6;
 
 export const JARDINS: Jardim[] = [
   {
@@ -399,6 +419,8 @@ export class LadoZumbi {
       m.finishGame(false);
       return;
     }
+
+    if (this.jardim.humano) return; // Duelo: o jardineiro é gente, cuida do sol e das plantas sozinho
 
     // O Jardineiro coleta o sol (um instante depois de aparecer)
     this.timerSol -= dt;

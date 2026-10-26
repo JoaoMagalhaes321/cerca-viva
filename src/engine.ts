@@ -452,6 +452,8 @@ export class GameEngine {
   public skySunScale = 1;
   /** Modo "Eu sou o zumbi": o toque na linha invoca zumbis e a casa invadida é vitória. */
   public ladoZumbi: { invocar(row: number): 'ok' | 'linha' | 'cerebros' | 'recarga'; invadiu(): void } | null = null;
+  /** Duelo local: toques à direita de `dueloColuna` são da horda; o resto, do jardineiro. null = sem duelo. */
+  public dueloColuna: number | null = null;
   /** O zumbi que comeu a última planta (ou entrou na casa): vira Nêmesis numa derrota. */
   public algoz: { variant: string; name: string } | null = null;
   /** Nêmesis desta fase (agendado em agendarNemesis) e se ele já foi derrotado. */
@@ -720,6 +722,7 @@ export class GameEngine {
     this.chanceElite = 0;
     this.skySunScale = 1;
     this.ladoZumbi = null;
+    this.dueloColuna = null;
     this.algoz = null;
     this.nemesisDaFase = null;
     this.nemesisVingado = false;
@@ -1104,8 +1107,8 @@ export class GameEngine {
       if (this.paused || this.gameOver) return;
       const pos = getGridPos(e.clientX, e.clientY);
 
-      if (this.ladoZumbi) {
-        // Lado zumbi: o toque na linha manda o zumbi selecionado
+      if (this.ladoZumbi && (this.dueloColuna === null || pos.gridCol >= this.dueloColuna)) {
+        // Lado zumbi: o toque na linha manda o zumbi selecionado (no Duelo, só na zona da horda)
         if (pos.gridRow < 0 || pos.gridRow >= GRID_ROWS) return;
         const r = this.ladoZumbi.invocar(pos.gridRow);
         if (r === 'linha') this.onToast('🚫 Linha fechada neste jardim.');
@@ -1612,6 +1615,10 @@ export class GameEngine {
     const def = PLANT_CATALOG.find((p) => p.id === plantId);
     if (!def) return;
 
+    if (this.dueloColuna !== null && col >= this.dueloColuna) {
+      this.onToast('🧟 Essa parte do gramado é da horda: toque ali para mandar zumbis.');
+      return;
+    }
     const existing = this.plants.find((p) => p.row === row && p.col === col);
     if (existing && !def.instantanea) return;
 
@@ -4565,6 +4572,26 @@ export class GameEngine {
         ctx.arc(this.boardLeft + v.x * this.cellW, this.boardTop + v.y * this.cellH, 7, 0, Math.PI * 2);
         ctx.fill();
       }
+    }
+
+    // 2d. Duelo: a zona da horda à direita, com a divisória tracejada
+    if (this.dueloColuna !== null) {
+      const x = this.boardLeft + this.dueloColuna * this.cellW;
+      ctx.fillStyle = 'rgba(127, 29, 29, 0.14)';
+      ctx.fillRect(x, this.boardTop, (GRID_COLS - this.dueloColuna) * this.cellW, GRID_ROWS * this.cellH);
+      ctx.save();
+      ctx.strokeStyle = 'rgba(252, 165, 165, 0.8)';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath();
+      ctx.moveTo(x, this.boardTop);
+      ctx.lineTo(x, this.boardTop + GRID_ROWS * this.cellH);
+      ctx.stroke();
+      ctx.restore();
+      ctx.font = "900 11px 'Outfit', 'Nunito', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillStyle = 'rgba(254, 202, 202, 0.85)';
+      ctx.fillText('🧟 ZONA DA HORDA — toque para mandar', x + ((GRID_COLS - this.dueloColuna) * this.cellW) / 2, this.boardTop + GRID_ROWS * this.cellH - 6);
     }
 
     // 3. Cercas vivas (uma por linha, no caminho de pedra)
