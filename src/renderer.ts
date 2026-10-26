@@ -165,6 +165,40 @@ export class CharacterRenderer {
     ctx.restore();
   }
 
+  // Serra do Vento: degraus de pedra — o alto mais claro com borda de pedra, o vale mais escuro
+  public static drawDegrau(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number, nivel: 'alto' | 'vale' | 'meio', escuro: boolean): void {
+    ctx.save();
+    if (nivel === 'alto') {
+      ctx.fillStyle = escuro ? 'rgba(255,255,255,0.05)' : 'rgba(255, 250, 200, 0.13)';
+      ctx.fillRect(x, y, w, h);
+    } else if (nivel === 'vale') {
+      ctx.fillStyle = escuro ? 'rgba(0,0,0,0.16)' : 'rgba(20, 40, 10, 0.13)';
+      ctx.fillRect(x, y, w, h);
+    }
+    // Muro de pedra na beira do degrau (abaixo da linha 1 e da linha 2)
+    if (row === 1 || row === 2) {
+      const by = y + h - Math.max(5, h * 0.09);
+      ctx.fillStyle = escuro ? '#2d3a3a' : '#a8a29e';
+      ctx.fillRect(x, by, w, h - (by - y));
+      ctx.strokeStyle = escuro ? '#0f1a1a' : '#57534e';
+      ctx.lineWidth = 1.2;
+      let seed = (row * 31 + col * 17) | 0;
+      let px = x;
+      while (px < x + w) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        const pw = 8 + (seed % 10);
+        ctx.strokeRect(px + 0.5, by + 0.5, Math.min(pw, x + w - px) - 1, h - (by - y) - 1);
+        px += pw;
+      }
+    }
+    if ((nivel === 'alto' || nivel === 'vale') && col === 0) {
+      ctx.font = `700 ${Math.max(8, h * 0.11)}px 'Nunito', sans-serif`;
+      ctx.fillStyle = escuro ? 'rgba(226, 232, 240, 0.5)' : 'rgba(42, 36, 22, 0.45)';
+      ctx.fillText(nivel === 'alto' ? '▲ alto' : '▼ vale', x + 4, y + h * 0.16);
+    }
+    ctx.restore();
+  }
+
   // Jardim Assombrado: abóbora pequena ou vela num canto de algumas casas (vai no cache do tabuleiro)
   public static drawAbobora(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number): void {
     const seed = ((row * 7 + col * 13) * 2654435761) >>> 0;
@@ -789,7 +823,7 @@ export class CharacterRenderer {
     // Linha d'água: quem anda no rio fica com a água na canela; a canoa flutua; quem nada afunda até o peito
     const waterY = zy + cellH * 0.24 - (naAgua && !canoeiro ? cellH * 0.13 : 0);
     const afunda = nadando ? cellH * 0.3 : 0;
-    const mapinguari = z.variant === 'mapinguari' || z.variant === 'cuca';
+    const mapinguari = z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata';
     const isBoss = z.variant === 'gargantuar' || isZomboss || mapinguari;
     const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96) * (z.elite === 'gigante' ? 1.3 : 1);
     const walk = z.walkPhase;
@@ -851,8 +885,16 @@ export class CharacterRenderer {
           : bodyTilt + (z.isEating || isZomboss ? 0 : Math.sin(walk) * 0.03)
       );
 
-      const body = getSprite(`${z.variant}--corpo`, isNight);
+      const apagado = z.variant === 'boitata' && (z.apagadoTimer ?? 0) > 0;
+      const body = getSprite(apagado ? 'boitata--apagado' : `${z.variant}--corpo`, isNight);
       if (body) place(ctx, body);
+      if (z.variant === 'boitata' && !apagado && this.efeitos) {
+        // Calor tremulando em volta da cobra de fogo
+        ctx.save();
+        ctx.globalAlpha = 0.25 + Math.sin(performance.now() * 0.02) * 0.1;
+        ctx.drawImage(this.brilho('#fb923c', '88'), -spec.halfW * 1.6, -(spec.feet - spec.head) * k * 1.1, spec.halfW * 3.2, (spec.feet - spec.head) * k * 1.3);
+        ctx.restore();
+      }
 
       if (isZomboss) {
         const reel = getSprite('zomboss_mech--molinete', isNight);
@@ -1212,6 +1254,164 @@ export class CharacterRenderer {
 
   /** Pegada ao contrário (aponta para trás, de onde o Curupira veio). */
   /** Casinha do jardineiro: telhado, porta, janela (acesa à noite) e chaminé; cabe no canto acima do caminho. */
+  /**
+   * O sapo-cururu sentado na cerca. `alvo` é a ponta da língua (px) enquanto ele estica.
+   * Desenho procedural no estilo das plantas: formas gordas, brilho pintado e olhos grandes.
+   */
+  public static drawSapo(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    cellH: number,
+    sapo: { estado: string; pulo: number; comeu: boolean },
+    noite: boolean,
+    t: number,
+    alvo: { x: number; y: number } | null
+  ): void {
+    const s = (cellH / 90) * 0.8;
+    const respira = 1 + Math.sin(t * 0.004) * 0.025;
+    const dormindo = sapo.estado === 'dormindo';
+    const satisfeito = sapo.estado === 'satisfeito' || sapo.estado === 'engolindo';
+    const lingua = sapo.estado === 'lingua';
+    const sombra = noite ? 0.75 : 1;
+    const cor = (r: number, g: number, b: number): string => `rgb(${Math.round(r * sombra)},${Math.round(g * sombra)},${Math.round(b * sombra)})`;
+
+    ctx.save();
+    ctx.translate(x, y - sapo.pulo * 18 * s);
+    ctx.scale(s, s);
+
+    // Sombra no chão
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(0, 24, 30, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Língua (atrás da boca, por cima de tudo o mais)
+    if (lingua && alvo) {
+      const ax = (alvo.x - x) / s;
+      const ay = (alvo.y - (y - sapo.pulo * 18 * s)) / s;
+      ctx.strokeStyle = cor(244, 114, 182);
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(10, 8);
+      ctx.quadraticCurveTo((ax + 10) / 2, ay - 14, ax, ay);
+      ctx.stroke();
+      ctx.fillStyle = cor(251, 146, 182);
+      ctx.beginPath();
+      ctx.arc(ax, ay, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Pernas de trás (dobradas)
+    ctx.fillStyle = cor(94, 122, 36);
+    ctx.beginPath();
+    ctx.ellipse(-24, 16, 14, 8, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(22, 17, 13, 8, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Corpo
+    const barriga = satisfeito ? 1.14 : 1;
+    const corpo = ctx.createRadialGradient(-8, -14, 4, 0, 0, 40);
+    corpo.addColorStop(0, cor(156, 184, 72));
+    corpo.addColorStop(0.55, cor(106, 138, 44));
+    corpo.addColorStop(1, cor(58, 82, 22));
+    ctx.fillStyle = corpo;
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 30 * barriga * respira, 24 * respira, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Papo claro
+    const papo = ctx.createLinearGradient(0, -6, 0, 24);
+    papo.addColorStop(0, cor(226, 214, 150));
+    papo.addColorStop(1, cor(186, 166, 96));
+    ctx.fillStyle = papo;
+    ctx.beginPath();
+    ctx.ellipse(2, 10, 19 * barriga, 13 * respira, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Verrugas
+    ctx.fillStyle = cor(66, 92, 26);
+    for (const [vx, vy, vr] of [[-18, -8, 3], [-8, -18, 2.4], [14, -12, 2.8], [20, 0, 2.2], [-22, 4, 2]] as const) {
+      ctx.beginPath();
+      ctx.arc(vx, vy, vr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Patas da frente
+    ctx.fillStyle = cor(84, 112, 32);
+    for (const px of [-14, 12]) {
+      ctx.beginPath();
+      ctx.ellipse(px, 22, 8, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Boca
+    ctx.strokeStyle = cor(48, 64, 18);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (lingua || sapo.estado === 'engolindo') {
+      ctx.fillStyle = cor(60, 20, 30);
+      ctx.ellipse(6, 8, 9, lingua ? 7 : 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.moveTo(-14, 7);
+      ctx.quadraticCurveTo(2, satisfeito ? 16 : 12, 20, 6);
+    }
+    ctx.stroke();
+
+    // Olhos esbugalhados em cima da cabeça
+    for (const ex of [-13, 11]) {
+      ctx.fillStyle = cor(118, 150, 52);
+      ctx.beginPath();
+      ctx.arc(ex, -22, 10.5, 0, Math.PI * 2);
+      ctx.fill();
+      if (dormindo) {
+        ctx.strokeStyle = cor(40, 56, 16);
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(ex - 6, -21);
+        ctx.quadraticCurveTo(ex, -16, ex + 6, -21);
+        ctx.stroke();
+        continue;
+      }
+      const olho = ctx.createRadialGradient(ex - 2, -24, 1, ex, -22, 9);
+      olho.addColorStop(0, cor(255, 240, 150));
+      olho.addColorStop(1, cor(234, 179, 8));
+      ctx.fillStyle = olho;
+      ctx.beginPath();
+      ctx.arc(ex, -22, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupila horizontal, olhando para a direita (de onde vêm os zumbis)
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      ctx.ellipse(ex + 2.5, -22, 4.2, 2.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.arc(ex - 2, -25, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Brilho pintado no dorso
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.beginPath();
+    ctx.ellipse(-10, -10, 12, 5, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Zzz quando dorme
+    if (dormindo) {
+      const z = (t * 0.0012) % 1;
+      ctx.fillStyle = `rgba(226,232,240,${0.9 - z * 0.8})`;
+      ctx.font = `bold ${12 + z * 6}px "Nunito", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('z', 26 + z * 10, -30 - z * 22);
+      ctx.fillText('Z', 34 + z * 12, -44 - z * 26);
+    }
+    ctx.restore();
+  }
+
   public static drawCasinha(ctx: CanvasRenderingContext2D, x: number, baseY: number, noite: boolean, bioma: string): void {
     const w = Math.max(40, Math.min(64, baseY * 1.3));
     const h = w * 0.62;
@@ -1450,5 +1650,6 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#8a5a30' },
   siri: { w: 170, h: 230, ox: 82, feet: 215, head: 2, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
   mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e3d9bc' },
-  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' }
+  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' },
+  boitata: { w: 320, h: 200, ox: 150, feet: 184, head: 30, k: 0.36, halfW: 50, sleeve: '#ff5a1f' }
 };

@@ -16,6 +16,7 @@ const PLANT_IDS = [
   'plasma_mine',
   'wallnut',
   'musgo_esponja',
+  'mangue_vermelho',
   'aguape',
   'curupira',
   'abobora_brasa',
@@ -52,7 +53,9 @@ const ZOMBIE_LAYERS = [
   'mumia--corpo',
   'mumia--braco',
   'cuca--corpo',
-  'cuca--braco'
+  'cuca--braco',
+  'boitata--corpo',
+  'boitata--apagado'
 ];
 
 export const SPRITE_NAMES = [...PLANT_IDS, ...ZOMBIE_LAYERS];

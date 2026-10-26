@@ -75,6 +75,7 @@ export interface BiomeDefinition {
     | 'siri'
     | 'mumia'
     | 'cuca'
+    | 'boitata'
   )[];
   description: string;
   /** Linhas que são rio (Mundo 3): só plantas aquáticas crescem nelas. */
@@ -83,6 +84,9 @@ export interface BiomeDefinition {
   tideRows?: number[];
   /** Bioma de evento sazonal (não aparece na escolha livre). */
   evento?: 'halloween';
+  /** Serra (Mundo 5): linhas do alto (tiros mais fortes) e do vale (zumbis descem mais rápido). */
+  serraAlta?: number[];
+  serraBaixa?: number[];
 }
 
 export interface SynergyRecipe {
@@ -115,8 +119,8 @@ export interface LevelConfig {
   regras?: string[];
   /** Com a regra deck_fixo: as sementes que a fase impõe. */
   deckFixo?: string[];
-  /** Fase de evento sazonal: não entra na progressão da Aventura. */
-  evento?: 'halloween';
+  /** Fase fora da Aventura (evento sazonal ou quebra-cabeça dos Vasos): não entra na progressão. */
+  evento?: 'halloween' | 'vasos';
 }
 
 export interface PlayerProgress {
@@ -207,6 +211,21 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     zombiePreviews: ['siri', 'canoeiro', 'bucket', 'gargantuar'],
     description: 'Três linhas de mangue enchem e secam com a maré. Na maré alta só plantas aquáticas vivem nelas e os canoeiros descem; na baixa vira lama que atola zumbis e encalha o Aguapé. Zumbis Siri andam de lado e trocam de linha.',
     tideRows: [0, 2, 4]
+  },
+  {
+    id: 'serra',
+    name: '7. Serra do Vento',
+    subtitle: 'Degraus de Pedra & Ventania',
+    icon: '⛰️',
+    startingSun: 300,
+    maxWaves: 8,
+    defaultWeather: 'sunny',
+    puddlesCount: 0,
+    toxicCount: 0,
+    zombiePreviews: ['cyber_sprinter', 'bucket', 'gargantuar', 'boitata'],
+    description: 'Gramado em degraus: nas duas linhas do alto os tiros descem com mais força (+20% de dano); nas duas do vale os zumbis descem mais rápido. Rajadas de vento empurram zumbis para trás e aceleram as sementes. No fim, o Boitatá: a cobra de fogo só se machuca quando está apagada — molhe antes de bater.',
+    serraAlta: [0, 1],
+    serraBaixa: [3, 4]
   },
   {
     id: 'assombrado',
@@ -447,6 +466,22 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     description: 'Barreira encharcada do pântano. Quem morde fica Molhado (prepara combos com Elétrico e Gelo), e o lança-chamas apaga ao encostar nela.',
     overdriveDesc: 'Espreme a água: encharca a linha inteira, cria poças, apaga as tochas e recupera 600 de vida.',
     color: '#5eead4'
+  },
+  {
+    id: 'mangue_vermelho',
+    name: 'Mangue-Vermelho',
+    emoji: '🌳',
+    element: 'nature',
+    elementBadge: '🦀',
+    cost: 100,
+    cooldown: 12,
+    maxHp: 1200,
+    attackInterval: 0,
+    damage: 0,
+    description: 'Árvore do mangue: cresce na terra e na água, sem medo da maré. As raízes deixam os zumbis à frente mais lentos e o Zumbi Siri preso nelas não troca de linha.',
+    overdriveDesc: 'Raízes da Maré: prende todos os zumbis da linha por 3 s, causa 60 de dano e recupera 500 de vida.',
+    color: '#b45309',
+    habitat: 'ambos'
   },
   {
     id: 'aguape',

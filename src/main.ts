@@ -25,6 +25,8 @@ import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
 import { lerNemesis, registrarDerrota, salvarNemesis } from './nemesis';
+import { Mascote, sapoLiberado } from './mascote';
+import { VasosUi } from './vasos-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
@@ -32,6 +34,7 @@ import { mostrarAbertura } from './abertura';
 import { tocarReplay } from './replay';
 import { aplicarAcessibilidade } from './acessibilidade';
 import { nivelDeInteligencia } from './inteligencia';
+import { CAPITULOS, Quadrinhos, capituloVisto } from './quadrinhos';
 import { carregarSementes, custoParaSubir, estrelas, nivelDa, recompensa, salvarSementes, subirNivel } from './sementes';
 import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
 import { AcessibilidadeUi } from './acessibilidade-ui';
@@ -125,6 +128,12 @@ if (draftDeckIds.length === 0) {
   draftDeckIds = ['peashooter'];
 }
 
+/** O sapo-cururu aparece depois de fechar o Mundo 1 (e fica para sempre). */
+function sincronizarMascote(): void {
+  const liberado = sapoLiberado(ProgressionManager.getProgress());
+  if (liberado && !engine.mascote) engine.mascote = new Mascote();
+  if (!liberado) engine.mascote = null;
+}
 // "♪ Luzes do Brejo": mostra o nome da faixa quando ela começa, sem roubar o lugar dos avisos do jogo
 const trilhaAviso = document.getElementById('trilha-aviso') as HTMLElement;
 let trilhaTimeout: number | null = null;
@@ -236,13 +245,17 @@ let ultimasMutacoes: string | null = null;
 function syncHud(): void {
   // O tema do HUD muda com o clima (noite e névoa escurecem a faixa do topo)
   document.body.dataset.weather = engine.weather;
-  sunAmountEl.textContent = String(engine.sun);
+  sunAmountEl.textContent = engine.vasos ? `${engine.vasosRestantes()} 🪴` : String(engine.sun);
+  const sunRotulo = sunAmountEl.nextElementSibling as HTMLElement | null;
+  if (sunRotulo) sunRotulo.textContent = engine.vasos ? 'VASOS' : 'SOL';
   waveLabelEl.textContent =
     engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
   if (modos.ativo()) {
     stageBadgeEl.textContent = modos.rotulo();
   } else if (expedicao.ativo()) {
     stageBadgeEl.textContent = expedicao.rotulo();
+  } else if (vasos.ativo()) {
+    stageBadgeEl.textContent = vasos.rotulo();
   } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
@@ -274,8 +287,17 @@ function syncHud(): void {
     const isSelected =
       engine.selectedPlantId === id && !engine.shovelActive && !engine.activePower;
     card.classList.toggle('selected', isSelected);
-    card.classList.toggle('disabled', engine.sun < def.cost);
+    if (engine.vasos) {
+      // Fase dos Vasos: a carta mostra quantos vasos restam, e apaga quando acabam
+      const restam = engine.vasos[id] ?? 0;
+      card.classList.toggle('disabled', restam <= 0);
+      const custo = card.querySelector('.seed-cost');
+      if (custo && custo.textContent !== `×${restam}`) custo.textContent = `×${restam}`;
+    } else {
+      card.classList.toggle('disabled', engine.sun < def.cost);
+    }
   });
+  if (engine.vasos) vasos.sincronizar();
 
   shovelBtn.classList.toggle('active', engine.shovelActive);
 
@@ -579,6 +601,13 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         desc: '🦀 Do mangue (Mundo 4): anda de lado e troca de linha de tempos em tempos, então não adianta defender uma linha só. A carapaça segura metade do dano de projéteis de Natureza; ☣️ ácido e 🔥 fogo passam direto. Na lama da maré baixa não atola.'
       },
       {
+        variant: 'boitata',
+        name: 'Boitatá (Chefe da Serra)',
+        hp: 3000,
+        speedText: 'Rápido · corre a linha',
+        desc: '🐍🔥 Cobra de fogo do folclore (Mundo 5): enquanto está em chamas não se machuca, corre a linha deixando brasa e queima a primeira planta que encontra; troca de linha de tempos em tempos. 💧 Água apaga por 6 s: aí ela fica lenta e leva dano normal. Molhe, depois bata com tudo.'
+      },
+      {
         variant: 'mapinguari',
         name: 'Mapinguari (Chefe do Igarapé)',
         hp: 3200,
@@ -686,12 +715,13 @@ function updateMenuStageInfo(): void {
 function startLevel(level: LevelConfig): void {
   modos.sair();
   expedicao.sair();
+  vasos.sair();
   currentLevel = level;
   if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
-  // A 1-1 tem uma planta só e o tutorial: vai direto
+  // A 1-1 tem uma planta só e o tutorial: vai direto (com o prólogo em quadrinhos na primeira vez)
   if (level.id === 1) {
-    iniciarFase(level);
+    quadrinhos.mostrarSeNovo('prologo', () => iniciarFase(level));
     return;
   }
   engine.paused = true;
@@ -821,6 +851,11 @@ const MUNDOS: Record<number, { titulo: string; fundo: string; borda: string }> =
     titulo: '🦀 MUNDO 4: MANGUE DA MARÉ',
     fundo: 'linear-gradient(90deg, rgba(120, 53, 15, 0.85), rgba(180, 83, 9, 0.35))',
     borda: '#fb923c'
+  },
+  5: {
+    titulo: '⛰️ MUNDO 5: SERRA DO VENTO',
+    fundo: 'linear-gradient(90deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.35))',
+    borda: '#cbd5e1'
   }
 };
 
@@ -920,6 +955,12 @@ function darSementes(won: boolean): number {
 }
 
 function openGameOverModal(won: boolean): void {
+  // Fechou um mundo pela primeira vez: o capítulo em quadrinhos vem antes do resultado
+  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
+    engine.paused = true;
+    quadrinhos.mostrar(`mundo${currentLevel.world}`, () => openGameOverModal(won));
+    return;
+  }
   document.getElementById('compartilhar-desafio-btn')?.remove();
   mostrarReplay();
   const sementesGanhas = darSementes(won);
@@ -931,6 +972,10 @@ function openGameOverModal(won: boolean): void {
   }
   if (expedicao.ativo()) {
     expedicao.mostrarResultado(won);
+    return;
+  }
+  if (vasos.ativo()) {
+    vasos.mostrarResultado(won);
     return;
   }
   if (won && engine.plants.length > 0) {
@@ -952,8 +997,13 @@ function openGameOverModal(won: boolean): void {
     nemesisVingado: engine.nemesisVingado
   });
   if (won && currentLevel && !currentLevel.evento) {
+    const tinhaSapo = engine.mascote !== null;
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
+    sincronizarMascote();
+    if (!tinhaSapo && engine.mascote) {
+      window.setTimeout(() => showToast('🐸 Um sapo-cururu adotou o seu jardim! Ele senta na cerca, comenta a partida, dorme à noite e engole um zumbi pequeno por fase.'), 600);
+    }
 
     if (result.isNewUnlock && result.unlockedPlantId) {
       showPlantRewardModal(result.unlockedPlantId, result.nextLevel);
@@ -1033,7 +1083,8 @@ startBattleBtn.addEventListener('click', () => {
   else if (expedicao.ativo()) {
     showMainMenu();
     expedicao.abrir();
-  } else startLevel(currentLevel);
+  } else if (vasos.ativo()) vasos.reiniciar();
+  else startLevel(currentLevel);
 });
 
 openAlmanacFromDeckBtn.addEventListener('click', () => {
@@ -1144,7 +1195,8 @@ restartBtn.addEventListener('click', () => {
   else if (expedicao.ativo()) {
     showMainMenu();
     expedicao.abrir();
-  } else startLevel(currentLevel);
+  } else if (vasos.ativo()) vasos.reiniciar();
+  else startLevel(currentLevel);
 });
 
 // Main Menu Controls
@@ -1190,6 +1242,31 @@ menuAlmanacBtn.addEventListener('click', () => {
 aplicarAcessibilidade();
 const acessUi = new AcessibilidadeUi(showToast);
 
+// 📜 Quadrinhos: prólogo, um capítulo por mundo, e a lista no menu
+const quadrinhos = new Quadrinhos();
+const historiasModal = document.createElement('div');
+historiasModal.className = 'modal-overlay hidden';
+historiasModal.id = 'historias-modal';
+historiasModal.innerHTML = `<div class="modal-card"><div class="modal-header-row"><div><div class="modal-badge">📜 HISTÓRIAS</div><h2>Os quadrinhos da Cerca Viva</h2></div><button class="close-btn" data-acao="fechar">✕</button></div><div class="historias-lista"></div></div>`;
+(document.getElementById('app') ?? document.body).appendChild(historiasModal);
+historiasModal.querySelector('[data-acao="fechar"]')!.addEventListener('click', () => historiasModal.classList.add('hidden'));
+document.getElementById('menu-historias-btn')?.addEventListener('click', () => {
+  const lista = historiasModal.querySelector('.historias-lista') as HTMLElement;
+  lista.innerHTML = '';
+  for (const cap of CAPITULOS) {
+    const visto = capituloVisto(cap.id);
+    const item = document.createElement('div');
+    item.className = `historias-item ${visto ? '' : 'bloqueado'}`;
+    item.innerHTML = `<span>${visto ? '📖' : '🔒'} ${visto ? cap.titulo : cap.titulo.split(' · ')[0] + ' · ???'}</span>${visto ? '<button type="button" class="secondary-btn">Ler</button>' : '<small>feche o mundo para ler</small>'}`;
+    item.querySelector('button')?.addEventListener('click', () => {
+      historiasModal.classList.add('hidden');
+      quadrinhos.mostrar(cap.id, () => historiasModal.classList.remove('hidden'));
+    });
+    lista.appendChild(item);
+  }
+  historiasModal.classList.remove('hidden');
+});
+
 // 🌰 Sementes raras: nível das plantas
 const sementes = carregarSementes();
 engine.nivelDaPlanta = (id) => nivelDa(sementes, id);
@@ -1223,6 +1300,7 @@ menuSoundBtn.addEventListener('click', () => {
 menuHomeBtn.addEventListener('click', () => {
   modos.sair();
   expedicao.sair();
+  vasos.sair();
   showMainMenu();
 });
 
@@ -1236,6 +1314,7 @@ const modos = new Modos({
   },
   prepararPartida: () => {
     expedicao.sair();
+    vasos.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1278,6 +1357,7 @@ const expedicao = new ExpedicaoUi({
   },
   prepararPartida: () => {
     modos.sair();
+    vasos.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1288,8 +1368,24 @@ const expedicao = new ExpedicaoUi({
   conquistas: (fim) => herbario.checarConquistas(fim)
 });
 
+// Fases-quebra-cabeça "Vasos" (tabuleiro fixo, vasos contados)
+const vasos = new VasosUi({
+  engine,
+  prepararPartida: () => {
+    modos.sair();
+    expedicao.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  mostrarMenu: () => showMainMenu(),
+  toast: (msg) => showToast(msg),
+  conquistas: (fim) => herbario.checarConquistas(fim)
+});
+
 // Start on Main Menu with Progression Info
 engine.paused = true;
+sincronizarMascote();
 updateMenuStageInfo();
 
 // Initialize & Start Game Loop
