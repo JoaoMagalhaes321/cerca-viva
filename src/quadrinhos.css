@@ -1,0 +1,21 @@
+/* Quadrinhos entre mundos */
+.quadrinhos { background: rgba(2, 6, 23, 0.92); z-index: 210; }
+.quadrinhos-caixa { width: min(96vw, 1180px); max-height: 96vh; display: flex; flex-direction: column; gap: 8px; padding: 10px 12px; }
+.quadrinhos-topo { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.quadrinhos-titulo { font: 800 1rem 'Outfit', sans-serif; color: #fde68a; letter-spacing: 0.5px; }
+.quadrinhos-tira { display: flex; gap: 12px; overflow-x: auto; padding: 6px 2px; cursor: pointer; scroll-snap-type: x mandatory; }
+.quadrinho { margin: 0; flex: 0 0 auto; width: min(360px, 80vw); background: #fffdf5; border: 3px solid #1d1a14; border-radius: 6px; box-shadow: 4px 4px 0 #1d1a14; padding: 6px; transform-origin: center; transition: transform 0.35s cubic-bezier(0.2, 1.4, 0.4, 1), opacity 0.3s; scroll-snap-align: center; }
+.quadrinho.oculto { opacity: 0; transform: scale(0.6) rotate(-3deg); pointer-events: none; }
+.quadrinho canvas { width: 100%; height: auto; display: block; border: 2px solid #1d1a14; border-radius: 3px; }
+.quadrinho figcaption { font: 700 0.78rem/1.25 'Nunito', 'Outfit', sans-serif; color: #1d1a14; background: #fff4b8; border: 2px solid #1d1a14; margin-top: 6px; padding: 5px 8px; border-radius: 3px; }
+.quadrinhos-rodape { display: flex; justify-content: space-between; align-items: center; color: #94a3b8; font-size: 0.72rem; }
+.quadrinhos-continuar.hidden { display: none; }
+@media (max-height: 480px) {
+  .quadrinhos-caixa { padding: 6px 8px; gap: 4px; }
+  .quadrinho { width: min(300px, 70vw); }
+  .quadrinho figcaption { font-size: 0.68rem; }
+}
+/* Histórias no menu */
+.historias-lista { display: flex; flex-direction: column; gap: 6px; max-height: 60vh; overflow-y: auto; }
+.historias-item { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 10px; border-radius: 10px; background: rgba(30, 41, 59, 0.8); border: 1.5px solid rgba(148, 163, 184, 0.3); color: #f8fafc; font-size: 0.82rem; }
+.historias-item.bloqueado { opacity: 0.55; }

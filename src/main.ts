@@ -31,6 +31,7 @@ import { mostrarAbertura } from './abertura';
 import { tocarReplay } from './replay';
 import { aplicarAcessibilidade } from './acessibilidade';
 import { nivelDeInteligencia } from './inteligencia';
+import { CAPITULOS, Quadrinhos, capituloVisto } from './quadrinhos';
 import { carregarSementes, custoParaSubir, estrelas, nivelDa, recompensa, salvarSementes, subirNivel } from './sementes';
 import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
 import { AcessibilidadeUi } from './acessibilidade-ui';
@@ -685,9 +686,9 @@ function startLevel(level: LevelConfig): void {
   currentLevel = level;
   if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
-  // A 1-1 tem uma planta só e o tutorial: vai direto
+  // A 1-1 tem uma planta só e o tutorial: vai direto (com o prólogo em quadrinhos na primeira vez)
   if (level.id === 1) {
-    iniciarFase(level);
+    quadrinhos.mostrarSeNovo('prologo', () => iniciarFase(level));
     return;
   }
   engine.paused = true;
@@ -916,6 +917,12 @@ function darSementes(won: boolean): number {
 }
 
 function openGameOverModal(won: boolean): void {
+  // Fechou um mundo pela primeira vez: o capítulo em quadrinhos vem antes do resultado
+  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
+    engine.paused = true;
+    quadrinhos.mostrar(`mundo${currentLevel.world}`, () => openGameOverModal(won));
+    return;
+  }
   document.getElementById('compartilhar-desafio-btn')?.remove();
   mostrarReplay();
   const sementesGanhas = darSementes(won);
@@ -1177,6 +1184,31 @@ menuAlmanacBtn.addEventListener('click', () => {
 
 aplicarAcessibilidade();
 const acessUi = new AcessibilidadeUi(showToast);
+
+// 📜 Quadrinhos: prólogo, um capítulo por mundo, e a lista no menu
+const quadrinhos = new Quadrinhos();
+const historiasModal = document.createElement('div');
+historiasModal.className = 'modal-overlay hidden';
+historiasModal.id = 'historias-modal';
+historiasModal.innerHTML = `<div class="modal-card"><div class="modal-header-row"><div><div class="modal-badge">📜 HISTÓRIAS</div><h2>Os quadrinhos da Cerca Viva</h2></div><button class="close-btn" data-acao="fechar">✕</button></div><div class="historias-lista"></div></div>`;
+(document.getElementById('app') ?? document.body).appendChild(historiasModal);
+historiasModal.querySelector('[data-acao="fechar"]')!.addEventListener('click', () => historiasModal.classList.add('hidden'));
+document.getElementById('menu-historias-btn')?.addEventListener('click', () => {
+  const lista = historiasModal.querySelector('.historias-lista') as HTMLElement;
+  lista.innerHTML = '';
+  for (const cap of CAPITULOS) {
+    const visto = capituloVisto(cap.id);
+    const item = document.createElement('div');
+    item.className = `historias-item ${visto ? '' : 'bloqueado'}`;
+    item.innerHTML = `<span>${visto ? '📖' : '🔒'} ${visto ? cap.titulo : cap.titulo.split(' · ')[0] + ' · ???'}</span>${visto ? '<button type="button" class="secondary-btn">Ler</button>' : '<small>feche o mundo para ler</small>'}`;
+    item.querySelector('button')?.addEventListener('click', () => {
+      historiasModal.classList.add('hidden');
+      quadrinhos.mostrar(cap.id, () => historiasModal.classList.remove('hidden'));
+    });
+    lista.appendChild(item);
+  }
+  historiasModal.classList.remove('hidden');
+});
 
 // 🌰 Sementes raras: nível das plantas
 const sementes = carregarSementes();

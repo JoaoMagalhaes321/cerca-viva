@@ -85,14 +85,14 @@ export class Gravador {
 
 // ---------------------------------------------------------------- Tocador
 
-function plantaFalsa(f: FotoPlanta, def: PlantDefinition): PlantEntity {
+export function plantaFalsa(f: FotoPlanta, def: PlantDefinition): PlantEntity {
   return {
     id: 0, def, row: f.row, col: f.col, hp: def.maxHp, maxHp: def.maxHp, attackTimer: 0, overdriveTimer: 0, animPhase: f.idade * 3,
     scaleKick: 0, armored: false, adubada: f.adubada, idade: f.idade, caminho: f.caminho, caminhoTimer: 0, armTimer: 0, armed: f.armed
   };
 }
 
-function zumbiFalso(f: FotoZumbi): ZombieEntity {
+export function zumbiFalso(f: FotoZumbi): ZombieEntity {
   return {
     id: 0, variant: f.v, name: '', emoji: '', row: f.row, x: f.x, hp: 1, maxHp: 1, speed: 0, damagePerSec: 0, wetTimer: f.wet ? 1 : 0, chilledTimer: 0,
     frozenTimer: f.frozen ? 1 : 0, burnTimer: 0, poisonTimer: 0, stunTimer: 0, hitFlash: 0, walkPhase: f.w, isEating: f.eating, lostHeadgear: f.gear,
