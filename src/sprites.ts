@@ -117,6 +117,32 @@ export function getSprite(name: string, night = false): SpriteImage | null {
   return null;
 }
 
+const clarões = new Map<string, SpriteImage>();
+
+/** Silhueta branca do sprite (para o clarão de quando o zumbi leva dano). */
+export function getSpriteClarao(name: string, night = false): SpriteImage | null {
+  const base = getSprite(name, night);
+  if (!base) return null;
+  const key = `${night ? 'noite' : 'dia'}/${name}`;
+  const pronto = clarões.get(key);
+  if (pronto) return pronto;
+  try {
+    const c = document.createElement('canvas');
+    c.width = base.width;
+    c.height = base.height;
+    const ctx = c.getContext('2d');
+    if (!ctx) return null;
+    ctx.drawImage(base, 0, 0);
+    ctx.globalCompositeOperation = 'source-in';
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, c.width, c.height);
+    clarões.set(key, c);
+    return c;
+  } catch {
+    return null;
+  }
+}
+
 /** Carrega todos os sprites (dia e noite). Resolve mesmo se algum arquivo falhar. */
 export function preloadSprites(): Promise<void> {
   const images: HTMLImageElement[] = [];
