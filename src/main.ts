@@ -26,6 +26,7 @@ import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
 import { Mascote, sapoLiberado } from './mascote';
 import { VasosUi } from './vasos-ui';
+import { LadoZumbiUi } from './lado-zumbi-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
@@ -193,6 +194,11 @@ const tutorial = new Tutorial(
 
 function buildSeedPackets(): void {
   seedBarEl.innerHTML = '';
+  if (ladoZumbi.ativo()) {
+    // Eu sou o zumbi: a barra mostra as cartas de zumbi
+    ladoZumbi.montarCartas(seedBarEl);
+    return;
+  }
   const progress = ProgressionManager.getProgress();
   const activePlants = PLANT_CATALOG.filter(
     (p) => engine.activeDeckIds.includes(p.id) && progress.unlockedPlants.includes(p.id)
@@ -244,17 +250,20 @@ let ultimasMutacoes: string | null = null;
 function syncHud(): void {
   // O tema do HUD muda com o clima (noite e névoa escurecem a faixa do topo)
   document.body.dataset.weather = engine.weather;
-  sunAmountEl.textContent = engine.vasos ? `${engine.vasosRestantes()} 🪴` : String(engine.sun);
+  sunAmountEl.textContent = engine.vasos ? `${engine.vasosRestantes()} 🪴` : ladoZumbi.ativo() ? `${ladoZumbi.cerebros()} 🧠` : String(engine.sun);
   const sunRotulo = sunAmountEl.nextElementSibling as HTMLElement | null;
-  if (sunRotulo) sunRotulo.textContent = engine.vasos ? 'VASOS' : 'SOL';
-  waveLabelEl.textContent =
-    engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
+  if (sunRotulo) sunRotulo.textContent = engine.vasos ? 'VASOS' : ladoZumbi.ativo() ? 'CÉREBROS' : 'SOL';
+  waveLabelEl.textContent = ladoZumbi.ativo()
+    ? ladoZumbi.rotuloDaOnda()
+    : engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
   if (modos.ativo()) {
     stageBadgeEl.textContent = modos.rotulo();
   } else if (expedicao.ativo()) {
     stageBadgeEl.textContent = expedicao.rotulo();
   } else if (vasos.ativo()) {
     stageBadgeEl.textContent = vasos.rotulo();
+  } else if (ladoZumbi.ativo()) {
+    stageBadgeEl.textContent = ladoZumbi.rotulo();
   } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
@@ -279,7 +288,7 @@ function syncHud(): void {
     weatherDescEl.textContent = 'Poças Elétricas & Luz Dinâmica';
   }
 
-  const cards = seedBarEl.querySelectorAll<HTMLElement>('.seed-card');
+  const cards = seedBarEl.querySelectorAll<HTMLElement>('.seed-card[data-id]');
   cards.forEach((card) => {
     const id = card.dataset.id!;
     const def = PLANT_CATALOG.find((p) => p.id === id)!;
@@ -297,6 +306,7 @@ function syncHud(): void {
     }
   });
   if (engine.vasos) vasos.sincronizar();
+  if (ladoZumbi.ativo()) ladoZumbi.sincronizar();
 
   shovelBtn.classList.toggle('active', engine.shovelActive);
 
@@ -715,6 +725,7 @@ function startLevel(level: LevelConfig): void {
   modos.sair();
   expedicao.sair();
   vasos.sair();
+  ladoZumbi.sair();
   currentLevel = level;
   if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
@@ -932,6 +943,14 @@ function mostrarReplay(): void {
 /** Sementes raras ganhas nesta partida (mostradas na tela de resultado). */
 function darSementes(won: boolean): number {
   const progress = ProgressionManager.getProgress();
+  if (ladoZumbi.ativo()) {
+    // Do lado zumbi as sementes raras vêm do jardim invadido: 20 por invasão, 5 pela tentativa
+    const ganhasZumbi = won ? 20 : 5;
+    sementes.total += ganhasZumbi;
+    salvarSementes(sementes);
+    atualizarSementesNoMenu();
+    return ganhasZumbi;
+  }
   const modo = modos.ativo() ? (modos.modoAtual() === 'desafio' ? 'desafio' : 'infinito') : expedicao.ativo() ? 'expedicao' : currentLevel?.evento ? 'evento' : 'aventura';
   const ganhas = recompensa({
     venceu: won,
@@ -950,7 +969,7 @@ function darSementes(won: boolean): number {
 
 function openGameOverModal(won: boolean): void {
   // Fechou um mundo pela primeira vez: o capítulo em quadrinhos vem antes do resultado
-  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
+  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && !ladoZumbi.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
     engine.paused = true;
     quadrinhos.mostrar(`mundo${currentLevel.world}`, () => openGameOverModal(won));
     return;
@@ -970,6 +989,10 @@ function openGameOverModal(won: boolean): void {
   }
   if (vasos.ativo()) {
     vasos.mostrarResultado(won);
+    return;
+  }
+  if (ladoZumbi.ativo()) {
+    ladoZumbi.mostrarResultado(won);
     return;
   }
   if (won && engine.plants.length > 0) {
@@ -1072,6 +1095,7 @@ startBattleBtn.addEventListener('click', () => {
     showMainMenu();
     expedicao.abrir();
   } else if (vasos.ativo()) vasos.reiniciar();
+  else if (ladoZumbi.ativo()) ladoZumbi.reiniciar();
   else startLevel(currentLevel);
 });
 
@@ -1184,6 +1208,7 @@ restartBtn.addEventListener('click', () => {
     showMainMenu();
     expedicao.abrir();
   } else if (vasos.ativo()) vasos.reiniciar();
+  else if (ladoZumbi.ativo()) ladoZumbi.reiniciar();
   else startLevel(currentLevel);
 });
 
@@ -1289,6 +1314,7 @@ menuHomeBtn.addEventListener('click', () => {
   modos.sair();
   expedicao.sair();
   vasos.sair();
+  ladoZumbi.sair();
   showMainMenu();
 });
 
@@ -1303,6 +1329,7 @@ const modos = new Modos({
   prepararPartida: () => {
     expedicao.sair();
     vasos.sair();
+    ladoZumbi.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1346,6 +1373,7 @@ const expedicao = new ExpedicaoUi({
   prepararPartida: () => {
     modos.sair();
     vasos.sair();
+    ladoZumbi.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1362,6 +1390,23 @@ const vasos = new VasosUi({
   prepararPartida: () => {
     modos.sair();
     expedicao.sair();
+    ladoZumbi.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  mostrarMenu: () => showMainMenu(),
+  toast: (msg) => showToast(msg),
+  conquistas: (fim) => herbario.checarConquistas(fim)
+});
+
+// Modo "Eu sou o zumbi" (você comanda a horda; o Jardineiro defende)
+const ladoZumbi = new LadoZumbiUi({
+  engine,
+  prepararPartida: () => {
+    modos.sair();
+    expedicao.sair();
+    vasos.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();

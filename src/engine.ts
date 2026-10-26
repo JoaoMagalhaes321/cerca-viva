@@ -426,6 +426,8 @@ export class GameEngine {
   public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
   public skySunScale = 1;
+  /** Modo "Eu sou o zumbi": o toque na linha invoca zumbis e a casa invadida é vitória. */
+  public ladoZumbi: { invocar(row: number): 'ok' | 'linha' | 'cerebros' | 'recarga'; invadiu(): void } | null = null;
   /** O sapo-cururu (null enquanto não foi liberado). */
   public mascote: Mascote | null = null;
   /** Fases dos Vasos: sementes contadas (quantos vasos restam por planta). null fora delas. */
@@ -601,6 +603,7 @@ export class GameEngine {
     this.regrasAtivas = new Set();
     this.chanceElite = 0;
     this.skySunScale = 1;
+    this.ladoZumbi = null;
     this.vasos = null;
     this.planejando = false;
     if (deckIds && deckIds.length > 0) {
@@ -972,6 +975,16 @@ export class GameEngine {
     this.canvas.addEventListener('pointerdown', (e) => {
       if (this.paused || this.gameOver) return;
       const pos = getGridPos(e.clientX, e.clientY);
+
+      if (this.ladoZumbi) {
+        // Lado zumbi: o toque na linha manda o zumbi selecionado
+        if (pos.gridRow < 0 || pos.gridRow >= GRID_ROWS) return;
+        const r = this.ladoZumbi.invocar(pos.gridRow);
+        if (r === 'linha') this.onToast('🚫 Linha fechada neste jardim.');
+        else if (r === 'cerebros') this.onToast('🧠 Cérebros insuficientes.');
+        else if (r === 'recarga') this.onToast('⏳ Essa carta ainda está recarregando.');
+        return;
+      }
 
       for (const s of this.suns) {
         if (!s.collected) {
@@ -1405,6 +1418,45 @@ export class GameEngine {
   public vasosRestantes(): number {
     if (!this.vasos) return 0;
     return Object.values(this.vasos).reduce((s, n) => s + Math.max(0, n), 0);
+  }
+
+  /** Planta sem custo nem recarga (o Jardineiro do modo zumbi). Respeita linha, rio e casa ocupada. */
+  public plantarDireto(plantId: string, row: number, col: number): boolean {
+    const def = PLANT_CATALOG.find((p) => p.id === plantId);
+    if (!def || def.instantanea || !this.isLaneAvailable(row)) return false;
+    if (col < 0 || col >= GRID_COLS) return false;
+    if (this.plants.some((p) => p.row === row && p.col === col)) return false;
+    const habitat = def.habitat ?? 'terra';
+    if (this.isRiverRow(row) && habitat === 'terra') return false;
+    if (!this.isRiverRow(row) && habitat === 'agua') return false;
+    this.plants.push({
+      id: this.nextEntityId++,
+      def,
+      row,
+      col,
+      hp: def.maxHp,
+      maxHp: def.maxHp,
+      attackTimer: def.attackInterval * 0.4,
+      overdriveTimer: 0,
+      animPhase: Math.random() * Math.PI * 2,
+      scaleKick: 0.35,
+      armored: false,
+      adubada: false,
+      idade: 0,
+      caminho: null,
+      caminhoTimer: 0,
+      armTimer: def.id === 'plasma_mine' ? 4.5 : 0,
+      armed: def.id !== 'plasma_mine'
+    });
+    sound.playPlantPlace();
+    this.spawnParticles(col + 0.5, row + 0.7, '#4ade80', 10);
+    this.onUiUpdate();
+    return true;
+  }
+
+  /** Coleta um sol (o Jardineiro do modo zumbi). */
+  public coletarSol(orb: SunOrb): void {
+    this.collectSun(orb);
   }
 
   private tryPlacePlant(plantId: string, row: number, col: number): void {
@@ -2106,6 +2158,14 @@ export class GameEngine {
       // Cerca quebrada (ou linha sem cerca): o zumbi entra na casa
       if (z.x < CERCA.xDaCasa) {
         this.gameOver = true;
+        if (this.ladoZumbi) {
+          // Eu sou o zumbi: a casa invadida é a vitória da horda
+          this.ladoZumbi.invadiu();
+          this.spawnFloatingText('🧠 INVADIU!', 0.6, z.row, '#fca5a5', 1.5);
+          this.sapoDiz('derrota', true);
+          this.onGameEnd(true);
+          return;
+        }
         this.sapoDiz('derrota', true);
         this.onGameEnd(false);
         return;
@@ -3536,6 +3596,7 @@ export class GameEngine {
   }
 
   private triggerMutationModal(): void {
+    if (this.ladoZumbi) return; // o Jardineiro não evolui: a disputa é só o que está no tabuleiro
     if (this.vasos) return; // nos Vasos não há evolução: o quebra-cabeça é só o que está no tabuleiro
     const available = MUTATION_CATALOG.filter((m) => !this.unlockedMutations.has(m.id));
     if (available.length === 0) return;

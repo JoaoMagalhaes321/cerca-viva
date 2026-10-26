@@ -1,0 +1,46 @@
+/* Modo "Eu sou o zumbi": escolha do jardim, cartas de zumbi e HUD */
+.zumbi-card { max-width: 640px; }
+.zumbi-badge { background: linear-gradient(90deg, #7f1d1d, #4c1d95); color: #fee2e2; }
+.zumbi-intro { font-size: 0.78rem; color: #cbd5e1; line-height: 1.4; margin: 4px 0 12px; }
+.zumbi-lista { display: grid; grid-template-columns: 1fr; gap: 8px; max-height: 58vh; overflow-y: auto; padding-right: 2px; }
+.zumbi-jardim {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  color: #f1f5f9;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.zumbi-jardim:not([disabled]):hover,
+.zumbi-jardim:not([disabled]):focus-visible { transform: translateY(-2px); border-color: #f87171; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35); }
+.zumbi-jardim.feito { border-color: rgba(248, 113, 113, 0.55); }
+.zumbi-jardim.fechado { opacity: 0.5; cursor: not-allowed; }
+.zumbi-num {
+  width: 34px; height: 34px; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  font-weight: 900; background: rgba(248, 113, 113, 0.18); border: 2px solid rgba(248, 113, 113, 0.5); color: #fecaca;
+}
+.zumbi-jardim.feito .zumbi-num { background: #b91c1c; color: #fee2e2; }
+.zumbi-corpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.zumbi-corpo strong { font-size: 0.88rem; }
+.zumbi-corpo small { font-size: 0.66rem; color: #94a3b8; }
+.zumbi-chips { display: flex; flex-wrap: wrap; gap: 3px; margin-top: 2px; font-size: 0.85rem; }
+.zumbi-recorde { color: #facc15; font-size: 0.9rem; letter-spacing: 1px; white-space: nowrap; text-align: center; display: flex; flex-direction: column; }
+.zumbi-recorde small { color: #94a3b8; font-size: 0.62rem; letter-spacing: 0; }
+
+/* Cartas de zumbi na barra: tom roxo-avermelhado para lembrar de que lado você está */
+.seed-card.zumbi-carta { border-color: #7f1d1d; background: linear-gradient(180deg, #3b0a0a, #1a0b1f); }
+.seed-card.zumbi-carta .seed-cost { color: #fda4af; }
+.seed-card.zumbi-carta.selected { border-color: #f87171; box-shadow: 0 0 0 2px rgba(248, 113, 113, 0.45); }
+
+/* No lado zumbi, os poderes do Guardião e a pá não fazem sentido */
+body.lado-zumbi .guardian-powers,
+body.lado-zumbi #shovel-btn { display: none !important; }
+body.lado-zumbi .sun-counter { border-color: #f87171; }
