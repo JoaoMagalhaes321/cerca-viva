@@ -76,6 +76,9 @@ export interface BiomeDefinition {
     | 'mumia'
     | 'cuca'
     | 'boitata'
+    | 'saci'
+    | 'iara'
+    | 'boto'
   )[];
   description: string;
   /** Linhas que são rio (Mundo 3): só plantas aquáticas crescem nelas. */
@@ -194,7 +197,7 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     defaultWeather: 'sunny',
     puddlesCount: 0,
     toxicCount: 0,
-    zombiePreviews: ['canoeiro', 'mapinguari', 'cone', 'cyber_sprinter'],
+    zombiePreviews: ['canoeiro', 'iara', 'saci', 'mapinguari'],
     description: 'Dois braços de rio cortam o quintal. Na água só crescem plantas aquáticas, os zumbis do rio estão sempre molhados e os canoeiros descem a correnteza. Na chuva, os raios do Junco Tesla pulam para dentro do rio!',
     riverRows: [1, 3]
   },
@@ -208,7 +211,7 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     defaultWeather: 'sunny',
     puddlesCount: 0,
     toxicCount: 0,
-    zombiePreviews: ['siri', 'canoeiro', 'bucket', 'gargantuar'],
+    zombiePreviews: ['siri', 'boto', 'canoeiro', 'gargantuar'],
     description: 'Três linhas de mangue enchem e secam com a maré. Na maré alta só plantas aquáticas vivem nelas e os canoeiros descem; na baixa vira lama que atola zumbis e encalha o Aguapé. Zumbis Siri andam de lado e trocam de linha.',
     tideRows: [0, 2, 4]
   },

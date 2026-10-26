@@ -94,7 +94,10 @@ export type ZombieVariant =
   | 'siri'
   | 'mumia'
   | 'cuca'
-  | 'boitata';
+  | 'boitata'
+  | 'saci'
+  | 'iara'
+  | 'boto';
 
 export interface ZombieEntity {
   id: number;
@@ -144,6 +147,10 @@ export interface ZombieEntity {
   capataz?: boolean;
   /** Nêmesis: o zumbi que venceu você antes e voltou com nome e cicatriz. */
   nemesis?: Nemesis;
+  /** Saci: segundos até o próximo redemoinho. Iara: até o próximo canto. */
+  truqueTimer?: number;
+  /** Boto: já se molhou e virou boto (a cerca passa a segurar). */
+  revelado?: boolean;
   /** Boitatá: segundos que ainda fica apagado (vulnerável); 0 = em chamas (não se machuca). */
   apagadoTimer?: number;
   /** Boitatá: segundos até a próxima corrida de fogo. */
@@ -274,6 +281,10 @@ export const FALAS: Record<string, string[]> = {
   colheitadeira: ['Hora da colheita!', 'Vou passar o trator!'],
   cuca: ['Nana, nenê…', 'A Cuca vem pegar!', 'Dorme, jardim…'],
   boitata: ['Ssssss… quente!', 'Fogo na serra!', 'Vem me apagar!'],
+  saci: ['Hihihi!', 'Essa é minha!', 'Pega eu!', 'Sumi!'],
+  iara: ['Vem comigo, flor…', 'Lá lá lá…', 'A água chama.'],
+  boto: ['Boa noite, moça.', 'Com licença.', 'Só passando.'],
+  boto_revelado: ['Ops. Molhei.', 'Era eu mesmo!', 'Fiu-fiu… hum.'],
   mumia: ['Mmmmh…', 'Cadê minhas faixas?'],
   buu: ['BUU!', 'Buuuu!', 'Hihihi!'],
   acordou: ['Ué, dormi?', 'Bom dia!', 'Acordei!'],
@@ -1973,6 +1984,51 @@ export class GameEngine {
         }
       }
 
+      // Saci: some num redemoinho, aparece noutra linha e rouba uma carta por 10 s (sem o gorro, perde o truque)
+      if (z.variant === 'saci' && !z.lostHeadgear && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x > 1.2 && z.x < GRID_COLS - 0.2) {
+        z.truqueTimer = (z.truqueTimer ?? 5 + Math.random() * 3) - dt;
+        if (z.truqueTimer <= 0) {
+          z.truqueTimer = 8 + Math.random() * 4;
+          const lanes = this.getActiveLanes().filter((r) => r !== z.row && !this.isRiverRow(r));
+          this.spawnParticles(z.x, z.row + 0.6, '#a16207', 14);
+          if (lanes.length > 0) {
+            z.row = lanes[Math.floor(Math.random() * lanes.length)];
+            z.x = Math.max(1.2, z.x - 0.6);
+            z.isEating = false;
+          }
+          this.spawnParticles(z.x, z.row + 0.6, '#a16207', 14);
+          sound.efeito('vento', 0.3);
+          this.spawnFloatingText('🌪️ REDEMOINHO!', z.x, z.row + 0.1, '#fde68a', 1.0);
+          // Rouba uma carta: a semente fica em recarga por 10 s
+          const cartas = this.activeDeckIds.filter((id) => (this.seedCooldowns[id] ?? 0) < 6);
+          if (cartas.length > 0 && !this.vasos) {
+            const roubada = cartas[Math.floor(Math.random() * cartas.length)];
+            const def = PLANT_CATALOG.find((p) => p.id === roubada);
+            this.seedCooldowns[roubada] = Math.max(this.seedCooldowns[roubada] ?? 0, 10);
+            this.spawnFloatingText(`🌪️ ROUBOU ${def?.name ?? roubada}!`, z.x, z.row - 0.2, '#fca5a5', 1.2);
+            this.onToast(`🌪️ O Saci roubou a carta de ${def?.name ?? roubada} por 10 s! Derrube o gorro dele com vento (Flor Catavento) para acabar com o truque.`);
+            this.onUiUpdate();
+          }
+          this.falar('saci', z.x, z.row - 0.1, 0.8);
+        }
+      }
+      // Iara: canta do rio e as plantas de água perto dela param (encantadas) por 4 s
+      if (z.variant === 'iara' && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x < GRID_COLS - 0.2) {
+        z.truqueTimer = (z.truqueTimer ?? 4) - dt;
+        if (z.truqueTimer <= 0) {
+          z.truqueTimer = 9;
+          let encantadas = 0;
+          for (const p of this.plants) {
+            if (Math.abs(p.row - z.row) <= 1 && p.col + 0.5 < z.x && z.x - (p.col + 0.5) <= 3.5 && (p.def.habitat ?? 'terra') !== 'terra') {
+              p.dormindoTimer = 4;
+              encantadas++;
+            }
+          }
+          this.falar('iara', z.x, z.row - 0.1, 1);
+          sound.efeito('cancao', 0.3);
+          if (encantadas > 0) this.spawnFloatingText(`🎶 CANTO DA IARA: ${encantadas} encantada${encantadas > 1 ? 's' : ''}`, z.x, z.row - 0.25, '#c4b5fd', 1.1);
+        }
+      }
       // Zumbi Siri: anda de lado e troca de linha de tempos em tempos
       if (z.variant === 'siri' && !z.isEating && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x > 0.8 && z.x < GRID_COLS - 0.2) {
         z.trocaLinhaTimer = (z.trocaLinhaTimer ?? 4 + Math.random() * 3) - dt;
@@ -2086,7 +2142,11 @@ export class GameEngine {
           (p) => p.row === z.row && Math.abs(z.x - (p.col + 0.55)) < 0.38
         );
         const cerca = this.cercaDaLinha(z.row);
-        const naCerca = z.x <= CERCA.xDaMordida && cercaDePe(cerca);
+        const naCerca = z.x <= CERCA.xDaMordida && cercaDePe(cerca) && !(z.variant === 'boto' && !z.revelado);
+        if (z.variant === 'boto' && !z.revelado && z.x <= CERCA.xDaMordida + 0.05 && z.x > CERCA.xDaMordida - 0.05) {
+          this.spawnFloatingText('🎩 "Com licença" — passou pela cerca!', z.x, z.row + 0.1, '#e2e8f0', 1.1);
+          this.falar('boto', z.x, z.row - 0.1, 0.8);
+        }
 
         if (naCerca && cerca) {
           // Morde a cerca viva: ela segura o zumbi enquanto aguentar
@@ -2618,6 +2678,17 @@ export class GameEngine {
     // 1. WATER APPLICATION
     if (element === 'water') {
       target.wetTimer = 9.0;
+      if (target.variant === 'boto' && !target.revelado) {
+        // O moço bonito molhado vira o que é: um boto. A cerca passa a segurar, e ele fica mais lento
+        target.revelado = true;
+        target.lostHeadgear = true;
+        target.speed *= 0.75;
+        this.spawnFloatingText('🐬 ERA UM BOTO!', target.x, target.row - 0.1, '#f9a8d4', 1.4);
+        this.spawnParticles(target.x, target.row + 0.4, '#f9a8d4', 16);
+        this.falar('boto_revelado', target.x, target.row - 0.2, 1);
+        sound.efeito('bolha_estoura', 0.3);
+        this.onDescoberta?.('zumbis', 'boto');
+      }
     }
 
     // 2. TOXIN / ACID APPLICATION (Melts Cone/Bucket armor 2x faster!)
@@ -2635,6 +2706,12 @@ export class GameEngine {
       const pushDist = (target.variant === 'gargantuar' ? 0.25 : 0.72) * (noGelo ? GELO.empurraoDoVento : 1);
       if (noGelo) this.spawnFloatingText('🧊 ESCORREGOU!', target.x, target.row + 0.3, '#a5f3fc', 1.0);
       target.x = Math.min(GRID_COLS + 0.3, target.x + pushDist);
+      if (target.variant === 'saci' && !target.lostHeadgear) {
+        // O vento leva o gorro do Saci: sem ele, acabou o redemoinho (e o roubo de cartas)
+        target.lostHeadgear = true;
+        this.spawnFloatingText('🧢 O GORRO VOOU! Sem truques.', target.x, target.row - 0.1, '#fde68a', 1.3);
+        sound.efeito('capacete_cai', 0.3);
+      }
 
       // Synergy: Wind spreads Fire, Poison, Wet, or Ice from this zombie to others behind it!
       if (
@@ -3115,8 +3192,8 @@ export class GameEngine {
 
     // Canoeiro só desce rio: escolhe uma linha de rio; sem rio no mapa, vira zumbi comum
     const rios = this.currentBiome.riverRows ?? [];
-    if (type === 'canoeiro') {
-      if (rios.length === 0) type = 'basic';
+    if (type === 'canoeiro' || type === 'iara') {
+      if (rios.length === 0) type = type === 'iara' ? 'cone' : 'basic';
       else if (!rios.includes(row)) row = rios[Math.floor(Math.random() * rios.length)];
     }
 
@@ -3187,6 +3264,27 @@ export class GameEngine {
       hp = 520;
       speed = 0.22;
       damage = 36;
+    } else if (type === 'saci') {
+      variant = 'saci';
+      name = 'Saci';
+      emoji = '🌪️';
+      hp = 260;
+      speed = 0.33;
+      damage = 28;
+    } else if (type === 'iara') {
+      variant = 'iara';
+      name = 'Iara';
+      emoji = '🧜';
+      hp = 440;
+      speed = 0.26;
+      damage = 30;
+    } else if (type === 'boto') {
+      variant = 'boto';
+      name = 'Boto';
+      emoji = '🐬';
+      hp = 380;
+      speed = 0.3;
+      damage = 34;
     }
     if (this.regrasAtivas.has('corrida')) speed *= 1.3;
 

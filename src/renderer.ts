@@ -818,11 +818,12 @@ export class CharacterRenderer {
   ): void {
     const isZomboss = z.variant === 'zomboss_mech';
     const canoeiro = z.variant === 'canoeiro';
-    const nadando = canoeiro && z.lostHeadgear;
+    const iara = z.variant === 'iara';
+    const nadando = (canoeiro && z.lostHeadgear) || iara;
     const naAgua = agua && !isZomboss;
     // Linha d'água: quem anda no rio fica com a água na canela; a canoa flutua; quem nada afunda até o peito
     const waterY = zy + cellH * 0.24 - (naAgua && !canoeiro ? cellH * 0.13 : 0);
-    const afunda = nadando ? cellH * 0.3 : 0;
+    const afunda = nadando ? (iara ? cellH * 0.22 : cellH * 0.3) : 0;
     const mapinguari = z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata';
     const isBoss = z.variant === 'gargantuar' || isZomboss || mapinguari;
     const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96) * (z.elite === 'gigante' ? 1.3 : 1);
@@ -850,14 +851,14 @@ export class CharacterRenderer {
     const pulo = (z.pulandoTimer ?? 0) > 0 ? Math.sin((1 - z.pulandoTimer! / PULO_DURACAO) * Math.PI) * -cellH * 0.4 : 0;
     const lift = pulo !== 0 ? pulo : isZomboss
       ? Math.sin(walk * 1.4) * 3
-      : canoeiro
+      : canoeiro || iara
         ? Math.sin(walk * 0.9) * 1.8
         : z.isEating
           ? 0
           : Math.abs(Math.sin(walk)) * -4.5;
     ctx.translate(zx, zy + cellH * 0.24 + lift + afunda);
     // Vida: esmaga no passo (ombros caem, corpo alarga) e recua ao levar dano
-    const passo = z.isEating || isZomboss || canoeiro ? 0 : Math.abs(Math.sin(walk));
+    const passo = z.isEating || isZomboss || canoeiro || iara ? 0 : Math.abs(Math.sin(walk));
     const dano = z.hitFlash;
     ctx.scale(
       baseScale * (z.confusoTimer > 0 ? -1 : 1) * (1 + passo * 0.03 + dano * 0.06),
@@ -886,7 +887,8 @@ export class CharacterRenderer {
       );
 
       const apagado = z.variant === 'boitata' && (z.apagadoTimer ?? 0) > 0;
-      const body = getSprite(apagado ? 'boitata--apagado' : `${z.variant}--corpo`, isNight);
+      const botoRevelado = z.variant === 'boto' && !!z.revelado;
+      const body = getSprite(apagado ? 'boitata--apagado' : botoRevelado ? 'boto--revelado' : `${z.variant}--corpo`, isNight);
       if (body) place(ctx, body);
       if (z.variant === 'boitata' && !apagado && this.efeitos) {
         // Calor tremulando em volta da cobra de fogo
@@ -933,7 +935,7 @@ export class CharacterRenderer {
         }
       }
 
-      if ((z.variant === 'cone' || z.variant === 'bucket' || canoeiro) && !z.lostHeadgear) {
+      if ((z.variant === 'cone' || z.variant === 'bucket' || canoeiro || z.variant === 'saci' || (z.variant === 'boto' && !z.revelado)) && !z.lostHeadgear) {
         const gear = getSprite(`${z.variant}--capacete`, isNight);
         if (gear) {
           place(ctx, gear);
@@ -1651,5 +1653,8 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   siri: { w: 170, h: 230, ox: 82, feet: 215, head: 2, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
   mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e3d9bc' },
   cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' },
-  boitata: { w: 320, h: 200, ox: 150, feet: 184, head: 30, k: 0.36, halfW: 50, sleeve: '#ff5a1f' }
+  boitata: { w: 320, h: 200, ox: 150, feet: 184, head: 30, k: 0.36, halfW: 50, sleeve: '#ff5a1f' },
+  saci: { w: 170, h: 230, ox: 82, feet: 215, head: 6, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  iara: { w: 200, h: 230, ox: 100, feet: 196, head: 2, k: 0.5, halfW: 30, pivot: [92, 112], sleeve: '#6fc7b8' },
+  boto: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e6e9f0' }
 };

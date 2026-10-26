@@ -169,6 +169,8 @@ export function pesosDaOnda(onda: number, mods: Modificador[] = []): [string, nu
   if (onda >= 5) pesos.push(['rubber_hazard', 2]);
   if (onda >= 6) pesos.push(['pyro_scavenger', 2]);
   if (onda >= 6) pesos.push(['siri', 2]);
+  if (onda >= 5) pesos.push(['saci', 1.5]);
+  if (onda >= 7) pesos.push(['boto', 1.5]);
   if (onda >= colossoDesde) pesos.push(['gargantuar', mods.includes('colossos') ? 2.5 : 0.6 + onda * 0.08]);
   return pesos;
 }
