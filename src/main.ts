@@ -1037,6 +1037,8 @@ speedBtn.addEventListener('click', () => {
 // Botões de teste (💀 Chefe e 🌦️ Clima): só no modo dev (npm run dev ou ?dev=1). Ver src/modo-dev.ts.
 const MODO_DEV = modoDevDaPagina();
 aplicarModoDev(MODO_DEV);
+// No modo dev o motor fica acessível no console (window.cercaViva.engine) para testar efeitos e estados.
+if (MODO_DEV) (window as unknown as { cercaViva?: unknown }).cercaViva = { engine };
 
 bossBtn.addEventListener('click', () => {
   if (!MODO_DEV) return;
