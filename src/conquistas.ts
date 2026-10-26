@@ -20,6 +20,7 @@ export const CONQUISTAS: Conquista[] = [
   { id: 'sem_perder_planta', nome: 'Jardineiro cuidadoso', icone: '🧤', descricao: 'Vença uma fase sem perder nenhuma planta.' },
   { id: 'jardim_florido', nome: 'Jardim florido', icone: '🌼', descricao: 'Floresça as 11 plantas da Aventura (qualquer caminho).' },
   { id: 'noite_da_cuca', nome: 'A Cuca foi dormir', icone: '🎃', descricao: 'Derrote a Cuca na Noite da Cuca (evento de outubro).' },
+  { id: 'boitata_apagado', nome: 'Fogo apagado', icone: '🐍', descricao: 'Derrote o Boitatá na Serra do Vento.' },
   { id: 'cinco_adubadas', nome: 'Terra boa', icone: '🌫️', descricao: 'Tenha 5 plantas adubadas ao mesmo tempo.' },
   { id: 'curupira_cheio', nome: 'Pegadas em todos', icone: '👣', descricao: 'Confunda 4 zumbis de uma vez com o Curupira.' },
   { id: 'mapinguari_fogo', nome: 'Pelo em chamas', icone: '🔥', descricao: 'Derrote o Mapinguari com um deck só de Lírio, Draco-Pimenta e Cacto-Muralha.' },
@@ -96,6 +97,7 @@ export function verificarConquistas(ganhas: string[], fim: FimDePartida | null, 
     ok('desafio_7', fim.modo === 'desafio' && (fim.diasSeguidos ?? 0) >= 7);
     ok('expedicao', fim.modo === 'expedicao' && !!fim.expedicaoConcluida);
     ok('noite_da_cuca', fim.venceu && fim.derrotadosNaPartida.includes('cuca'));
+    ok('boitata_apagado', fim.derrotadosNaPartida.includes('boitata'));
   }
 
   const h = ctx.herbario;

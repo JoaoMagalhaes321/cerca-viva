@@ -703,12 +703,134 @@ export const LEVEL_CATALOG: LevelConfig[] = [
       { time: 112, type: 'siri', lane: 1 },
       { time: 116, type: 'siri', lane: 3 }
     ])
+  },
+
+  // ===================== MUNDO 5: SERRA DO VENTO =====================
+  // Degraus (alto = tiro mais forte, vale = zumbi mais rápido), rajadas de vento e o Boitatá no fim.
+  {
+    id: 26,
+    world: 5,
+    stage: 1,
+    name: 'Fase 5-1: Sopé',
+    initialSun: 300,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'basic', lane: 2 },
+      { time: 16, type: 'cone', lane: 4 },
+      { time: 24, type: 'basic', lane: 0 },
+      { time: 32, type: 'cyber_sprinter', lane: 3 },
+      { time: 40, type: 'cone', lane: 1 },
+      { time: 48, type: 'bucket', lane: 4 },
+      { time: 56, type: 'cyber_sprinter', lane: 3 },
+      { time: 62, type: 'basic', lane: 2 },
+      { time: 70, type: 'cone', lane: 0 },
+      { time: 78, type: 'bucket', lane: 3 },
+      { time: 86, type: 'cyber_sprinter', lane: 4 },
+      { time: 92, type: 'cone', lane: 1 }
+    ])
+  },
+  {
+    id: 27,
+    world: 5,
+    stage: 2,
+    name: 'Fase 5-2: Ventania',
+    initialSun: 300,
+    availableLanes: 5,
+    regras: ['corrida'],
+    spawns: createSpawns([
+      { time: 8, type: 'cyber_sprinter', lane: 3 },
+      { time: 14, type: 'basic', lane: 1 },
+      { time: 22, type: 'cone', lane: 4 },
+      { time: 30, type: 'rubber_hazard', lane: 0 },
+      { time: 38, type: 'cyber_sprinter', lane: 2 },
+      { time: 46, type: 'bucket', lane: 3 },
+      { time: 54, type: 'pyro_scavenger', lane: 1 },
+      { time: 62, type: 'cone', lane: 4 },
+      { time: 70, type: 'cyber_sprinter', lane: 0 },
+      { time: 78, type: 'gargantuar', lane: 3 },
+      { time: 86, type: 'bucket', lane: 2 },
+      { time: 94, type: 'cyber_sprinter', lane: 4 },
+      { time: 100, type: 'cone', lane: 1 }
+    ])
+  },
+  {
+    id: 28,
+    world: 5,
+    stage: 3,
+    name: 'Fase 5-3: Rastro de Fogo',
+    initialSun: 325,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'pyro_scavenger', lane: 2 },
+      { time: 16, type: 'cone', lane: 0 },
+      { time: 24, type: 'bucket', lane: 4 },
+      { time: 32, type: 'pyro_scavenger', lane: 3 },
+      { time: 40, type: 'cyber_sprinter', lane: 1 },
+      { time: 48, type: 'boitata', lane: 2 },
+      { time: 58, type: 'cone', lane: 4 },
+      { time: 66, type: 'bucket', lane: 0 },
+      { time: 74, type: 'cyber_sprinter', lane: 3 },
+      { time: 82, type: 'pyro_scavenger', lane: 1 },
+      { time: 90, type: 'gargantuar', lane: 2 }
+    ])
+  },
+  {
+    id: 29,
+    world: 5,
+    stage: 4,
+    name: 'Fase 5-4: Pedra Solta',
+    initialSun: 325,
+    availableLanes: 5,
+    regras: ['blindados'],
+    spawns: createSpawns([
+      { time: 8, type: 'basic', lane: 1 },
+      { time: 14, type: 'cone', lane: 3 },
+      { time: 22, type: 'rubber_hazard', lane: 4 },
+      { time: 30, type: 'bucket', lane: 0 },
+      { time: 38, type: 'cyber_sprinter', lane: 2 },
+      { time: 46, type: 'gargantuar', lane: 4 },
+      { time: 54, type: 'cone', lane: 1 },
+      { time: 62, type: 'pyro_scavenger', lane: 3 },
+      { time: 70, type: 'bucket', lane: 2 },
+      { time: 78, type: 'cyber_sprinter', lane: 0 },
+      { time: 86, type: 'gargantuar', lane: 1 },
+      { time: 94, type: 'cone', lane: 4 },
+      { time: 100, type: 'bucket', lane: 3 }
+    ])
+  },
+  // Clímax do Mundo 5: dois Boitatás e a Colheitadeira Z.
+  {
+    id: 30,
+    world: 5,
+    stage: 5,
+    name: 'Fase 5-5: Noite do Boitatá',
+    initialSun: 375,
+    availableLanes: 5,
+    regras: ['noite'],
+    spawns: createSpawns([
+      { time: 8, type: 'cyber_sprinter', lane: 2 },
+      { time: 14, type: 'cone', lane: 0 },
+      { time: 22, type: 'pyro_scavenger', lane: 4 },
+      { time: 30, type: 'boitata', lane: 1 },
+      { time: 40, type: 'bucket', lane: 3 },
+      { time: 48, type: 'cyber_sprinter', lane: 0 },
+      { time: 56, type: 'gargantuar', lane: 2 },
+      { time: 64, type: 'cone', lane: 4 },
+      { time: 72, type: 'boitata', lane: 3 },
+      { time: 82, type: 'bucket', lane: 1 },
+      { time: 90, type: 'pyro_scavenger', lane: 0 },
+      { time: 98, type: 'cyber_sprinter', lane: 4 },
+      { time: 106, type: 'zomboss_mech', lane: 2 },
+      { time: 114, type: 'cone', lane: 1 },
+      { time: 118, type: 'cyber_sprinter', lane: 3 }
+    ])
   }
 ];
 
 /** Bioma de cada mundo da Aventura. */
 export function biomaDoMundo(world: number): string {
   if (world === 13) return 'assombrado'; // 🎃 Noite da Cuca (evento)
+  if (world === 5) return 'serra';
   if (world === 4) return 'mangue';
   if (world === 3) return 'igarape';
   if (world === 2) return 'bioluminescent_swamp';

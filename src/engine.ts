@@ -89,7 +89,8 @@ export type ZombieVariant =
   | 'mapinguari'
   | 'siri'
   | 'mumia'
-  | 'cuca';
+  | 'cuca'
+  | 'boitata';
 
 export interface ZombieEntity {
   id: number;
@@ -137,6 +138,12 @@ export interface ZombieEntity {
   puloCd?: number;
   /** Inteligência: Capataz — apressa os zumbis da linha dele. */
   capataz?: boolean;
+  /** Boitatá: segundos que ainda fica apagado (vulnerável); 0 = em chamas (não se machuca). */
+  apagadoTimer?: number;
+  /** Boitatá: segundos até a próxima corrida de fogo. */
+  corridaTimer?: number;
+  /** Boitatá: corrida de fogo em andamento (segundos que faltam). */
+  correndoTimer?: number;
   /** Quantos truques a Cuca já fez (define o próximo). */
   cucaTruques?: number;
   /** Reação momentânea a um combo (eletrocussão, choque térmico…): só desenho, ver reacoes.ts. */
@@ -260,6 +267,7 @@ export const FALAS: Record<string, string[]> = {
   mapinguari: ['GRRR… meu quintal!', 'Quem mexeu na mata?'],
   colheitadeira: ['Hora da colheita!', 'Vou passar o trator!'],
   cuca: ['Nana, nenê…', 'A Cuca vem pegar!', 'Dorme, jardim…'],
+  boitata: ['Ssssss… quente!', 'Fogo na serra!', 'Vem me apagar!'],
   mumia: ['Mmmmh…', 'Cadê minhas faixas?'],
   buu: ['BUU!', 'Buuuu!', 'Hihihi!'],
   acordou: ['Ué, dormi?', 'Bom dia!', 'Acordei!'],
@@ -321,6 +329,9 @@ export class GameEngine {
   public inteligencia = 0;
   /** Nível de cada planta (sementes raras), fornecido por quem monta o jogo. */
   public nivelDaPlanta: (id: string) => number = () => 1;
+  /** Serra: rajada forte em andamento (segundos); sementes voam mais rápido. */
+  private ventoForteTimer = 0;
+  private rajadaTimer = 10;
   /** Combos feitos por linha na onda anterior (a horda evita essa linha). */
   private combosPorLinha: number[] = [0, 0, 0, 0, 0];
   private combosDaOndaPorLinha: number[] = [0, 0, 0, 0, 0];
@@ -479,6 +490,15 @@ export class GameEngine {
     window.addEventListener('resize', () => this.resize());
   }
 
+  /** Serra (Mundo 5): linha do alto (tiros mais fortes) e do vale (zumbis descem mais rápido). */
+  public isAltoRow(r: number): boolean {
+    return (this.currentBiome.serraAlta ?? []).includes(r);
+  }
+
+  public isValeRow(r: number): boolean {
+    return (this.currentBiome.serraBaixa ?? []).includes(r);
+  }
+
   /** Força da defesa em cada linha (dano por segundo + muralhas), para a inteligência dos zumbis. */
   public defesaPorLinha(): number[] {
     const d = [0, 0, 0, 0, 0];
@@ -601,6 +621,8 @@ export class GameEngine {
     this.tempoDePartida = 0;
     this.vfx = [];
     this.inteligencia = 0;
+    this.ventoForteTimer = 0;
+    this.rajadaTimer = 10;
     this.combosPorLinha = [0, 0, 0, 0, 0];
     this.combosDaOndaPorLinha = [0, 0, 0, 0, 0];
     this.proximoBando = 0;
@@ -881,6 +903,7 @@ export class GameEngine {
           this.weather === 'spore_fog' || this.currentBiome.id === 'bioluminescent_swamp'
         );
         if (assombrado) CharacterRenderer.drawAbobora(bCtx, x, y, this.cellW, this.cellH, r, c);
+        if (this.currentBiome.id === 'serra') CharacterRenderer.drawDegrau(bCtx, x, y, this.cellW, this.cellH, r, c, this.isAltoRow(r) ? 'alto' : this.isValeRow(r) ? 'vale' : 'meio', isDark);
 
       }
     }
@@ -1496,6 +1519,23 @@ export class GameEngine {
     }
     this.cenario.update(dt, this.weather, this.ehNoite(), this.currentBiome.id, this.canvas.width / this.dpr, this.canvas.height / this.dpr, this.boardTop);
     CharacterRenderer.vento = this.cenario.vento;
+    // Serra do Vento: rajadas empurram os zumbis para trás e aceleram as sementes
+    if (this.currentBiome.id === 'serra') {
+      this.rajadaTimer -= dt;
+      if (this.rajadaTimer <= 0) {
+        this.rajadaTimer = 11 + Math.random() * 6;
+        this.ventoForteTimer = 1.6;
+        this.cenario.vento = 1;
+        sound.efeito('vento', 0.2);
+        this.spawnFloatingText('💨 RAJADA!', GRID_COLS - 1.5, -0.35, '#99f6e4', 1.2);
+        for (const z of this.zombies) {
+          const chefe = z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'gargantuar' || z.variant === 'boitata';
+          if (!chefe && !z.isEating) z.x = Math.min(GRID_COLS + 0.3, z.x + 0.35);
+          else if (!chefe) z.x = Math.min(GRID_COLS + 0.3, z.x + 0.12);
+        }
+      }
+      if (this.ventoForteTimer > 0) this.ventoForteTimer -= dt;
+    }
 
     if (this.lightningFlash > 0) {
       this.lightningFlash = Math.max(0, this.lightningFlash - dt * 1.8);
@@ -1704,7 +1744,7 @@ export class GameEngine {
     // Update Projectiles
     for (let i = this.projectiles.length - 1; i >= 0; i--) {
       const proj = this.projectiles[i];
-      proj.x += proj.vx * dt;
+      proj.x += proj.vx * (this.ventoForteTimer > 0 ? 1.5 : 1) * dt;
       proj.yOffset += proj.vy * dt;
 
       let hitZombie: ZombieEntity | null = null;
@@ -1964,7 +2004,7 @@ export class GameEngine {
           const proxCol = Math.floor(z.x - 0.35);
           if (
             (z.puloCd ?? 0) <= 0 && proxCol >= 0 && proxCol < GRID_COLS && z.x - 0.35 - proxCol > 0.85 &&
-            z.variant !== 'canoeiro' && z.variant !== 'zomboss_mech' && z.variant !== 'mapinguari' && z.variant !== 'cuca' && z.variant !== 'gargantuar' &&
+            z.variant !== 'canoeiro' && z.variant !== 'zomboss_mech' && z.variant !== 'mapinguari' && z.variant !== 'cuca' && z.variant !== 'gargantuar' && z.variant !== 'boitata' &&
             ['electrified_puddle', 'ice_patch', 'scorched', 'toxic_pool'].includes(this.tiles[z.row][proxCol].hazard)
           ) {
             z.puloCd = 2.5;
@@ -1976,6 +2016,8 @@ export class GameEngine {
           }
           // Inteligência: Capataz apressa a linha; bando anda no ritmo do mais lento
           let ritmo = 1;
+          if (this.isValeRow(z.row)) ritmo *= 1.15; // descendo o vale
+          if (z.variant === 'boitata') ritmo *= (z.correndoTimer ?? 0) > 0 ? 7 : (z.apagadoTimer ?? 0) > 0 ? 0.4 : 1;
           if (!z.capataz && this.zombies.some((o) => o.capataz && o.row === z.row)) ritmo *= 1.3;
           if (z.bando) {
             let minSpeed = z.speed;
@@ -2199,6 +2241,7 @@ export class GameEngine {
     let mult = plant.adubada ? ADUBADA.dano : 1;
     if (this.estagioDe(plant) === 'muda') mult *= MUDA.dano;
     mult *= bonusDoNivel(plant.nivel ?? 1).dano;
+    if (this.isAltoRow(plant.row)) mult *= 1.2; // tiro descendo a serra
     const c = plant.caminho;
     if (c === 'quiabo_pesado') mult *= 1.8;
     else if (c === 'abobora_bomba') mult *= 1.5;
@@ -2343,6 +2386,29 @@ export class GameEngine {
     // CAPACETE DE FERRO (elite): enquanto não cai, metade do dano de Natureza; ácido derrete normal
     if (target.elite === 'ferro' && !target.lostHeadgear && element === 'nature') {
       finalDamage = Math.floor(finalDamage * 0.5);
+    }
+
+    // BOITATÁ: em chamas, nada machuca (água apaga por 6 s); apagado, leva dano normal e gelo dobra
+    if (target.variant === 'boitata') {
+      if (element === 'water') {
+        if ((target.apagadoTimer ?? 0) <= 0) {
+          this.spawnFloatingText('💧 APAGOU! Bate agora!', target.x, target.row + 0.1, '#7dd3fc', 1.4);
+          this.spawnParticles(target.x, target.row + 0.4, '#e2e8f0', 18);
+          sound.efeito('derrete', 0.3);
+          target.correndoTimer = 0;
+        }
+        target.apagadoTimer = 6;
+        target.burnTimer = 0;
+      } else if ((target.apagadoTimer ?? 0) <= 0) {
+        this.spawnFloatingText('🔥 EM CHAMAS (molhe antes)', target.x, target.row + 0.15, '#fb923c', 1.0);
+        this.spawnParticles(target.x, target.row + 0.5, '#fb923c', 4);
+        return;
+      } else if (element === 'ice') {
+        finalDamage = Math.floor(baseDamage * 2);
+        this.spawnFloatingText('❄️ BRASA GELADA ×2', target.x, target.row + 0.15, '#a5f3fc', 1.2);
+      } else if (element === 'fire') {
+        finalDamage = Math.floor(baseDamage * 0.3);
+      }
     }
 
     // MÚMIA: as faixas não sentem gelo (não congela, não fica lenta), mas pegam fogo
@@ -2685,7 +2751,7 @@ export class GameEngine {
     if (z.capataz) this.spawnFloatingText('📯 O CAPATAZ CAIU! Linha volta ao normal', z.x, z.row + 0.1, '#fde047', 1.1);
     this.onDescoberta?.('zumbis', z.variant);
     if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
-    if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
+    if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
     sound.efeito('zumbi_cai', 0.12);
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
@@ -2834,6 +2900,10 @@ export class GameEngine {
     }
     if (type === 'cuca') {
       this.spawnCuca(targetLane);
+      return;
+    }
+    if (type === 'boitata') {
+      this.spawnBoitata(targetLane);
       return;
     }
 
@@ -3201,6 +3271,43 @@ export class GameEngine {
 
   /** Habilidades da Colheitadeira Z quando ela está em campo. */
   public updateBossSkills(dt: number): void {
+    // Boitatá: corre a linha de tempos em tempos (só em chamas), e troca de linha
+    for (const b of this.zombies) {
+      if (b.variant !== 'boitata') continue;
+      if ((b.apagadoTimer ?? 0) > 0) {
+        b.apagadoTimer! -= dt;
+        if (b.apagadoTimer! <= 0) {
+          b.apagadoTimer = 0;
+          this.spawnFloatingText('🔥 REACENDEU!', b.x, b.row + 0.1, '#fb923c', 1.2);
+          this.spawnParticles(b.x, b.row + 0.4, '#fb923c', 14);
+        }
+        continue;
+      }
+      b.corridaTimer = (b.corridaTimer ?? 7) - dt;
+      if ((b.correndoTimer ?? 0) > 0) {
+        b.correndoTimer! -= dt;
+        const col = Math.floor(b.x);
+        if (col >= 0 && col < GRID_COLS && this.tiles[b.row][col].hazard !== 'puddle' && this.tiles[b.row][col].hazard !== 'electrified_puddle') {
+          this.tiles[b.row][col].hazard = 'scorched';
+          this.tiles[b.row][col].hazardTimer = 6;
+        }
+        if (Math.random() < dt * 20) this.spawnParticles(b.x + 0.3, b.row + 0.5, '#fb923c', 2);
+      } else if (b.corridaTimer <= 0 && b.frozenTimer <= 0 && b.stunTimer <= 0) {
+        b.corridaTimer = 8;
+        if (Math.random() < 0.45) {
+          const lanes = this.getActiveLanes();
+          const opcoes = [b.row - 1, b.row + 1].filter((r) => lanes.includes(r));
+          if (opcoes.length > 0) {
+            b.row = opcoes[Math.floor(Math.random() * opcoes.length)];
+            this.spawnFloatingText('🐍 TROCOU DE LINHA!', b.x, b.row + 0.2, '#fb923c', 1.0);
+          }
+        }
+        b.correndoTimer = 1.1;
+        this.falar('boitata', b.x, b.row - 0.1, 0.6);
+        this.spawnFloatingText('🔥 CORRIDA DE FOGO!', b.x - 0.5, b.row + 0.1, '#fde68a', 1.3);
+        sound.efeito('rugido', 0.4);
+      }
+    }
     const activeBoss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca');
     if (activeBoss && activeBoss.frozenTimer <= 0 && activeBoss.stunTimer <= 0 && activeBoss.confusoTimer <= 0 && !((activeBoss.dormindoTimer ?? 0) > 0)) {
       this.bossSkillTimer -= dt;
@@ -3260,6 +3367,46 @@ export class GameEngine {
       confusoTimer: 0,
       dormindoTimer: 0,
       cucaTruques: 0
+    });
+  }
+
+  /** O Boitatá, chefe da Serra: cobra de fogo que corre a linha; só se machuca apagada. */
+  public spawnBoitata(targetLane?: number): void {
+    const lanes = this.getActiveLanes();
+    const row = typeof targetLane === 'number' && lanes.includes(targetLane) ? targetLane : lanes[Math.floor(lanes.length / 2)] ?? 2;
+    this.bossSpawned = true;
+    sound.bossMode = true;
+    sound.efeito('rugido');
+    this.lightningFlash = 0.35;
+    this.onToast('🐍🔥 O BOITATÁ DESCEU A SERRA! Em chamas ele não se machuca: molhe (água, Aguapé, Tempestade) e aí bata.');
+    this.spawnFloatingText('🐍 BOITATÁ!', 7.5, row + 0.3, '#fb923c', 1.5);
+    this.falar('boitata', GRID_COLS - 0.4, row - 0.1, 1);
+    this.sacudir(7, 0.5, 'forte');
+    this.zombies.push({
+      id: this.nextEntityId++,
+      variant: 'boitata',
+      name: 'Boitatá',
+      emoji: '🐍',
+      row,
+      x: GRID_COLS + 0.5,
+      hp: 3000,
+      maxHp: 3000,
+      speed: 0.3,
+      damagePerSec: 120,
+      wetTimer: 0,
+      chilledTimer: 0,
+      frozenTimer: 0,
+      burnTimer: 0,
+      poisonTimer: 0,
+      stunTimer: 0,
+      hitFlash: 0,
+      walkPhase: 0,
+      isEating: false,
+      lostHeadgear: false,
+      lostArm: false,
+      confusoTimer: 0,
+      apagadoTimer: 0,
+      corridaTimer: 5
     });
   }
 
@@ -3839,7 +3986,7 @@ export class GameEngine {
       CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH, isNightScene, this.isRiverRow(z.row));
 
       // Zombie HP bar - accurately positioned above head based on variant scale
-      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca';
+      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata';
       if (!isBoss) {
         const bw = Math.min(this.cellW * 0.44, 38);
         const bh = 4;
@@ -4071,7 +4218,7 @@ export class GameEngine {
     if (tremendo) ctx.restore();
 
     // 13. Barra de vida do chefe (Colheitadeira Z ou Mapinguari)
-    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca');
+    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata');
     if (zomboss) {
       const barW = Math.min(440, width * 0.65);
       const barH = 18;
@@ -4091,7 +4238,7 @@ export class GameEngine {
       ctx.fillStyle = '#fca5a5';
       ctx.textAlign = 'center';
       ctx.fillText(
-        `${zomboss.variant === 'mapinguari' ? '👁️ CHEFE: MAPINGUARI' : zomboss.variant === 'cuca' ? `🐊 CHEFE: CUCA${(zomboss.dormindoTimer ?? 0) > 0 ? ' 💤' : ''}` : '💀 CHEFE FINAL: COLHEITADEIRA Z'} (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
+        `${zomboss.variant === 'mapinguari' ? '👁️ CHEFE: MAPINGUARI' : zomboss.variant === 'cuca' ? `🐊 CHEFE: CUCA${(zomboss.dormindoTimer ?? 0) > 0 ? ' 💤' : ''}` : zomboss.variant === 'boitata' ? `🐍 CHEFE: BOITATÁ${(zomboss.apagadoTimer ?? 0) > 0 ? ' 💧 APAGADO' : ' 🔥'}` : '💀 CHEFE FINAL: COLHEITADEIRA Z'} (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
         width / 2,
         by + 7
       );

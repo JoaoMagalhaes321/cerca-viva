@@ -165,6 +165,40 @@ export class CharacterRenderer {
     ctx.restore();
   }
 
+  // Serra do Vento: degraus de pedra — o alto mais claro com borda de pedra, o vale mais escuro
+  public static drawDegrau(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number, nivel: 'alto' | 'vale' | 'meio', escuro: boolean): void {
+    ctx.save();
+    if (nivel === 'alto') {
+      ctx.fillStyle = escuro ? 'rgba(255,255,255,0.05)' : 'rgba(255, 250, 200, 0.13)';
+      ctx.fillRect(x, y, w, h);
+    } else if (nivel === 'vale') {
+      ctx.fillStyle = escuro ? 'rgba(0,0,0,0.16)' : 'rgba(20, 40, 10, 0.13)';
+      ctx.fillRect(x, y, w, h);
+    }
+    // Muro de pedra na beira do degrau (abaixo da linha 1 e da linha 2)
+    if (row === 1 || row === 2) {
+      const by = y + h - Math.max(5, h * 0.09);
+      ctx.fillStyle = escuro ? '#2d3a3a' : '#a8a29e';
+      ctx.fillRect(x, by, w, h - (by - y));
+      ctx.strokeStyle = escuro ? '#0f1a1a' : '#57534e';
+      ctx.lineWidth = 1.2;
+      let seed = (row * 31 + col * 17) | 0;
+      let px = x;
+      while (px < x + w) {
+        seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+        const pw = 8 + (seed % 10);
+        ctx.strokeRect(px + 0.5, by + 0.5, Math.min(pw, x + w - px) - 1, h - (by - y) - 1);
+        px += pw;
+      }
+    }
+    if ((nivel === 'alto' || nivel === 'vale') && col === 0) {
+      ctx.font = `700 ${Math.max(8, h * 0.11)}px 'Nunito', sans-serif`;
+      ctx.fillStyle = escuro ? 'rgba(226, 232, 240, 0.5)' : 'rgba(42, 36, 22, 0.45)';
+      ctx.fillText(nivel === 'alto' ? '▲ alto' : '▼ vale', x + 4, y + h * 0.16);
+    }
+    ctx.restore();
+  }
+
   // Jardim Assombrado: abóbora pequena ou vela num canto de algumas casas (vai no cache do tabuleiro)
   public static drawAbobora(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number): void {
     const seed = ((row * 7 + col * 13) * 2654435761) >>> 0;
@@ -789,7 +823,7 @@ export class CharacterRenderer {
     // Linha d'água: quem anda no rio fica com a água na canela; a canoa flutua; quem nada afunda até o peito
     const waterY = zy + cellH * 0.24 - (naAgua && !canoeiro ? cellH * 0.13 : 0);
     const afunda = nadando ? cellH * 0.3 : 0;
-    const mapinguari = z.variant === 'mapinguari' || z.variant === 'cuca';
+    const mapinguari = z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata';
     const isBoss = z.variant === 'gargantuar' || isZomboss || mapinguari;
     const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96) * (z.elite === 'gigante' ? 1.3 : 1);
     const walk = z.walkPhase;
@@ -851,8 +885,16 @@ export class CharacterRenderer {
           : bodyTilt + (z.isEating || isZomboss ? 0 : Math.sin(walk) * 0.03)
       );
 
-      const body = getSprite(`${z.variant}--corpo`, isNight);
+      const apagado = z.variant === 'boitata' && (z.apagadoTimer ?? 0) > 0;
+      const body = getSprite(apagado ? 'boitata--apagado' : `${z.variant}--corpo`, isNight);
       if (body) place(ctx, body);
+      if (z.variant === 'boitata' && !apagado && this.efeitos) {
+        // Calor tremulando em volta da cobra de fogo
+        ctx.save();
+        ctx.globalAlpha = 0.25 + Math.sin(performance.now() * 0.02) * 0.1;
+        ctx.drawImage(this.brilho('#fb923c', '88'), -spec.halfW * 1.6, -(spec.feet - spec.head) * k * 1.1, spec.halfW * 3.2, (spec.feet - spec.head) * k * 1.3);
+        ctx.restore();
+      }
 
       if (isZomboss) {
         const reel = getSprite('zomboss_mech--molinete', isNight);
@@ -1417,5 +1459,6 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#8a5a30' },
   siri: { w: 170, h: 230, ox: 82, feet: 215, head: 2, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
   mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e3d9bc' },
-  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' }
+  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' },
+  boitata: { w: 320, h: 200, ox: 150, feet: 184, head: 30, k: 0.36, halfW: 50, sleeve: '#ff5a1f' }
 };
