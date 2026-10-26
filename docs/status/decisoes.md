@@ -3,6 +3,41 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261026-2 · Quem já venceu a 4-5 ganha o Mangue-Vermelho jogando a 4-5 de novo
+- Card: mundo4-recompensas · Branch: claude/mundo4-recompensas · Data: 2026-10-26
+- Regra de negócio? **sim** (regra do jogo: desbloqueio)
+- Muda decisão anterior? não
+- Escolha: nenhum código novo. Diferente do Mundo 2 (D-20261025-8), a 4-5 é a última fase do jogo: vencer não libera
+  fase seguinte, então o progresso salvo de quem venceu fica igual ao de quem só chegou nela (`maxUnlockedLevelId` 25).
+  A conferência do progresso não tem como saber quem venceu. Quem já venceu joga a 4-5 de novo (continua liberada) e
+  ganha a planta com a tela "Mundo 4 concluído".
+- Outras opções:
+  - A) Dar o Mangue a todo mundo que chegou na 4-5 — ninguém precisa repetir / quem não venceu ganha de graça.
+  - B) Gravar "fases vencidas" no progresso — resolve de vez para os próximos mundos / muda o formato salvo
+    (`pvz_player_progress_v1`), precisa de migração, e não ajuda quem venceu antes da mudança.
+- Como trocar depois: opção A é uma linha em `src/progresso-sanitizar.ts` (incluir a fase máxima quando ela não tem próxima).
+- Fácil de reverter? sim
+
+### D-20261026-1 · Recompensa do Mundo 4: Mangue-Vermelho na 4-5
+- Card: mundo4-recompensas · Branch: claude/mundo4-recompensas · Data: 2026-10-26
+- Regra de negócio? **sim** (regra do jogo: planta nova, números e desbloqueio)
+- Muda decisão anterior? não (segue o modelo da D-20261025-7, Musgo-Esponja no Mundo 2)
+- Escolha: planta nova Mangue-Vermelho 🌳, liberada ao vencer a Fase 4-5. Natureza, 100 de sol, recarga 12 s,
+  1200 de vida, não ataca. Cresce na terra e na água (não afoga na maré alta, não encalha na baixa; também vale no rio
+  do Mundo 3). Raízes-escora: zumbis até 1,8 casa à frente andam 40% mais devagar e o Zumbi Siri preso nelas não troca
+  de linha ("🌳 PRESO NAS RAÍZES!"). Superpoder Raízes da Maré: prende a linha por 3 s, 60 de dano, recupera 500 de vida.
+  Floração: Raizal (raízes até 3 casas) ou Mangue Ostreiro (quem morde leva 25 de dano por segundo).
+- Por quê: o Mundo 4 tem dois problemas novos, a maré que afoga plantas de terra e o Siri que troca de linha. Uma
+  barreira que vive na maré e segura o Siri responde aos dois e combina com o Musgo (água) sem repetir o papel dele.
+  NÃO MEDIDO: balanceamento em partida longa; conferi no Chromium que planta, aparece e segura o Siri.
+- Outras opções:
+  - A) Planta atiradora que cause dano extra no Siri — mais simples / o Siri continua bagunçando as linhas.
+  - B) Uma recompensa por fase do Mundo 4 — mais motivo para jogar / muita planta nova de uma vez para balancear.
+  - C) Planta só de água (como o Aguapé) — mais temática / inútil na maré baixa, metade do tempo.
+- Como trocar depois: números em `src/mangue-vermelho.ts`; custo e vida em `src/types.ts`; fase em `src/levels.ts`
+  (`unlockedPlantOnClear` da 4-5).
+- Fácil de reverter? sim
+
 ### D-20261025-11 · Qualidade econômica só mede com a partida rodando, e depois de 6 s lentos
 - Card: evento-opcional · Branch: claude/evento-opcional · Data: 2026-10-25
 - Regra de negócio? não

@@ -4,7 +4,7 @@
 window.BOARD = {
   "title": "Quadro do agente · Cerca Viva",
   "subtitle": "Cerca Viva (ex-PvZ: Evolution), tower defense 2.5D (Vite + TypeScript + Capacitor) · agente na nuvem, merge do João",
-  "updatedAt": "2026-10-25",
+  "updatedAt": "2026-10-26",
   "repoUrl": "https://github.com/JoaoMagalhaes321/cerca-viva",
   "defaultBranch": "main",
   "columns": [
@@ -145,22 +145,41 @@ window.BOARD = {
     },
     {
       "id": "mundo4-recompensas",
-      "fila": 1,
       "title": "Recompensa do Mundo 4 (Mangue da Maré)",
       "domain": "jogo",
-      "column": "design",
-      "env": "none",
-      "updated": "2026-10-25",
-      "summary": "Card criado pelo agente (25/10): na main ad4f490 as fases 4-1 a 4-5 (levels.ts, ids 21 a 25) não liberam planta, igual ao Mundo 2 antes do Musgo-Esponja. Seguir o mesmo modelo: uma planta que responda ao problema do mundo (maré e Zumbi Siri) liberada na 4-5, com o aviso de mundo concluído que já vem na branch claude/mundo2-recompensas.",
+      "column": "qas",
+      "env": "branch",
+      "updated": "2026-10-26",
+      "summary": "Pronto para revisar. Planta nova Mangue-Vermelho 🌳, liberada ao vencer a Fase 4-5: cresce na terra e na água (não afoga na maré), as raízes deixam os zumbis à frente 40% mais lentos e o Zumbi Siri preso nelas não troca de linha. Superpoder Raízes da Maré; floração Raizal ou Mangue Ostreiro (D-20261026-1, regra do jogo). Quem já venceu a 4-5 ganha jogando a 4-5 de novo (D-20261026-2). Build ok, 144 testes passando; conferido no Chromium.",
       "pending": [
-        "Decidir a planta (regra do jogo, registrar em decisoes.md)",
-        "Implementar e testar"
+        "Seu merge de claude/mundo4-recompensas na main",
+        "Balanceamento em partida longa NÃO MEDIDO: se achar forte/fraco, troque os números em src/mangue-vermelho.ts ou comente no card"
       ],
       "links": [
         {
-          "label": "levels.ts",
-          "path": "src/levels.ts"
+          "label": "branch",
+          "path": "src/mangue-vermelho.ts",
+          "branch": "claude/mundo4-recompensas"
+        },
+        {
+          "label": "Relatório",
+          "path": "docs/status/relatorios/2026-10-26-mundo4-recompensas.md",
+          "branch": "claude/quadro"
+        },
+        {
+          "label": "Captura (jogo)",
+          "path": "docs/status/relatorios/img/2026-10-26-mangue-jogo.png",
+          "branch": "claude/quadro"
+        },
+        {
+          "label": "Captura (sprites)",
+          "path": "docs/status/relatorios/img/2026-10-26-mangue-sprites.png",
+          "branch": "claude/quadro"
         }
+      ],
+      "delivered": [
+        "Mangue-Vermelho + 6 testes (4022fe0, 26/10)",
+        "Conferido no Chromium: planta na maré da 4-5 e segura o Siri (\"PRESO NAS RAÍZES\") (26/10)"
       ]
     },
     {
