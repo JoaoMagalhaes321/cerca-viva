@@ -33,6 +33,7 @@ import { bonusDoNivel } from './sementes';
 import { chance as chanceIa, escolherLinha, linhaVizinhaMaisVazia, nivelPorOnda } from './inteligencia';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { Mascote, SituacaoSapo } from './mascote';
+import { ANTECEDENCIA, MiniEventos, TipoEvento } from './mini-eventos';
 import { MANGUE, MANGUE_ID, nasRaizes } from './mangue-vermelho';
 import { REACAO, Reacao, TipoReacao, novaReacao } from './reacoes';
 import { NEMESIS_DANO, Nemesis, momentoDaVolta, recompensaDoNemesis, vidaDoNemesis } from './nemesis';
@@ -440,6 +441,10 @@ export class GameEngine {
   public onNemesisDerrotado: ((n: Nemesis) => void) | null = null;
   /** O sapo-cururu (null enquanto não foi liberado). */
   public mascote: Mascote | null = null;
+  /** Mini-eventos da fase (eclipse, chuva de sol, vagalumes, tremor); null = sem eventos. */
+  public miniEventos: MiniEventos | null = null;
+  /** Vagalumes desenhados durante o enxame. */
+  private vagalumes: { x: number; y: number; f: number }[] = [];
   /** Fases dos Vasos: sementes contadas (quantos vasos restam por planta). null fora delas. */
   public vasos: Record<string, number> | null = null;
   /** Fase dos Vasos em planejamento: dá para plantar, mas o tempo não corre. */
@@ -532,7 +537,64 @@ export class GameEngine {
 
   /** Cena escura: tempestade noturna, névoa, lua cheia ou o pântano. */
   public ehNoite(): boolean {
-    return this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia' || this.currentBiome.id === 'bioluminescent_swamp';
+    return this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia' || this.currentBiome.id === 'bioluminescent_swamp' || this.eventoAtivo('eclipse');
+  }
+
+  /** Mini-evento em andamento? */
+  public eventoAtivo(tipo: TipoEvento): boolean {
+    return !!this.miniEventos?.estaAtivo(tipo);
+  }
+
+  private atualizarMiniEventos(dt: number): void {
+    const m = this.miniEventos;
+    if (!m) return;
+    const t = m.update(dt, this.tempoDePartida);
+    if (t.aviso) {
+      this.spawnFloatingText(`⚠️ EM ${ANTECEDENCIA} s: ${t.aviso.icone} ${t.aviso.nome.toUpperCase()}`, 4.5, -0.35, t.aviso.lado === 'bom' ? '#bef264' : t.aviso.lado === 'ruim' ? '#fca5a5' : '#fde68a', 1.25);
+      this.onToast(`${t.aviso.icone} ${t.aviso.nome} em ${ANTECEDENCIA} s: ${t.aviso.aviso}`);
+      sound.efeito('conquista', 0.3);
+    }
+    if (t.comeca) {
+      const ev = t.comeca;
+      this.spawnFloatingText(`${ev.icone} ${ev.nome.toUpperCase()}!`, 4.5, 1.6, '#fff', 1.6);
+      this.sapoDiz(ev.lado === 'bom' ? 'combo' : 'perigo');
+      if (ev.tipo === 'eclipse') {
+        this.lightningFlash = 0.3;
+        this.cenario.iniciarTransicao(this.weather, true);
+        sound.efeito('trovao', 0.5);
+      } else if (ev.tipo === 'tremor') {
+        this.sacudir(9, 0.8, 'forte');
+        sound.efeito('pisao', 0.2);
+        for (const z of this.zombies) z.stunTimer = Math.max(z.stunTimer, 2);
+        for (const linha of this.tiles) {
+          for (const tile of linha) {
+            if (tile.hazard === 'puddle' || tile.hazard === 'electrified_puddle' || tile.hazard === 'ice_patch') {
+              tile.hazard = 'none';
+              tile.hazardTimer = 0;
+            }
+          }
+        }
+        this.boardCacheDirty = true;
+      } else if (ev.tipo === 'vagalumes') {
+        this.vagalumes = [];
+        for (let i = 0; i < 26; i++) this.vagalumes.push({ x: Math.random() * GRID_COLS, y: Math.random() * GRID_ROWS, f: Math.random() * 6 });
+      } else if (ev.tipo === 'chuva_de_sementes') {
+        this.skySunTimer = Math.min(this.skySunTimer, 0.5);
+      }
+    }
+    if (t.termina) {
+      const ev = t.termina;
+      this.spawnFloatingText(`${ev.icone} ${ev.nome} acabou`, 4.5, -0.35, '#e2e8f0', 1.0);
+      if (ev.tipo === 'eclipse') this.cenario.iniciarTransicao(this.weather, this.ehNoite());
+      if (ev.tipo === 'vagalumes') this.vagalumes = [];
+    }
+    if (m.estaAtivo('vagalumes')) {
+      for (const v of this.vagalumes) {
+        v.f += dt * 2;
+        v.x += Math.cos(v.f * 0.7) * dt * 0.6;
+        v.y += Math.sin(v.f) * dt * 0.4;
+      }
+    }
   }
 
   public getActiveLanes(): number[] {
@@ -619,6 +681,8 @@ export class GameEngine {
     this.nemesisVingado = false;
     this.vasos = null;
     this.planejando = false;
+    this.miniEventos = null;
+    this.vagalumes = [];
     if (deckIds && deckIds.length > 0) {
       this.activeDeckIds = [...deckIds];
       this.selectedPlantId = this.activeDeckIds[0];
@@ -1673,9 +1737,10 @@ export class GameEngine {
       this.lightningFlash = Math.max(0, this.lightningFlash - dt * 1.8);
     }
 
+    const chuvaDeSol = this.eventoAtivo('chuva_de_sementes');
     const sunInterval =
-      (this.weather === 'sunny' ? 6.5 : this.weather === 'rain' ? 9.5 : 11.5) * this.skySunScale;
-    this.skySunTimer -= dt;
+      (this.weather === 'sunny' ? 6.5 : this.weather === 'rain' ? 9.5 : 11.5) * this.skySunScale * (chuvaDeSol ? 0.5 : 1);
+    if (!this.eventoAtivo('eclipse')) this.skySunTimer -= dt;
     if (this.skySunTimer <= 0) {
       this.skySunTimer = sunInterval;
       const col = 1 + Math.random() * (GRID_COLS - 2);
@@ -1685,7 +1750,7 @@ export class GameEngine {
         x: col,
         y: -0.4,
         targetY: targetRow,
-        value: 25,
+        value: chuvaDeSol ? 50 : 25,
         life: 14,
         collected: false
       });
@@ -1825,7 +1890,7 @@ export class GameEngine {
       } else if (p.overdriveTimer > 0 && p.def.id === 'peashooter') {
         p.attackTimer -= dt * 6;
       } else {
-        p.attackTimer -= dt * speedMultiplier * terreno.ritmo * (polinizada ? 1.2 : 1);
+        p.attackTimer -= dt * speedMultiplier * terreno.ritmo * (polinizada ? 1.2 : 1) * (this.eventoAtivo('vagalumes') ? 1.25 : 1);
       }
 
       if (p.def.id === 'sunflower') {
@@ -2150,6 +2215,7 @@ export class GameEngine {
           // Inteligência: Capataz apressa a linha; bando anda no ritmo do mais lento
           let ritmo = 1;
           if (this.isValeRow(z.row)) ritmo *= 1.15; // descendo o vale
+          if (this.eventoAtivo('eclipse')) ritmo *= 1.15; // o eclipse apressa a horda
           if (z.variant === 'boitata') ritmo *= (z.correndoTimer ?? 0) > 0 ? 7 : (z.apagadoTimer ?? 0) > 0 ? 0.4 : 1;
           if (!z.capataz && this.zombies.some((o) => o.capataz && o.row === z.row)) ritmo *= 1.3;
           if (z.bando) {
@@ -2274,6 +2340,7 @@ export class GameEngine {
     } else this.updateWaveDirector(dt);
 
     this.tempoDePartida += dt;
+    this.atualizarMiniEventos(dt);
     this.gravador.tick(dt, this.tempoDePartida, () => this.tirarFoto());
   }
 
@@ -4166,8 +4233,27 @@ export class GameEngine {
       }
     }
 
-    const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia';
+    const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia' || this.eventoAtivo('eclipse');
     sound.night = isNightScene; // a trilha troca para o tema da noite
+
+    // 2c. Mini-eventos: sombra do eclipse e o enxame de vagalumes
+    if (this.eventoAtivo('eclipse')) {
+      ctx.fillStyle = 'rgba(5, 8, 30, 0.42)';
+      ctx.fillRect(this.boardLeft - 60, this.boardTop - 4, GRID_COLS * this.cellW + 70, GRID_ROWS * this.cellH + 8);
+    }
+    if (this.vagalumes.length > 0) {
+      for (const v of this.vagalumes) {
+        const a = 0.45 + 0.45 * Math.sin(v.f * 3);
+        ctx.fillStyle = `rgba(190, 242, 100, ${a})`;
+        ctx.beginPath();
+        ctx.arc(this.boardLeft + v.x * this.cellW, this.boardTop + v.y * this.cellH, 2.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(190, 242, 100, ${a * 0.25})`;
+        ctx.beginPath();
+        ctx.arc(this.boardLeft + v.x * this.cellW, this.boardTop + v.y * this.cellH, 7, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
 
     // 3. Cercas vivas (uma por linha, no caminho de pedra)
     for (const c of this.cercas) {

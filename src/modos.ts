@@ -2,6 +2,7 @@
 // resultado e recordes. As regras das ondas ficam em modo-infinito.ts.
 
 import type { GameEngine } from './engine';
+import { MiniEventos, agendarContinuo } from './mini-eventos';
 import { BIOME_CATALOG } from './types';
 import { ProgressionManager } from './progression';
 import { sound } from './audio';
@@ -317,6 +318,8 @@ export class Modos {
       }
     });
     e.waveDirector = this.diretor;
+    // Mini-eventos: um a cada ~1 min, sorteados com a mesma semente do desafio (ou do dia, no Infinito)
+    e.miniEventos = new MiniEventos(agendarContinuo(criarAleatorio((this.desafio ? this.desafio.semente : Date.now()) ^ 0x9e3779b9)));
 
     this.o.prepararPartida();
     this.o.toast(

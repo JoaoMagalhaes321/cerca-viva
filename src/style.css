@@ -640,6 +640,26 @@ html, body {
   pointer-events: none;
   transition: opacity 0.6s, transform 0.6s;
 }
+/* Mini-evento em andamento: "🌑 Eclipse · 12 s" no canto esquerdo */
+.evento-aviso {
+  position: absolute;
+  left: 10px;
+  bottom: 84px;
+  background: rgba(15, 23, 42, 0.86);
+  color: #fde68a;
+  border: 1.5px solid rgba(253, 230, 138, 0.6);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.72rem;
+  font-weight: 800;
+  z-index: 120;
+  pointer-events: none;
+  transition: opacity 0.4s;
+}
+.evento-aviso.hidden { opacity: 0; }
+.evento-aviso.bom { color: #bef264; border-color: rgba(190, 242, 100, 0.6); }
+.evento-aviso.ruim { color: #fca5a5; border-color: rgba(252, 165, 165, 0.6); }
+
 .trilha-aviso.hidden {
   opacity: 0;
   transform: translateY(6px);
