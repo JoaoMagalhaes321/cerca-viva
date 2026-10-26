@@ -48,7 +48,11 @@ html, body {
   align-items: center;
   justify-content: center;
   padding: 16px;
-  overflow: hidden;
+  /* Em celular deitado o menu passa da altura da tela: rola em vez de cortar o logo e a última fileira */
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
   transition: opacity 0.3s ease, visibility 0.3s ease;
 }
 
@@ -59,6 +63,8 @@ html, body {
 }
 
 .main-menu-container {
+  /* margin auto centraliza quando cabe e encosta no topo quando não cabe (justify-content: center cortaria o topo) */
+  margin: auto;
   display: flex;
   flex-direction: column;
   align-items: center;

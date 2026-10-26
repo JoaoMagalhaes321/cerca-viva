@@ -1,0 +1,95 @@
+# Gera o pacote assinado (.aab) para enviar à Google Play. Roda só à mão (Actions → "Play Store (AAB
+# assinado)" → Run workflow). Não publica nada: o .aab sai como artefato para você subir no Play Console.
+#
+# Antes da primeira vez, cadastre em Settings → Secrets and variables → Actions:
+#   PLAY_KEYSTORE_BASE64   o arquivo .jks da chave de upload, em base64
+#   PLAY_KEYSTORE_PASSWORD senha do arquivo
+#   PLAY_KEY_ALIAS         apelido da chave dentro do arquivo
+#   PLAY_KEY_PASSWORD      senha da chave
+# O passo a passo está em docs/play-store/README.md.
+name: Play Store (AAB assinado)
+
+on:
+  workflow_dispatch:
+    inputs:
+      versao_codigo:
+        description: 'versionCode (número inteiro, maior que o último enviado)'
+        required: true
+      versao_nome:
+        description: 'versionName que aparece na loja (ex.: 1.0.0)'
+        required: true
+        default: '1.0.0'
+
+permissions:
+  contents: read
+
+jobs:
+  aab:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - name: Baixar o código
+        uses: actions/checkout@v4
+
+      - name: Conferir os secrets
+        env:
+          K: ${{ secrets.PLAY_KEYSTORE_BASE64 }}
+          P: ${{ secrets.PLAY_KEYSTORE_PASSWORD }}
+          A: ${{ secrets.PLAY_KEY_ALIAS }}
+          KP: ${{ secrets.PLAY_KEY_PASSWORD }}
+        run: |
+          falta=""
+          [ -z "$K" ] && falta="$falta PLAY_KEYSTORE_BASE64"
+          [ -z "$P" ] && falta="$falta PLAY_KEYSTORE_PASSWORD"
+          [ -z "$A" ] && falta="$falta PLAY_KEY_ALIAS"
+          [ -z "$KP" ] && falta="$falta PLAY_KEY_PASSWORD"
+          if [ -n "$falta" ]; then
+            echo "::error::Faltam os secrets:$falta (veja docs/play-store/README.md)"
+            exit 1
+          fi
+
+      - name: Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build web e sincronizar com o Android
+        run: |
+          npm ci
+          npm run build
+          npx cap sync android
+
+      - name: Recriar a chave a partir do secret (fica só nesta máquina temporária)
+        env:
+          K: ${{ secrets.PLAY_KEYSTORE_BASE64 }}
+        run: echo "$K" | base64 -d > "$RUNNER_TEMP/upload.jks"
+
+      - name: Gerar o .aab assinado
+        working-directory: ./android
+        env:
+          CV_KEYSTORE_FILE: ${{ runner.temp }}/upload.jks
+          CV_KEYSTORE_PASSWORD: ${{ secrets.PLAY_KEYSTORE_PASSWORD }}
+          CV_KEY_ALIAS: ${{ secrets.PLAY_KEY_ALIAS }}
+          CV_KEY_PASSWORD: ${{ secrets.PLAY_KEY_PASSWORD }}
+          CV_VERSION_CODE: ${{ inputs.versao_codigo }}
+          CV_VERSION_NAME: ${{ inputs.versao_nome }}
+        run: |
+          chmod +x gradlew
+          ./gradlew bundleRelease
+
+      - name: Apagar a chave
+        if: always()
+        run: rm -f "$RUNNER_TEMP/upload.jks"
+
+      - name: Guardar o .aab
+        uses: actions/upload-artifact@v4
+        with:
+          name: cerca-viva-${{ inputs.versao_nome }}-${{ inputs.versao_codigo }}
+          path: android/app/build/outputs/bundle/release/app-release.aab
