@@ -623,6 +623,28 @@ html, body {
   opacity: 0;
 }
 
+/* Aviso de trilha: "♪ Luzes do Brejo" no canto, some sozinho */
+.trilha-aviso {
+  position: absolute;
+  right: 10px;
+  bottom: 84px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  z-index: 120;
+  pointer-events: none;
+  transition: opacity 0.6s, transform 0.6s;
+}
+.trilha-aviso.hidden {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
 /* MODALS */
 .modal-overlay {
   position: fixed;
@@ -1373,3 +1395,14 @@ html, body {
 .result-replay-titulo b { color: #fde68a; }
 #result-replay-canvas { width: min(100%, 360px); height: auto; border-radius: 10px; border: 2px solid rgba(250, 204, 21, 0.5); background: #5fae38; }
 @media (max-height: 480px) { #result-replay-canvas { width: min(100%, 220px); } }
+
+/* Sementes raras e nível das plantas */
+.seed-nivel { position: absolute; top: 2px; left: 4px; font-size: 0.5rem; color: #ffd84a; text-shadow: 0 1px 0 #000; letter-spacing: -1px; }
+.almanac-nivel { color: #ffd84a; font-size: 0.8rem; margin-left: 4px; letter-spacing: -1px; }
+.almanac-subir { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+.almanac-subir small { color: #cbd5e1; font-size: 0.68rem; }
+.almanac-subir-btn { font-size: 0.72rem; padding: 4px 10px; align-self: flex-start; }
+.almanac-subir-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.almanac-nivel-max { color: #fde68a; font-size: 0.72rem; }
+.result-sementes { text-align: center; color: #fde68a; font-weight: 700; font-size: 0.8rem; margin: 4px 0; }
+.result-sementes:empty { display: none; }

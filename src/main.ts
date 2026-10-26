@@ -32,6 +32,8 @@ import { mostrarAbertura } from './abertura';
 import { tocarReplay } from './replay';
 import { aplicarAcessibilidade } from './acessibilidade';
 import { nivelDeInteligencia } from './inteligencia';
+import { CAPITULOS, Quadrinhos, capituloVisto } from './quadrinhos';
+import { carregarSementes, custoParaSubir, estrelas, nivelDa, recompensa, salvarSementes, subirNivel } from './sementes';
 import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
 import { AcessibilidadeUi } from './acessibilidade-ui';
 
@@ -124,6 +126,16 @@ if (draftDeckIds.length === 0) {
   draftDeckIds = ['peashooter'];
 }
 
+// "♪ Luzes do Brejo": mostra o nome da faixa quando ela começa, sem roubar o lugar dos avisos do jogo
+const trilhaAviso = document.getElementById('trilha-aviso') as HTMLElement;
+let trilhaTimeout: number | null = null;
+sound.onFaixa = (titulo) => {
+  trilhaAviso.textContent = `♪ ${titulo}`;
+  trilhaAviso.classList.remove('hidden');
+  if (trilhaTimeout) window.clearTimeout(trilhaTimeout);
+  trilhaTimeout = window.setTimeout(() => trilhaAviso.classList.add('hidden'), 4000);
+};
+
 function showToast(msg: string): void {
   toastBanner.textContent = msg;
   toastBanner.classList.remove('hidden');
@@ -189,6 +201,7 @@ function buildSeedPackets(): void {
       <span class="element-tag">${plant.elementBadge}</span>
       <canvas class="seed-portrait" width="44" height="38"></canvas>
       <span class="seed-name">${plant.name}</span>
+      ${nivelDa(sementes, plant.id) >= 2 ? `<span class="seed-nivel">${estrelas(nivelDa(sementes, plant.id))}</span>` : ''}
       <span class="seed-cost">${plant.cost}</span>
       <div class="cooldown-overlay" id="cd-${plant.id}"></div>
     `;
@@ -445,6 +458,8 @@ function openAlmanacModal(tab: 'synergies' | 'plants' | 'zombies' = 'synergies')
 }
 
 function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
+  const rotulo = document.getElementById('almanac-sementes');
+  if (rotulo) rotulo.textContent = `🌰 ${sementes.total}`;
   const tabBtns = almanacModal.querySelectorAll<HTMLButtonElement>('.tab-btn');
   tabBtns.forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -462,11 +477,35 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         <canvas width="64" height="58" style="flex-shrink:0;"></canvas>
         <div class="almanac-card-info">
           <span class="badge-pill">${plant.elementBadge} ${plant.cost}☀️ • Recarga: ${plant.cooldown}s</span>
-          <h4>${plant.name}</h4>
+          <h4>${plant.name} <span class="almanac-nivel" title="Nível da planta">${estrelas(nivelDa(sementes, plant.id))}</span></h4>
           <p>${plant.description}</p>
           <p style="color:#e9d5ff; margin-top:4px;"><strong>🧪 Supremo:</strong> ${plant.overdriveDesc}</p>
+          <div class="almanac-subir"></div>
         </div>
       `;
+      const subir = card.querySelector('.almanac-subir') as HTMLElement;
+      const nivelAtual = nivelDa(sementes, plant.id);
+      const custo = custoParaSubir(nivelAtual);
+      const liberada = ProgressionManager.getProgress().unlockedPlants.includes(plant.id) || !!plant.evento;
+      if (custo === null) {
+        subir.innerHTML = `<span class="almanac-nivel-max">🌟 Nível máximo: +30% vida, +25% dano${plant.id === 'sunflower' ? ', +10 sol' : ''}</span>`;
+      } else if (liberada) {
+        const b = nivelAtual === 1 ? '+15% vida, +10% dano' : '+30% vida, +25% dano e coroa de folhas';
+        subir.innerHTML = `<button type="button" class="secondary-btn almanac-subir-btn" ${sementes.total < custo ? 'disabled' : ''}>🌰 Subir para o nível ${nivelAtual + 1} (${custo} sementes)</button><small>${b}</small>`;
+        subir.querySelector('button')!.addEventListener('click', () => {
+          const novo = subirNivel(sementes, plant.id);
+          if (novo === null) {
+            showToast(`Faltam sementes: você tem ${sementes.total} e precisa de ${custo}.`);
+            return;
+          }
+          salvarSementes(sementes);
+          atualizarSementesNoMenu();
+          showToast(`🌟 ${plant.name} subiu para o nível ${novo}! ${estrelas(novo)}`);
+          sound.efeito('conquista');
+          buildSeedPackets();
+          renderAlmanacTab('plants');
+        });
+      }
       const c = card.querySelector('canvas') as HTMLCanvasElement;
       const pCtx = c.getContext('2d');
       if (pCtx) {
@@ -552,6 +591,13 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         hp: 420,
         speedText: 'Normal · rápido na água',
         desc: '🦀 Do mangue (Mundo 4): anda de lado e troca de linha de tempos em tempos, então não adianta defender uma linha só. A carapaça segura metade do dano de projéteis de Natureza; ☣️ ácido e 🔥 fogo passam direto. Na lama da maré baixa não atola.'
+      },
+      {
+        variant: 'boitata',
+        name: 'Boitatá (Chefe da Serra)',
+        hp: 3000,
+        speedText: 'Rápido · corre a linha',
+        desc: '🐍🔥 Cobra de fogo do folclore (Mundo 5): enquanto está em chamas não se machuca, corre a linha deixando brasa e queima a primeira planta que encontra; troca de linha de tempos em tempos. 💧 Água apaga por 6 s: aí ela fica lenta e leva dano normal. Molhe, depois bata com tudo.'
       },
       {
         variant: 'mapinguari',
@@ -665,9 +711,9 @@ function startLevel(level: LevelConfig): void {
   currentLevel = level;
   if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
-  // A 1-1 tem uma planta só e o tutorial: vai direto
+  // A 1-1 tem uma planta só e o tutorial: vai direto (com o prólogo em quadrinhos na primeira vez)
   if (level.id === 1) {
-    iniciarFase(level);
+    quadrinhos.mostrarSeNovo('prologo', () => iniciarFase(level));
     return;
   }
   engine.paused = true;
@@ -794,6 +840,11 @@ const MUNDOS: Record<number, { titulo: string; fundo: string; borda: string }> =
     titulo: '🦀 MUNDO 4: MANGUE DA MARÉ',
     fundo: 'linear-gradient(90deg, rgba(120, 53, 15, 0.85), rgba(180, 83, 9, 0.35))',
     borda: '#fb923c'
+  },
+  5: {
+    titulo: '⛰️ MUNDO 5: SERRA DO VENTO',
+    fundo: 'linear-gradient(90deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.35))',
+    borda: '#cbd5e1'
   }
 };
 
@@ -871,9 +922,37 @@ function mostrarReplay(): void {
   pararReplay = tocarReplay(document.getElementById('result-replay-canvas') as HTMLCanvasElement, m);
 }
 
+/** Sementes raras ganhas nesta partida (mostradas na tela de resultado). */
+function darSementes(won: boolean): number {
+  const progress = ProgressionManager.getProgress();
+  const modo = modos.ativo() ? (modos.modoAtual() === 'desafio' ? 'desafio' : 'infinito') : expedicao.ativo() ? 'expedicao' : currentLevel?.evento ? 'evento' : 'aventura';
+  const ganhas = recompensa({
+    venceu: won,
+    modo,
+    mundo: currentLevel?.world,
+    primeiraVez: !!currentLevel && !currentLevel.evento && currentLevel.id >= progress.maxUnlockedLevelId,
+    ondas: modo === 'expedicao' ? engine.wave : engine.wave,
+    chefeDerrotado: engine.tiposDerrotados.some((t) => t === 'zomboss_mech' || t === 'mapinguari' || t === 'cuca')
+  });
+  sementes.total += ganhas;
+  salvarSementes(sementes);
+  atualizarSementesNoMenu();
+  if (ganhas > 0) window.setTimeout(() => showToast(`🌰 +${ganhas} sementes raras (total ${sementes.total}). Suba suas plantas de nível no Almanaque.`), 900);
+  return ganhas;
+}
+
 function openGameOverModal(won: boolean): void {
+  // Fechou um mundo pela primeira vez: o capítulo em quadrinhos vem antes do resultado
+  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
+    engine.paused = true;
+    quadrinhos.mostrar(`mundo${currentLevel.world}`, () => openGameOverModal(won));
+    return;
+  }
   document.getElementById('compartilhar-desafio-btn')?.remove();
   mostrarReplay();
+  const sementesGanhas = darSementes(won);
+  const caixaSementes = document.getElementById('result-sementes');
+  if (caixaSementes) caixaSementes.textContent = `🌰 +${sementesGanhas} sementes raras · total ${sementes.total}`;
   if (modos.ativo()) {
     modos.mostrarResultado(won);
     return;
@@ -1060,6 +1139,8 @@ speedBtn.addEventListener('click', () => {
 // Botões de teste (💀 Chefe e 🌦️ Clima): só no modo dev (npm run dev ou ?dev=1). Ver src/modo-dev.ts.
 const MODO_DEV = modoDevDaPagina();
 aplicarModoDev(MODO_DEV);
+// No modo dev o motor fica acessível no console (window.cercaViva.engine) para testar efeitos e estados.
+if (MODO_DEV) (window as unknown as { cercaViva?: unknown }).cercaViva = { engine };
 
 bossBtn.addEventListener('click', () => {
   if (!MODO_DEV) return;
@@ -1136,6 +1217,40 @@ menuAlmanacBtn.addEventListener('click', () => {
 
 aplicarAcessibilidade();
 const acessUi = new AcessibilidadeUi(showToast);
+
+// 📜 Quadrinhos: prólogo, um capítulo por mundo, e a lista no menu
+const quadrinhos = new Quadrinhos();
+const historiasModal = document.createElement('div');
+historiasModal.className = 'modal-overlay hidden';
+historiasModal.id = 'historias-modal';
+historiasModal.innerHTML = `<div class="modal-card"><div class="modal-header-row"><div><div class="modal-badge">📜 HISTÓRIAS</div><h2>Os quadrinhos da Cerca Viva</h2></div><button class="close-btn" data-acao="fechar">✕</button></div><div class="historias-lista"></div></div>`;
+(document.getElementById('app') ?? document.body).appendChild(historiasModal);
+historiasModal.querySelector('[data-acao="fechar"]')!.addEventListener('click', () => historiasModal.classList.add('hidden'));
+document.getElementById('menu-historias-btn')?.addEventListener('click', () => {
+  const lista = historiasModal.querySelector('.historias-lista') as HTMLElement;
+  lista.innerHTML = '';
+  for (const cap of CAPITULOS) {
+    const visto = capituloVisto(cap.id);
+    const item = document.createElement('div');
+    item.className = `historias-item ${visto ? '' : 'bloqueado'}`;
+    item.innerHTML = `<span>${visto ? '📖' : '🔒'} ${visto ? cap.titulo : cap.titulo.split(' · ')[0] + ' · ???'}</span>${visto ? '<button type="button" class="secondary-btn">Ler</button>' : '<small>feche o mundo para ler</small>'}`;
+    item.querySelector('button')?.addEventListener('click', () => {
+      historiasModal.classList.add('hidden');
+      quadrinhos.mostrar(cap.id, () => historiasModal.classList.remove('hidden'));
+    });
+    lista.appendChild(item);
+  }
+  historiasModal.classList.remove('hidden');
+});
+
+// 🌰 Sementes raras: nível das plantas
+const sementes = carregarSementes();
+engine.nivelDaPlanta = (id) => nivelDa(sementes, id);
+function atualizarSementesNoMenu(): void {
+  const el = document.getElementById('menu-sementes-info');
+  if (el) el.textContent = `🌰 ${sementes.total}`;
+}
+atualizarSementesNoMenu();
 
 // 🎃 Noite da Cuca: botão do menu só na época do evento (1/out a 2/nov)
 const menuHalloweenBtn = document.getElementById('menu-halloween-btn') as HTMLButtonElement;
