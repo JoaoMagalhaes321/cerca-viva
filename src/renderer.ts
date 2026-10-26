@@ -1221,6 +1221,164 @@ export class CharacterRenderer {
 
   /** Pegada ao contrário (aponta para trás, de onde o Curupira veio). */
   /** Casinha do jardineiro: telhado, porta, janela (acesa à noite) e chaminé; cabe no canto acima do caminho. */
+  /**
+   * O sapo-cururu sentado na cerca. `alvo` é a ponta da língua (px) enquanto ele estica.
+   * Desenho procedural no estilo das plantas: formas gordas, brilho pintado e olhos grandes.
+   */
+  public static drawSapo(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    cellH: number,
+    sapo: { estado: string; pulo: number; comeu: boolean },
+    noite: boolean,
+    t: number,
+    alvo: { x: number; y: number } | null
+  ): void {
+    const s = (cellH / 90) * 0.8;
+    const respira = 1 + Math.sin(t * 0.004) * 0.025;
+    const dormindo = sapo.estado === 'dormindo';
+    const satisfeito = sapo.estado === 'satisfeito' || sapo.estado === 'engolindo';
+    const lingua = sapo.estado === 'lingua';
+    const sombra = noite ? 0.75 : 1;
+    const cor = (r: number, g: number, b: number): string => `rgb(${Math.round(r * sombra)},${Math.round(g * sombra)},${Math.round(b * sombra)})`;
+
+    ctx.save();
+    ctx.translate(x, y - sapo.pulo * 18 * s);
+    ctx.scale(s, s);
+
+    // Sombra no chão
+    ctx.fillStyle = 'rgba(0,0,0,0.22)';
+    ctx.beginPath();
+    ctx.ellipse(0, 24, 30, 7, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Língua (atrás da boca, por cima de tudo o mais)
+    if (lingua && alvo) {
+      const ax = (alvo.x - x) / s;
+      const ay = (alvo.y - (y - sapo.pulo * 18 * s)) / s;
+      ctx.strokeStyle = cor(244, 114, 182);
+      ctx.lineWidth = 7;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(10, 8);
+      ctx.quadraticCurveTo((ax + 10) / 2, ay - 14, ax, ay);
+      ctx.stroke();
+      ctx.fillStyle = cor(251, 146, 182);
+      ctx.beginPath();
+      ctx.arc(ax, ay, 7, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Pernas de trás (dobradas)
+    ctx.fillStyle = cor(94, 122, 36);
+    ctx.beginPath();
+    ctx.ellipse(-24, 16, 14, 8, -0.3, 0, Math.PI * 2);
+    ctx.ellipse(22, 17, 13, 8, 0.3, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Corpo
+    const barriga = satisfeito ? 1.14 : 1;
+    const corpo = ctx.createRadialGradient(-8, -14, 4, 0, 0, 40);
+    corpo.addColorStop(0, cor(156, 184, 72));
+    corpo.addColorStop(0.55, cor(106, 138, 44));
+    corpo.addColorStop(1, cor(58, 82, 22));
+    ctx.fillStyle = corpo;
+    ctx.beginPath();
+    ctx.ellipse(0, 2, 30 * barriga * respira, 24 * respira, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Papo claro
+    const papo = ctx.createLinearGradient(0, -6, 0, 24);
+    papo.addColorStop(0, cor(226, 214, 150));
+    papo.addColorStop(1, cor(186, 166, 96));
+    ctx.fillStyle = papo;
+    ctx.beginPath();
+    ctx.ellipse(2, 10, 19 * barriga, 13 * respira, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Verrugas
+    ctx.fillStyle = cor(66, 92, 26);
+    for (const [vx, vy, vr] of [[-18, -8, 3], [-8, -18, 2.4], [14, -12, 2.8], [20, 0, 2.2], [-22, 4, 2]] as const) {
+      ctx.beginPath();
+      ctx.arc(vx, vy, vr, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Patas da frente
+    ctx.fillStyle = cor(84, 112, 32);
+    for (const px of [-14, 12]) {
+      ctx.beginPath();
+      ctx.ellipse(px, 22, 8, 4.5, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Boca
+    ctx.strokeStyle = cor(48, 64, 18);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    if (lingua || sapo.estado === 'engolindo') {
+      ctx.fillStyle = cor(60, 20, 30);
+      ctx.ellipse(6, 8, 9, lingua ? 7 : 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.moveTo(-14, 7);
+      ctx.quadraticCurveTo(2, satisfeito ? 16 : 12, 20, 6);
+    }
+    ctx.stroke();
+
+    // Olhos esbugalhados em cima da cabeça
+    for (const ex of [-13, 11]) {
+      ctx.fillStyle = cor(118, 150, 52);
+      ctx.beginPath();
+      ctx.arc(ex, -22, 10.5, 0, Math.PI * 2);
+      ctx.fill();
+      if (dormindo) {
+        ctx.strokeStyle = cor(40, 56, 16);
+        ctx.lineWidth = 2.4;
+        ctx.beginPath();
+        ctx.moveTo(ex - 6, -21);
+        ctx.quadraticCurveTo(ex, -16, ex + 6, -21);
+        ctx.stroke();
+        continue;
+      }
+      const olho = ctx.createRadialGradient(ex - 2, -24, 1, ex, -22, 9);
+      olho.addColorStop(0, cor(255, 240, 150));
+      olho.addColorStop(1, cor(234, 179, 8));
+      ctx.fillStyle = olho;
+      ctx.beginPath();
+      ctx.arc(ex, -22, 8.5, 0, Math.PI * 2);
+      ctx.fill();
+      // Pupila horizontal, olhando para a direita (de onde vêm os zumbis)
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      ctx.ellipse(ex + 2.5, -22, 4.2, 2.6, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.85)';
+      ctx.beginPath();
+      ctx.arc(ex - 2, -25, 2, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    // Brilho pintado no dorso
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.beginPath();
+    ctx.ellipse(-10, -10, 12, 5, -0.5, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Zzz quando dorme
+    if (dormindo) {
+      const z = (t * 0.0012) % 1;
+      ctx.fillStyle = `rgba(226,232,240,${0.9 - z * 0.8})`;
+      ctx.font = `bold ${12 + z * 6}px "Nunito", sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.fillText('z', 26 + z * 10, -30 - z * 22);
+      ctx.fillText('Z', 34 + z * 12, -44 - z * 26);
+    }
+    ctx.restore();
+  }
+
   public static drawCasinha(ctx: CanvasRenderingContext2D, x: number, baseY: number, noite: boolean, bioma: string): void {
     const w = Math.max(40, Math.min(64, baseY * 1.3));
     const h = w * 0.62;

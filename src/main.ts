@@ -24,6 +24,7 @@ import { aplicarModoDev, modoDevDaPagina } from './modo-dev';
 import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
+import { Mascote, sapoLiberado } from './mascote';
 import { VasosUi } from './vasos-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
@@ -126,6 +127,12 @@ if (draftDeckIds.length === 0) {
   draftDeckIds = ['peashooter'];
 }
 
+/** O sapo-cururu aparece depois de fechar o Mundo 1 (e fica para sempre). */
+function sincronizarMascote(): void {
+  const liberado = sapoLiberado(ProgressionManager.getProgress());
+  if (liberado && !engine.mascote) engine.mascote = new Mascote();
+  if (!liberado) engine.mascote = null;
+}
 // "♪ Luzes do Brejo": mostra o nome da faixa quando ela começa, sem roubar o lugar dos avisos do jogo
 const trilhaAviso = document.getElementById('trilha-aviso') as HTMLElement;
 let trilhaTimeout: number | null = null;
@@ -978,8 +985,13 @@ function openGameOverModal(won: boolean): void {
     derrotadosNaPartida: engine.tiposDerrotados
   });
   if (won && currentLevel && !currentLevel.evento) {
+    const tinhaSapo = engine.mascote !== null;
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
+    sincronizarMascote();
+    if (!tinhaSapo && engine.mascote) {
+      window.setTimeout(() => showToast('🐸 Um sapo-cururu adotou o seu jardim! Ele senta na cerca, comenta a partida, dorme à noite e engole um zumbi pequeno por fase.'), 600);
+    }
 
     if (result.isNewUnlock && result.unlockedPlantId) {
       showPlantRewardModal(result.unlockedPlantId, result.nextLevel);
@@ -1361,6 +1373,7 @@ const vasos = new VasosUi({
 
 // Start on Main Menu with Progression Info
 engine.paused = true;
+sincronizarMascote();
 updateMenuStageInfo();
 
 // Initialize & Start Game Loop
