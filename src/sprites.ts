@@ -16,6 +16,7 @@ const PLANT_IDS = [
   'plasma_mine',
   'wallnut',
   'musgo_esponja',
+  'mangue_vermelho',
   'aguape',
   'curupira',
   'abobora_brasa',
