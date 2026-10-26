@@ -29,6 +29,7 @@ import { MUNDO_MINIMO, MiniEventos, agendar, aleatorioDaFase } from './mini-even
 import { Mascote, sapoLiberado } from './mascote';
 import { VasosUi } from './vasos-ui';
 import { LadoZumbiUi } from './lado-zumbi-ui';
+import { VasosEditorUi } from './vasos-editor-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
@@ -1433,6 +1434,18 @@ const vasos = new VasosUi({
   toast: (msg) => showToast(msg),
   conquistas: (fim) => herbario.checarConquistas(fim)
 });
+
+// Editor de quebra-cabeças dos Vasos + jogar um código colado
+const vasosEditor = new VasosEditorUi({
+  jogar: (p) => vasos.comecar(p),
+  toast: (msg) => showToast(msg)
+});
+vasos.abrirEditor = () => vasosEditor.abrir();
+vasos.abrirColar = () => vasosEditor.abrirColar();
+vasos.aoTerminarCustom = (p, won) => {
+  if (p.titulo === 'Teste do editor') vasosEditor.terminouTeste(p, won);
+  else vasos.abrir();
+};
 
 // Modo "Eu sou o zumbi" (você comanda a horda; o Jardineiro defende)
 const ladoZumbi = new LadoZumbiUi({

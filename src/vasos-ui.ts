@@ -41,6 +41,11 @@ export class VasosUi {
   private readonly faixa: HTMLDivElement;
   private readonly btn = document.getElementById('menu-vasos-btn') as HTMLButtonElement | null;
   private readonly info = document.getElementById('menu-vasos-info');
+  /** Chamado ao fim de um quebra-cabeça feito no editor (ou colado de um código). */
+  public aoTerminarCustom: ((p: Puzzle, won: boolean, sobra: number) => void) | null = null;
+  /** Abre o editor (ligado pelo main). */
+  public abrirEditor: (() => void) | null = null;
+  public abrirColar: (() => void) | null = null;
 
   constructor(private readonly o: Opcoes) {
     this.progresso = lerProgresso();
@@ -106,9 +111,21 @@ export class VasosUi {
           <button class="close-btn" data-acao="fechar">✕</button>
         </div>
         <p class="vasos-intro">Sem sol, sem cerca e sem recarga: você recebe uns poucos <b>vasos</b> e decide onde cada um vai. Plante, aperte <b>Começar</b> e veja se a horda passa. Resolva com vasos sobrando para ganhar mais estrelas.</p>
+        <div class="vasos-acoes">
+          <button class="secondary-btn" data-acao="editor">✏️ Criar o meu</button>
+          <button class="secondary-btn" data-acao="colar">📥 Jogar um código</button>
+        </div>
         <div class="vasos-lista"></div>
       </div>`;
     m.querySelector('[data-acao="fechar"]')!.addEventListener('click', () => m.classList.add('hidden'));
+    m.querySelector('[data-acao="editor"]')!.addEventListener('click', () => {
+      m.classList.add('hidden');
+      this.abrirEditor?.();
+    });
+    m.querySelector('[data-acao="colar"]')!.addEventListener('click', () => {
+      m.classList.add('hidden');
+      this.abrirColar?.();
+    });
     (document.getElementById('app') ?? document.body).appendChild(m);
     return m;
   }
@@ -230,7 +247,8 @@ export class VasosUi {
     if (!p) return;
     const e = this.o.engine;
     const sobra = e.vasosRestantes();
-    const primeira = won ? registrarSolucao(this.progresso, p, sobra) : false;
+    const custom = p.numero === 0;
+    const primeira = won && !custom ? registrarSolucao(this.progresso, p, sobra) : false;
     this.o.conquistas?.({
       venceu: won,
       modo: 'vasos',
@@ -249,7 +267,7 @@ export class VasosUi {
     const denovo = document.getElementById('restart-btn') as HTMLButtonElement;
     document.getElementById('compartilhar-desafio-btn')?.remove();
 
-    const proximo = proximoPuzzle(p);
+    const proximo = custom ? null : proximoPuzzle(p);
     const estr = estrelas(sobra);
     if (won) {
       icone.textContent = estr === 3 ? '🏆' : '🪴';
@@ -258,8 +276,9 @@ export class VasosUi {
       span.className = 'vasos-estrelas-titulo';
       span.textContent = '★'.repeat(estr) + '☆'.repeat(3 - estr);
       titulo.appendChild(span);
-      sub.textContent =
-        sobra > 0
+      sub.textContent = custom
+        ? `Resolvido com ${sobra} ${sobra === 1 ? 'vaso sobrando' : 'vasos sobrando'}.`
+        : sobra > 0
           ? `Você resolveu com ${sobra} ${sobra === 1 ? 'vaso sobrando' : 'vasos sobrando'}.${primeira && proximo ? ` O quebra-cabeça ${proximo.numero} abriu.` : ''}`
           : `Todos os vasos foram usados.${proximo ? ' Dá para resolver com menos? Vale mais estrelas.' : ' Você fechou os dez quebra-cabeças!'}`;
     } else {
@@ -272,7 +291,7 @@ export class VasosUi {
       <div class="stat-item"><small>Zumbis Derrotados</small><strong>🧟 ${e.zombiesKilled}</strong></div>
       <div class="stat-item"><small>Vasos usados</small><strong>🪴 ${totalDeVasos(p) - sobra}/${totalDeVasos(p)}</strong></div>
       <div class="stat-item"><small>Sinergias</small><strong>⚡ ${e.totalCombos}</strong></div>
-      <div class="stat-item"><small>Quebra-cabeça</small><strong>🧩 ${p.numero}/${PUZZLES.length}</strong></div>`;
+      <div class="stat-item"><small>Quebra-cabeça</small><strong>🧩 ${custom ? 'código' : `${p.numero}/${PUZZLES.length}`}</strong></div>`;
 
     trocar.style.display = 'none';
     denovo.style.display = '';
@@ -282,7 +301,17 @@ export class VasosUi {
       trocar.style.display = '';
       denovo.textContent = '🔁 Jogar Novamente';
     };
-    if (won && proximo) {
+    if (custom) {
+      proxima.style.display = 'inline-block';
+      proxima.textContent = this.aoTerminarCustom ? '✏️ Voltar ao editor' : '🪴 Lista de quebra-cabeças';
+      proxima.onclick = () => {
+        fechar();
+        this.sair();
+        this.o.mostrarMenu();
+        if (this.aoTerminarCustom) this.aoTerminarCustom(p, won, sobra);
+        else this.abrir();
+      };
+    } else if (won && proximo) {
       proxima.style.display = 'inline-block';
       proxima.textContent = `▶️ Vaso ${proximo.numero}: ${proximo.titulo}`;
       proxima.onclick = () => {
