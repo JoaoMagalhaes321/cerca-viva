@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { FAIXAS, frequencia, lerFaixa, lerPadrao } from '../src/musica';
+import { temaDoBioma, temaDoChefe } from '../src/audio';
 
 describe('Trilha sonora', () => {
   it('converte notas em frequência', () => {
@@ -10,7 +11,7 @@ describe('Trilha sonora', () => {
     expect(() => frequencia('H2')).toThrow();
   });
 
-  it('as três faixas leem sem erro e todas as vozes têm o mesmo tamanho', () => {
+  it('todas as faixas leem sem erro e todas as vozes têm o mesmo tamanho', () => {
     for (const faixa of Object.values(FAIXAS)) {
       const lida = lerFaixa(faixa);
       expect(lida.totalPassos % faixa.passosPorCompasso).toBe(0);
@@ -24,6 +25,23 @@ describe('Trilha sonora', () => {
       expect(segundos).toBeGreaterThan(15);
       expect(segundos).toBeLessThan(60);
     }
+  });
+
+  it('há um tema para cada mundo e um para cada chefe', () => {
+    expect(Object.keys(FAIXAS)).toHaveLength(11);
+    expect(temaDoBioma('front_yard', false)).toBe('dia');
+    expect(temaDoBioma('front_yard', true)).toBe('noite');
+    expect(temaDoBioma('bioluminescent_swamp', true)).toBe('pantano');
+    expect(temaDoBioma('igarape', false)).toBe('igarape');
+    expect(temaDoBioma('mangue', false)).toBe('mangue');
+    expect(temaDoBioma('serra', false)).toBe('serra');
+    expect(temaDoBioma('assombrado', true)).toBe('assombrado');
+    expect(temaDoChefe('front_yard')).toBe('chefe');
+    expect(temaDoChefe('igarape')).toBe('chefe_mata');
+    expect(temaDoChefe('assombrado')).toBe('chefe_cuca');
+    expect(temaDoChefe('serra')).toBe('chefe_vento');
+    const titulos = new Set(Object.values(FAIXAS).map((f) => f.titulo));
+    expect(titulos.size).toBe(11);
   });
 
   it('"-" segura a nota e "." corta', () => {

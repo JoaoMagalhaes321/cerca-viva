@@ -123,6 +123,16 @@ if (draftDeckIds.length === 0) {
   draftDeckIds = ['peashooter'];
 }
 
+// "♪ Luzes do Brejo": mostra o nome da faixa quando ela começa, sem roubar o lugar dos avisos do jogo
+const trilhaAviso = document.getElementById('trilha-aviso') as HTMLElement;
+let trilhaTimeout: number | null = null;
+sound.onFaixa = (titulo) => {
+  trilhaAviso.textContent = `♪ ${titulo}`;
+  trilhaAviso.classList.remove('hidden');
+  if (trilhaTimeout) window.clearTimeout(trilhaTimeout);
+  trilhaTimeout = window.setTimeout(() => trilhaAviso.classList.add('hidden'), 4000);
+};
+
 function showToast(msg: string): void {
   toastBanner.textContent = msg;
   toastBanner.classList.remove('hidden');
