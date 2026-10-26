@@ -1,0 +1,29 @@
+/* Minha Casa */
+.casa-card { max-width: 760px; }
+.casa-badge { background: linear-gradient(90deg, #c2452b, #a16207); color: #fff7ed; }
+.casa-grade { display: grid; grid-template-columns: 330px 1fr; gap: 14px; }
+.casa-previa-caixa { display: flex; flex-direction: column; align-items: center; gap: 6px; }
+.casa-previa { width: 100%; max-width: 320px; border-radius: 14px; border: 2px solid rgba(148, 163, 184, 0.35); }
+.casa-saldo { font-size: 0.85rem; font-weight: 800; color: #fde68a; }
+.casa-abas { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; }
+.casa-aba {
+  font: inherit; font-size: 0.74rem; font-weight: 700; padding: 5px 10px; border-radius: 999px; cursor: pointer;
+  border: 1.5px solid rgba(148, 163, 184, 0.35); background: rgba(30, 41, 59, 0.9); color: #e2e8f0;
+}
+.casa-aba.ativa { border-color: #facc15; color: #fde68a; }
+.casa-itens { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 8px; }
+.casa-item {
+  display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 10px 6px; border-radius: 12px; cursor: pointer;
+  font: inherit; color: #f1f5f9; border: 2px solid rgba(148, 163, 184, 0.35); background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+}
+.casa-item:hover { border-color: #a3e635; }
+.casa-item.usando { border-color: #facc15; box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.3); }
+.casa-item.caro { opacity: 0.55; }
+.casa-item strong { font-size: 0.74rem; }
+.casa-item small { font-size: 0.66rem; color: #94a3b8; }
+.casa-amostra { width: 34px; height: 22px; border-radius: 6px; border: 2px solid #1f2937; }
+.casa-icone { font-size: 1.4rem; line-height: 1; }
+.casa-ajuda { display: block; font-size: 0.66rem; color: #94a3b8; margin-top: 8px; }
+@media (max-width: 680px) {
+  .casa-grade { grid-template-columns: 1fr; }
+}

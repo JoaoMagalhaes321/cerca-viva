@@ -33,6 +33,7 @@ import { VasosEditorUi } from './vasos-editor-ui';
 import { DueloUi } from './duelo-ui';
 import { BossRushUi } from './boss-rush-ui';
 import { DificuldadeUi } from './dificuldade-ui';
+import { CasaUi } from './casa-ui';
 import { eliteAjustada, inteligenciaAjustada, marcarAventuraConcluida, sementesAjustadas } from './dificuldade';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
@@ -1453,6 +1454,18 @@ const modos = new Modos({
 const jardimZen = new JardimZen(plantaDeRetrato, (msg) => showToast(msg));
 
 // Tela de preparação antes de cada fase
+// Minha Casa: cosméticos comprados com sementes raras
+new CasaUi({
+  saldo: () => sementes.total,
+  gastar: (n) => {
+    sementes.total -= n;
+    sementes.gastas += n;
+    salvarSementes(sementes);
+    atualizarSementesNoMenu();
+  },
+  toast: (msg) => showToast(msg)
+});
+
 // Dificuldade da Aventura (Fácil, Normal, Difícil, Pesadelo)
 const dificuldade = new DificuldadeUi((msg) => showToast(msg));
 
