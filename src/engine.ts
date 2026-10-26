@@ -31,6 +31,7 @@ import { CENAS, Vfx, criarCena, desenharVfx } from './vfx';
 import { Cenario, tocarTrovao } from './cenario';
 import { chance as chanceIa, escolherLinha, linhaVizinhaMaisVazia, nivelPorOnda } from './inteligencia';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
+import { REACAO, Reacao, TipoReacao, novaReacao } from './reacoes';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
@@ -134,6 +135,18 @@ export interface ZombieEntity {
   capataz?: boolean;
   /** Quantos truques a Cuca já fez (define o próximo). */
   cucaTruques?: number;
+  /** Reação momentânea a um combo (eletrocussão, choque térmico…): só desenho, ver reacoes.ts. */
+  reacao?: Reacao;
+}
+
+/** Onda de impacto de um combo: um anel que cresce e some (só desenho). */
+export interface OndaDeImpacto {
+  x: number;
+  y: number;
+  raio: number;
+  life: number;
+  maxLife: number;
+  color: string;
 }
 
 export type EliteZumbi = 'ferro' | 'gigante' | 'dupla' | 'veloz';
@@ -363,6 +376,7 @@ export class GameEngine {
   public floatingTexts: FloatingText[] = [];
   public falas: Fala[] = [];
   public arcs: LightningArc[] = [];
+  public ondas: OndaDeImpacto[] = [];
   public particles: Particle[] = [];
   public debris: PhysicsDebris[] = [];
   public curupiras: Curupira[] = [];
@@ -644,6 +658,7 @@ export class GameEngine {
     this.floatingTexts = [];
     this.falas = [];
     this.arcs = [];
+    this.ondas = [];
     this.particles = [];
     this.debris = [];
     this.curupiras = [];
@@ -1725,6 +1740,10 @@ export class GameEngine {
       if (z.chilledTimer > 0) z.chilledTimer = Math.max(0, z.chilledTimer - dt);
       if (z.frozenTimer > 0) z.frozenTimer = Math.max(0, z.frozenTimer - dt);
       if (z.stunTimer > 0) z.stunTimer = Math.max(0, z.stunTimer - dt);
+      if (z.reacao) {
+        z.reacao.timer -= dt;
+        if (z.reacao.timer <= 0) z.reacao = undefined;
+      }
 
       if (z.burnTimer > 0) {
         z.burnTimer = Math.max(0, z.burnTimer - dt);
@@ -2021,6 +2040,10 @@ export class GameEngine {
     for (let i = this.arcs.length - 1; i >= 0; i--) {
       this.arcs[i].life -= dt;
       if (this.arcs[i].life <= 0) this.arcs.splice(i, 1);
+    }
+    for (let i = this.ondas.length - 1; i >= 0; i--) {
+      this.ondas[i].life -= dt;
+      if (this.ondas[i].life <= 0) this.ondas.splice(i, 1);
     }
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -2381,6 +2404,7 @@ export class GameEngine {
         target.chilledTimer > 0
       ) {
         this.registerCombo('elemental_gale', target.x, target.row);
+        this.reagir(target, 'vendaval');
         for (const other of this.zombies) {
           if (other.row === target.row && other.id !== target.id && Math.abs(other.x - target.x) <= 2.4) {
             if (target.burnTimer > 0) other.burnTimer = 5.0;
@@ -2397,6 +2421,7 @@ export class GameEngine {
       if (target.wetTimer > 0) {
         this.registerCombo('electro_chain', target.x, target.row);
         sound.playSynergyCombo('electro');
+        this.reagir(target, 'eletro');
         const bonusMult = this.unlockedMutations.has('superconductor') ? 1.45 : 1.0;
         finalDamage = Math.floor(baseDamage * 1.65 * bonusMult);
 
@@ -2436,6 +2461,7 @@ export class GameEngine {
               jumps++;
               other.hp -= Math.floor(baseDamage * 0.9 * bonusMult);
               other.hitFlash = 1.0;
+              other.reacao = novaReacao('eletro');
               if (this.unlockedMutations.has('superconductor')) {
                 other.stunTimer = 0.5;
               }
@@ -2461,6 +2487,7 @@ export class GameEngine {
       if (target.wetTimer > 0 && target.frozenTimer <= 0) {
         this.registerCombo('flash_freeze', target.x, target.row);
         sound.efeito('congelar', 0.2);
+        this.reagir(target, 'gelo');
         target.frozenTimer = 3.2;
         target.wetTimer = 0;
         finalDamage += 20;
@@ -2472,6 +2499,7 @@ export class GameEngine {
       if (target.frozenTimer > 0 || target.chilledTimer > 0) {
         this.registerCombo('thermal_shock', target.x, target.row);
         sound.playSynergyCombo('thermal');
+        this.reagir(target, 'choque');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.2 : 1.45;
         finalDamage = Math.floor(baseDamage * 2.1);
         target.frozenTimer = 0;
@@ -2487,12 +2515,14 @@ export class GameEngine {
             if (dist <= radius) {
               other.hp -= 55;
               other.hitFlash = 1.0;
+              other.reacao = novaReacao('choque');
             }
           }
         }
       } else if (target.poisonTimer > 0) {
         this.registerCombo('bio_blast', target.x, target.row);
         sound.playSynergyCombo('thermal');
+        this.reagir(target, 'bio');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.3 : 1.6;
         finalDamage = Math.floor(baseDamage * 2.3);
         target.poisonTimer = 0;
@@ -3323,6 +3353,16 @@ export class GameEngine {
     });
   }
 
+  /** Marca a reação visual do zumbi a um combo e solta a onda de impacto (ver reacoes.ts). */
+  private reagir(z: ZombieEntity, tipo: TipoReacao): void {
+    z.reacao = novaReacao(tipo);
+    // A cena do combo (vfx.ts) já desenha o anel; a onda própria só volta com REACAO.ondaComCena.
+    if (acessibilidade.reduzirEfeitos || !REACAO.ondaComCena) return;
+    const onda = REACAO.onda[tipo];
+    if (this.ondas.length >= 12) this.ondas.shift();
+    this.ondas.push({ x: z.x, y: z.row + 0.55, raio: onda.raio, life: onda.dura, maxLife: onda.dura, color: onda.cor });
+  }
+
   private registerCombo(synergyId: string, x = 4.5, y = 2): void {
     this.totalCombos++;
     this.gravador.combo(this.tempoDePartida);
@@ -3871,6 +3911,28 @@ export class GameEngine {
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.lineWidth = 3.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 8b. Ondas de impacto dos combos (anel que cresce e some)
+    for (const o of this.ondas) {
+      const t = 1 - o.life / o.maxLife;
+      const r = o.raio * this.cellW * (0.25 + 0.75 * t);
+      ctx.save();
+      ctx.translate(this.boardLeft + o.x * this.cellW, this.boardTop + o.y * this.cellH);
+      ctx.scale(1, 0.55);
+      ctx.globalAlpha = (1 - t) * 0.85;
+      ctx.strokeStyle = o.color;
+      ctx.lineWidth = 6 * (1 - t) + 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = (1 - t) * 0.35;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
