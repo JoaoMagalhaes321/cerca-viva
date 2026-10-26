@@ -55,28 +55,249 @@ window.BOARD = {
   },
   "cards": [
     {
+      "id": "sou-o-zumbi",
+      "title": "Modo \"Eu sou o zumbi\": a horda contra o Jardineiro",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: modo novo no menu em que você comanda a horda (cartas de zumbi pagas com cérebros, toque na linha invoca) contra um Jardineiro automático em 5 jardins; invadir a casa é a vitória. Progresso e recordes próprios.",
+      "delivered": [
+        "Modo Eu sou o zumbi (f753ecb, 26/10)",
+        "Main trazida, conflito com a Nêmesis resolvido (589a292, 26/10)",
+        "Mergeado na main por você (PR #64, eeba334, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "lado-zumbi.ts",
+          "path": "src/lado-zumbi.ts"
+        },
+        {
+          "label": "PR #64",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/64"
+        }
+      ]
+    },
+    {
+      "id": "lembrete-zen",
+      "title": "Lembrete do Jardim Zen e vibração no ritmo dos combos",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: opção \"Lembrar de regar todo dia\" com hora escolhida, por notificação local só no app Android (no navegador fica desligada com aviso); tocar na notificação abre o Jardim Zen. A vibração dos combos cresce com a sequência, com opção Vibração na acessibilidade.",
+      "delivered": [
+        "Lembrete + vibração e testes (09d475c, 26/10)",
+        "Mergeado na main por você (PR #65, dfa8553, 26/10)"
+      ],
+      "pending": [
+        "Notificação no celular NÃO MEDIDA daqui: só dá para conferir no app instalado"
+      ],
+      "links": [
+        {
+          "label": "lembrete.ts",
+          "path": "src/lembrete.ts"
+        },
+        {
+          "label": "PR #65",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/65"
+        }
+      ]
+    },
+    {
+      "id": "nemesis",
+      "title": "Nêmesis: o zumbi que venceu você volta",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: o zumbi que comeu sua planta ou entrou na casa na Aventura vira Nêmesis, com nome, cicatriz, 1,5× a 3× de vida conforme as derrotas, e volta numa fase seguinte; vencê-lo dá sol e sementes raras em dobro e a conquista \"Acerto de contas\".",
+      "delivered": [
+        "Nêmesis + testes (4446112, 26/10)",
+        "Main trazida, conflitos com sapo, vasos e Boitatá resolvidos (ae5e9f7, 26/10)",
+        "Mergeado na main por você (PR #63, feb9c30, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "nemesis.ts",
+          "path": "src/nemesis.ts"
+        },
+        {
+          "label": "PR #63",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/63"
+        }
+      ]
+    },
+    {
+      "id": "sapo",
+      "title": "Sapo-cururu: mascote da partida",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: liberado ao fechar o Mundo 1, o sapo comenta a partida, pula de linha, dorme à noite e engole com a língua um zumbi pequeno (Comum/Corredor sem mutação, até 300 de vida) por fase.",
+      "delivered": [
+        "Sapo-cururu + testes (ad7b225, 26/10)",
+        "Main trazida (3302588, 26/10)",
+        "Mergeado na main por você (PR #59, 814d4f7, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "mascote.ts",
+          "path": "src/mascote.ts"
+        },
+        {
+          "label": "PR #59",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/59"
+        }
+      ]
+    },
+    {
+      "id": "vasos",
+      "title": "Vasos: 10 fases-quebra-cabeça",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: modo com 10 fases de tabuleiro fixo e vasos contados para quebrar, com tela própria e conquistas.",
+      "delivered": [
+        "Vasos (3094808, 26/10)",
+        "Mergeado na main por você (PR #58, 4f1c843, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "vasos.ts",
+          "path": "src/vasos.ts"
+        },
+        {
+          "label": "PR #58",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/58"
+        }
+      ]
+    },
+    {
+      "id": "quadrinhos",
+      "title": "Quadrinhos entre mundos",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: prólogo, um capítulo em quadrinhos por mundo e a lista Histórias no menu para rever.",
+      "delivered": [
+        "Quadrinhos (eddb361, 26/10)",
+        "Mergeado na main por você (PR #56, 7adb8eb, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "quadrinhos.ts",
+          "path": "src/quadrinhos.ts"
+        },
+        {
+          "label": "PR #56",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/56"
+        }
+      ]
+    },
+    {
+      "id": "mundo5-serra",
+      "title": "Mundo 5 · Serra do Vento, com o chefe Boitatá",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: mundo novo com degraus, rajadas de vento e o chefe Boitatá.",
+      "delivered": [
+        "Mundo 5 (2dafd23, 26/10)",
+        "Mergeado na main por você (PR #55, fd32d93, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "levels.ts",
+          "path": "src/levels.ts"
+        },
+        {
+          "label": "PR #55",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/55"
+        }
+      ]
+    },
+    {
+      "id": "trilhas",
+      "title": "Trilha por mundo e tema por chefe",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: 8 faixas originais novas (uma por mundo, Halloween e temas de Mapinguari, Cuca e Boitatá), instrumento flauta e aviso \"♪ nome da faixa\" quando a música troca.",
+      "delivered": [
+        "Trilhas + testes (319790b, 26/10)",
+        "Mergeado na main por você (PR #57, db56ace, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "musica.ts",
+          "path": "src/musica.ts"
+        },
+        {
+          "label": "PR #57",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/57"
+        }
+      ]
+    },
+    {
+      "id": "sementes-nivel",
+      "title": "Sementes raras, nível das plantas e Desafio da Semana",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: sementes raras sobem as plantas do nível 1 ao 3; Desafio da Semana com 12 ondas iguais para todos, pontos, código verificável para compartilhar e ranking local com os códigos dos amigos.",
+      "delivered": [
+        "Sementes raras e nível (de34dae, 26/10)",
+        "Desafio da Semana (5b314ef, 26/10)",
+        "Mergeado na main por você (PR #54, 2739f30, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "semanal.ts",
+          "path": "src/semanal.ts"
+        },
+        {
+          "label": "PR #54",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/54"
+        }
+      ]
+    },
+    {
       "id": "efeitos-combos",
       "title": "Reações dos zumbis aos elementos e aos combos",
       "domain": "jogo",
-      "column": "qas",
-      "env": "branch",
+      "column": "prod",
+      "env": "main",
       "updated": "2026-10-26",
-      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio por cima do zumbi (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação no próprio zumbi (eletrocussão com silhueta piscando, tremida). Já traz a main com as cenas de combo do PR #47; a onda de impacto própria ficou desligada para não repetir o anel das cenas (D-20261026-5). Só desenho, nada de dano ou tempo muda. Em dia com a main de 26/10 (zumbis vivos, animações de vida, zumbis inteligentes e cenário vivo): o clarão ao levar dano fica só pela silhueta, sem o branco em dobro (D-20261026-7). Build ok, 148 testes; conferido no Chromium.",
+      "summary": "Pedido seu (26/10). Na main: cada estado tem desenho próprio por cima do zumbi (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação no próprio zumbi (eletrocussão com silhueta piscando, tremida). A onda de impacto própria fica desligada para não repetir o anel das cenas de combo (D-20261026-5) e o clarão de dano vem só da silhueta (D-20261026-7). Só desenho, nada de dano ou tempo muda.",
       "delivered": [
         "Reações + 4 testes (3594ecd, 26/10)",
         "Conferido no Chromium com os 5 estados e 2 reações ao mesmo tempo (26/10)",
         "Main trazida (cenas de combo, PR #47), conflito em engine.ts resolvido e onda repetida desligada + 1 teste (559720c, 26/10)",
-        "Main de 26/10 trazida, conflito em renderer.ts resolvido (404a221, 26/10)"
+        "Main de 26/10 trazida, conflito em renderer.ts resolvido (404a221, 26/10)",
+        "Mergeado na main por você (PR #61, a2cbdef, 26/10)"
       ],
       "pending": [
-        "Seu merge de claude/efeitos-combos na main, depois da mundo4-recompensas: as duas conflitam entre si em src/engine.ts. Sem conflito com a main de hoje; depois do primeiro merge, a próxima rodada traz a main de novo",
         "Desempenho no celular NÃO MEDIDO: se ficar lento com muitos zumbis coloridos, me diga"
       ],
       "links": [
         {
           "label": "reacoes.ts",
-          "path": "src/reacoes.ts",
-          "branch": "claude/efeitos-combos"
+          "path": "src/reacoes.ts"
         },
         {
           "label": "Relatório",
@@ -92,7 +313,59 @@ window.BOARD = {
           "label": "Relatório (main de 26/10)",
           "path": "docs/status/relatorios/2026-10-26-sincroniza-main.md",
           "branch": "claude/quadro"
+        },
+        {
+          "label": "PR #61",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/61"
         }
+      ]
+    },
+    {
+      "id": "mundo4-recompensas",
+      "title": "Recompensa do Mundo 4 (Mangue da Maré)",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Na main. Planta nova Mangue-Vermelho 🌳, liberada ao vencer a Fase 4-5: cresce na terra e na água (não afoga na maré), as raízes deixam os zumbis à frente 40% mais lentos e o Zumbi Siri preso nelas não troca de linha. Superpoder Raízes da Maré; floração Raizal ou Mangue Ostreiro (D-20261026-1, regra do jogo). Quem já venceu a 4-5 ganha jogando a 4-5 de novo (D-20261026-2). As raízes também freiam zumbi de bando e o apressado pelo Capataz (D-20261026-8).",
+      "pending": [
+        "Balanceamento em partida longa NÃO MEDIDO: se achar forte/fraco, troque os números em src/mangue-vermelho.ts ou comente no card"
+      ],
+      "links": [
+        {
+          "label": "mangue-vermelho.ts",
+          "path": "src/mangue-vermelho.ts"
+        },
+        {
+          "label": "Relatório",
+          "path": "docs/status/relatorios/2026-10-26-mundo4-recompensas.md",
+          "branch": "claude/quadro"
+        },
+        {
+          "label": "Captura (jogo)",
+          "path": "docs/status/relatorios/img/2026-10-26-mangue-jogo.png",
+          "branch": "claude/quadro"
+        },
+        {
+          "label": "Captura (sprites)",
+          "path": "docs/status/relatorios/img/2026-10-26-mangue-sprites.png",
+          "branch": "claude/quadro"
+        },
+        {
+          "label": "Relatório (main de 26/10)",
+          "path": "docs/status/relatorios/2026-10-26-sincroniza-main.md",
+          "branch": "claude/quadro"
+        },
+        {
+          "label": "PR #62",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/62"
+        }
+      ],
+      "delivered": [
+        "Mangue-Vermelho + 6 testes (4022fe0, 26/10)",
+        "Conferido no Chromium: planta na maré da 4-5 e segura o Siri (\"PRESO NAS RAÍZES\") (26/10)",
+        "Main de 26/10 trazida, conflito em engine.ts resolvido (aceeb07, 26/10)",
+        "Mergeado na main por você (PR #62, 765fa10, 26/10)"
       ]
     },
     {
@@ -322,51 +595,6 @@ window.BOARD = {
         "Musgo-Esponja + fechaMundo + sprites + README + 6 testes (59c9ec6, 25/10)",
         "Conferido no Chromium com vite preview: jogo abre sem erro, planta no Almanaque, progresso antigo recebe a planta (25/10)",
         "Mergeado na main por você (PR #45, 62889ac, 25/10)"
-      ]
-    },
-    {
-      "id": "mundo4-recompensas",
-      "title": "Recompensa do Mundo 4 (Mangue da Maré)",
-      "domain": "jogo",
-      "column": "qas",
-      "env": "branch",
-      "updated": "2026-10-26",
-      "summary": "Pronto para revisar. Planta nova Mangue-Vermelho 🌳, liberada ao vencer a Fase 4-5: cresce na terra e na água (não afoga na maré), as raízes deixam os zumbis à frente 40% mais lentos e o Zumbi Siri preso nelas não troca de linha. Superpoder Raízes da Maré; floração Raizal ou Mangue Ostreiro (D-20261026-1, regra do jogo). Quem já venceu a 4-5 ganha jogando a 4-5 de novo (D-20261026-2). Em dia com a main de 26/10: as raízes também freiam zumbi de bando e o apressado pelo Capataz (D-20261026-8). Build ok, 149 testes passando.",
-      "pending": [
-        "Seu merge de claude/mundo4-recompensas na main, de preferência antes da efeitos-combos (sem conflito com a main de hoje)",
-        "Balanceamento em partida longa NÃO MEDIDO: se achar forte/fraco, troque os números em src/mangue-vermelho.ts ou comente no card"
-      ],
-      "links": [
-        {
-          "label": "branch",
-          "path": "src/mangue-vermelho.ts",
-          "branch": "claude/mundo4-recompensas"
-        },
-        {
-          "label": "Relatório",
-          "path": "docs/status/relatorios/2026-10-26-mundo4-recompensas.md",
-          "branch": "claude/quadro"
-        },
-        {
-          "label": "Captura (jogo)",
-          "path": "docs/status/relatorios/img/2026-10-26-mangue-jogo.png",
-          "branch": "claude/quadro"
-        },
-        {
-          "label": "Captura (sprites)",
-          "path": "docs/status/relatorios/img/2026-10-26-mangue-sprites.png",
-          "branch": "claude/quadro"
-        },
-        {
-          "label": "Relatório (main de 26/10)",
-          "path": "docs/status/relatorios/2026-10-26-sincroniza-main.md",
-          "branch": "claude/quadro"
-        }
-      ],
-      "delivered": [
-        "Mangue-Vermelho + 6 testes (4022fe0, 26/10)",
-        "Conferido no Chromium: planta na maré da 4-5 e segura o Siri (\"PRESO NAS RAÍZES\") (26/10)",
-        "Main de 26/10 trazida, conflito em engine.ts resolvido (aceeb07, 26/10)"
       ]
     },
     {
