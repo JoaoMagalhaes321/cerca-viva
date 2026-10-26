@@ -564,6 +564,7 @@ export class GameEngine {
 
   public initBoard(biome?: BiomeDefinition, deckIds?: string[], level?: LevelConfig): void {
     if (biome) this.currentBiome = biome;
+    sound.bioma = this.currentBiome.id; // a trilha escolhe o tema do mundo (e do chefe) pelo bioma
     this.currentLevel = level || null;
     this.waveDirector = null;
     this.weatherLocked = false;
