@@ -2,7 +2,7 @@
 // Plantas e zumbis são sprites SVG (public/sprites): estilo cartoon de dia e luz noturna nas fases escuras.
 // O gramado e a cerca viva continuam desenhados em código.
 
-import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engine';
+import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant, PULO_DURACAO } from './engine';
 import { CERCA, CercaViva } from './cerca';
 import { MUDA, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { getSprite, SpriteImage } from './sprites';
@@ -16,6 +16,8 @@ const brilhos = new Map<string, HTMLCanvasElement>();
 export class CharacterRenderer {
   /** Efeitos extras (brilhos das plantas). O motor desliga quando o aparelho não aguenta. */
   public static efeitos = true;
+  /** Rajada de vento do cenário (0 a 1): inclina as plantas. */
+  public static vento = 0;
 
   /** Textura de brilho na cor pedida (alfa em hexa, ex.: '44'), pronta para drawImage. */
   public static brilho(cor: string, alfa = '66'): HTMLCanvasElement {
@@ -63,6 +65,12 @@ export class CharacterRenderer {
     ctx.save();
     ctx.fillStyle = even ? pal.a : pal.b;
     ctx.fillRect(x, y, w, h);
+    // Luz vindo de cima à esquerda: cada casa um pouco mais clara no canto e mais escura embaixo à direita
+    const luz = ctx.createLinearGradient(x, y, x + w, y + h);
+    luz.addColorStop(0, dark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.10)');
+    luz.addColorStop(1, dark ? 'rgba(0,0,0,0.10)' : 'rgba(42,36,22,0.07)');
+    ctx.fillStyle = luz;
+    ctx.fillRect(x, y, w, h);
 
     // Faixa clara no topo e sombra na base de cada casa
     ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.09)';
@@ -85,11 +93,30 @@ export class CharacterRenderer {
       return seed / 0x7fffffff;
     };
 
+    // Mancha de terra ou pedrinhas em algumas casas
+    if (rnd() < 0.22) {
+      const px = x + w * (0.2 + rnd() * 0.6);
+      const py = y + h * (0.3 + rnd() * 0.5);
+      ctx.fillStyle = dark ? 'rgba(0,0,0,0.18)' : 'rgba(120, 90, 40, 0.16)';
+      ctx.beginPath();
+      ctx.ellipse(px, py, w * 0.12, h * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = dark ? '#2d4a44' : '#b7b09a';
+      ctx.strokeStyle = dark ? '#0b1f1c' : '#6b6452';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 2; i++) {
+        ctx.beginPath();
+        ctx.ellipse(px + (rnd() - 0.5) * w * 0.18, py + (rnd() - 0.5) * h * 0.08, 2.6, 1.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
+
     ctx.strokeStyle = pal.tuft;
     ctx.lineWidth = Math.max(1.6, w * 0.022);
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
-    for (let i = 0; i < 3; i++) {
+    for (let i = 0; i < 4; i++) {
       const tx = x + w * (0.15 + rnd() * 0.7);
       const ty = y + h * (0.3 + rnd() * 0.55);
       const k = w * 0.045;
@@ -116,18 +143,23 @@ export class CharacterRenderer {
         ctx.fill();
         ctx.shadowBlur = 0;
       } else {
-        // Florzinha
-        ctx.fillStyle = '#fff6c9';
+        // Florzinha de cinco pétalas, em cores variadas
+        const cores = ['#fff6c9', '#ffc1d9', '#c9e4ff', '#ffe08a'];
+        ctx.fillStyle = cores[Math.floor(rnd() * cores.length)];
         ctx.strokeStyle = '#2a2416';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.arc(fx, fy, r, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
+        ctx.lineWidth = 1.1;
+        for (let q = 0; q < 5; q++) {
+          const a = (q / 5) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.ellipse(fx + Math.cos(a) * r * 0.9, fy + Math.sin(a) * r * 0.9, r * 0.75, r * 0.5, a, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
         ctx.fillStyle = '#ffb020';
         ctx.beginPath();
-        ctx.arc(fx, fy, r * 0.42, 0, Math.PI * 2);
+        ctx.arc(fx, fy, r * 0.5, 0, Math.PI * 2);
         ctx.fill();
+        ctx.stroke();
       }
     }
     ctx.restore();
@@ -584,10 +616,16 @@ export class CharacterRenderer {
     const estagio = estagioDaPlanta(p.idade, p.caminho);
     const s = (cellH / 92) * (1 + p.scaleKick * 0.7) * (estagio === 'muda' ? MUDA.tamanho : 1);
     const t = p.animPhase;
-    const sway = Math.sin(t) * 3.2;
+    const sway = Math.sin(t) * 3.2 + CharacterRenderer.vento * (8 + Math.sin(t * 4) * 3);
     const breathe = 1 + Math.sin(t * 1.3) * 0.035;
 
     ctx.save();
+
+    // Sombra macia no chão, embaixo da planta
+    ctx.fillStyle = isNight ? 'rgba(0, 0, 0, 0.28)' : 'rgba(30, 50, 12, 0.22)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 2, cy + cellH * 0.3, cellW * 0.26 * (1 + p.scaleKick * 0.2), cellH * 0.07, 0, 0, Math.PI * 2);
+    ctx.fill();
 
     // Brilho elemental (supremo, noite, elétrico, fogo e mina armada).
     // No modo econômico só o brilho do supremo continua.
@@ -609,8 +647,11 @@ export class CharacterRenderer {
       );
     }
 
-    ctx.translate(cx, cy + cellH * 0.18);
-    ctx.scale(s, s * breathe);
+    // Vida: pulinho de vez em quando e esmagar-e-esticar ao atirar (recua e alarga, depois volta)
+    const pulo = Math.pow(Math.max(0, Math.sin(t * 0.55 + p.id)), 16);
+    const kick = p.scaleKick;
+    ctx.translate(cx, cy + cellH * 0.18 - pulo * cellH * 0.06);
+    ctx.scale(s * (1 + kick * 0.28 - pulo * 0.05), s * breathe * (1 - kick * 0.22 + pulo * 0.08));
 
     const img = getSprite(p.def.id, isNight);
     if (img) {
@@ -735,11 +776,13 @@ export class CharacterRenderer {
     const armBob = z.isEating
       ? Math.sin(performance.now() * 0.025) * 9
       : Math.cos(walk * 1.2) * 4;
-    const bodyTilt = z.isEating
+    // Mastigando: a cabeça/corpo dá cabeçadas curtas no ritmo da mordida
+    const mastiga = z.isEating ? Math.max(0, Math.sin(performance.now() * 0.02)) * 0.06 : 0;
+    const bodyTilt = (z.isEating
       ? -0.1
       : z.variant === 'cyber_sprinter'
         ? -0.05
-        : -0.03;
+        : -0.03) - mastiga;
     const spec = ZOMBIE_SPRITES[z.variant] ?? ZOMBIE_SPRITES.basic;
     const k = spec.k;
 
@@ -750,7 +793,8 @@ export class CharacterRenderer {
       ctx.clip();
     }
 
-    const lift = isZomboss
+    const pulo = (z.pulandoTimer ?? 0) > 0 ? Math.sin((1 - z.pulandoTimer! / PULO_DURACAO) * Math.PI) * -cellH * 0.4 : 0;
+    const lift = pulo !== 0 ? pulo : isZomboss
       ? Math.sin(walk * 1.4) * 3
       : canoeiro
         ? Math.sin(walk * 0.9) * 1.8
@@ -758,7 +802,14 @@ export class CharacterRenderer {
           ? 0
           : Math.abs(Math.sin(walk)) * -4.5;
     ctx.translate(zx, zy + cellH * 0.24 + lift + afunda);
-    ctx.scale(baseScale * (z.confusoTimer > 0 ? -1 : 1), baseScale);
+    // Vida: esmaga no passo (ombros caem, corpo alarga) e recua ao levar dano
+    const passo = z.isEating || isZomboss || canoeiro ? 0 : Math.abs(Math.sin(walk));
+    const dano = z.hitFlash;
+    ctx.scale(
+      baseScale * (z.confusoTimer > 0 ? -1 : 1) * (1 + passo * 0.03 + dano * 0.06),
+      baseScale * (1 - passo * 0.045 - dano * 0.08)
+    );
+    if (dano > 0) ctx.rotate(dano * 0.08);
 
     const place = (ctx: CanvasRenderingContext2D, img: SpriteImage): void => {
       ctx.drawImage(img, -spec.ox * k, -spec.feet * k, spec.w * k, spec.h * k);
@@ -804,7 +855,7 @@ export class CharacterRenderer {
             rotateAround(ctx, px, py, canoeiro ? Math.sin(walk * 1.1) * 0.28 : armBob * 0.02);
             place(ctx, arm);
             if (z.variant === 'pyro_scavenger' && !doused) {
-              this.drawPilotFlame(ctx, (9 - spec.ox) * k, (114 - spec.feet) * k);
+              this.drawPilotFlame(ctx, (2 - spec.ox) * k, (118 - spec.feet) * k);
             }
             ctx.restore();
           }
@@ -915,6 +966,20 @@ export class CharacterRenderer {
       this.drawChamas(ctx, spec.halfW, top, agora, reduzido);
     }
 
+    if (z.capataz) {
+      // Apito do Capataz em cima da cabeça, com um anel amarelo
+      ctx.save();
+      if (z.confusoTimer > 0) ctx.scale(-1, 1);
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, spec.halfW * 1.1, 6, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = '15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📯', 0, top - 8 + Math.sin(performance.now() * 0.006) * 2);
+      ctx.restore();
+    }
     if (z.elite) {
       // Selo da mutação em cima da cabeça
       ctx.save();
@@ -1093,6 +1158,74 @@ export class CharacterRenderer {
   }
 
   /** Pegada ao contrário (aponta para trás, de onde o Curupira veio). */
+  /** Casinha do jardineiro: telhado, porta, janela (acesa à noite) e chaminé; cabe no canto acima do caminho. */
+  public static drawCasinha(ctx: CanvasRenderingContext2D, x: number, baseY: number, noite: boolean, bioma: string): void {
+    const w = Math.max(40, Math.min(64, baseY * 1.3));
+    const h = w * 0.62;
+    const y = baseY - h - 2;
+    const parede = noite ? '#3b2f3f' : bioma === 'assombrado' ? '#6b5a7a' : '#f1e0b8';
+    const telhado = noite ? '#5a2a32' : bioma === 'assombrado' ? '#3a2a44' : '#c2452b';
+    const ink = noite ? '#04090c' : '#2a2416';
+    ctx.save();
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = ink;
+    // parede
+    ctx.fillStyle = parede;
+    ctx.beginPath();
+    ctx.roundRect(x, y + h * 0.35, w, h * 0.65, 3);
+    ctx.fill();
+    ctx.stroke();
+    // telhado
+    ctx.fillStyle = telhado;
+    ctx.beginPath();
+    ctx.moveTo(x - w * 0.1, y + h * 0.38);
+    ctx.lineTo(x + w * 0.5, y);
+    ctx.lineTo(x + w * 1.1, y + h * 0.38);
+    ctx.closePath();
+    ctx.fill();
+    ctx.stroke();
+    // chaminé
+    ctx.fillStyle = noite ? '#2a2026' : '#8a6a4a';
+    ctx.fillRect(x + w * 0.72, y + h * 0.06, w * 0.12, h * 0.2);
+    ctx.strokeRect(x + w * 0.72, y + h * 0.06, w * 0.12, h * 0.2);
+    // porta
+    ctx.fillStyle = noite ? '#1b1418' : '#8a5a34';
+    ctx.beginPath();
+    ctx.roundRect(x + w * 0.16, y + h * 0.55, w * 0.22, h * 0.45, [4, 4, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+    // janela (acesa à noite)
+    ctx.fillStyle = noite ? '#ffd36b' : '#bfe9ff';
+    ctx.beginPath();
+    ctx.roundRect(x + w * 0.56, y + h * 0.5, w * 0.28, h * 0.26, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.7, y + h * 0.5);
+    ctx.lineTo(x + w * 0.7, y + h * 0.76);
+    ctx.moveTo(x + w * 0.56, y + h * 0.63);
+    ctx.lineTo(x + w * 0.84, y + h * 0.63);
+    ctx.stroke();
+    if (noite) {
+      ctx.fillStyle = 'rgba(255, 211, 107, 0.18)';
+      ctx.beginPath();
+      ctx.arc(x + w * 0.7, y + h * 0.63, w * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /** Grama amassada / barro revirado por onde o zumbi passou. */
+  public static drawRastro(ctx: CanvasRenderingContext2D, x: number, y: number, cellW: number, alpha: number, lama: boolean): void {
+    ctx.save();
+    ctx.globalAlpha = alpha * (lama ? 0.5 : 0.28);
+    ctx.fillStyle = lama ? '#3b2a14' : '#2f5a1a';
+    ctx.beginPath();
+    ctx.ellipse(x, y, cellW * 0.13, cellW * 0.045, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   public static drawPegada(ctx: CanvasRenderingContext2D, x: number, y: number, cellH: number, alpha: number): void {
     const s = cellH / 90;
     ctx.save();
@@ -1251,18 +1384,18 @@ interface ZombieSpriteSpec {
 }
 
 const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
-  basic: { w: 170, h: 230, ox: 82, feet: 215, head: 26, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#6e6491' },
-  cone: { w: 170, h: 230, ox: 82, feet: 215, head: 20, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#7f93a6' },
-  bucket: { w: 170, h: 230, ox: 82, feet: 215, head: 22, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#3a302c' },
-  cyber_sprinter: { w: 170, h: 230, ox: 92, feet: 206, head: 14, k: 0.36, halfW: 24, pivot: [86, 94], sleeve: '#2a3a5c' },
-  rubber_hazard: { w: 170, h: 230, ox: 82, feet: 215, head: 24, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#ffd23a' },
-  pyro_scavenger: { w: 170, h: 230, ox: 86, feet: 215, head: 24, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#d9631e' },
-  gargantuar: { w: 230, h: 280, ox: 124, feet: 262, head: 42, k: 0.36, halfW: 34, pivot: [84, 112], sleeve: '#a7bf8a' },
-  zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 12, k: 0.3, halfW: 52, sleeve: '#d9452b' },
+  basic: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  cone: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  bucket: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#2f2f3a' },
+  cyber_sprinter: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#243260' },
+  rubber_hazard: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#ffd23a' },
+  pyro_scavenger: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#ff8a1f' },
+  gargantuar: { w: 230, h: 280, ox: 124, feet: 262, head: 42, k: 0.36, halfW: 34, pivot: [84, 112], sleeve: '#8ba56a' },
+  zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 40, k: 0.3, halfW: 52, sleeve: '#d9452b' },
   // Canoeiro: "feet" é a linha d'água do casco; o casco abaixo dela fica escondido pela água
-  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 30, k: 0.5, halfW: 30, pivot: [94, 120], sleeve: '#2c9c8f' },
-  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#7a4a2a' },
-  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 6, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#3f5f6a' },
-  mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 20, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#d6cfb4' },
-  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 20, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#2f7a3a' }
+  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 2, k: 0.5, halfW: 30, pivot: [92, 112], sleeve: '#efe6cc' },
+  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#8a5a30' },
+  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 2, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e3d9bc' },
+  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' }
 };

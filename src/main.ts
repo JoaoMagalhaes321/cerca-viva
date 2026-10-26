@@ -30,6 +30,7 @@ import { JardimZen } from './zen-ui';
 import { mostrarAbertura } from './abertura';
 import { tocarReplay } from './replay';
 import { aplicarAcessibilidade } from './acessibilidade';
+import { nivelDeInteligencia } from './inteligencia';
 import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
 import { AcessibilidadeUi } from './acessibilidade-ui';
 
@@ -685,6 +686,8 @@ function iniciarFase(level: LevelConfig): void {
   aplicarRegrasDaFase(engine, level);
   // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns (no evento, fixo)
   engine.chanceElite = level.evento ? 0.15 : level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
+  // Zumbis cada vez mais espertos: nível por fase (inteligencia.ts)
+  engine.inteligencia = nivelDeInteligencia(level.world, level.stage);
   // Jardim Zen: regou ontem ou hoje, começa com mais sol
   const bonusZen = jardimZen.bonusDeHoje();
   if (bonusZen > 0) {

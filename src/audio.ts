@@ -586,6 +586,15 @@ class SoundManager {
         this.ruidoFiltrado(ctx, t, 0.25, 0.08, 'bandpass', 900);
         break;
       }
+      case 'trovao': {
+        // Estalo seco e depois o estrondo grave rolando
+        this.ruidoFiltrado(ctx, t + 0.05, 0.12, 0.3, 'highpass', 1200);
+        this.ruidoFiltrado(ctx, t + 0.25, 1.6, 0.34, 'lowpass', 180);
+        this.ruidoFiltrado(ctx, t + 0.9, 1.2, 0.18, 'lowpass', 120);
+        const o = this.osc(ctx, 'sine', 48, t + 0.25, t + 1.8, g(0.16, 0.08, 1.5));
+        o.frequency.linearRampToValueAtTime(30, t + 1.8);
+        break;
+      }
       case 'fala': {
         this.osc(ctx, 'sine', 740, t, t + 0.05, g(0.06, 0.002, 0.05));
         this.osc(ctx, 'sine', 880, t + 0.06, t + 0.12, this.envelope(ctx, t + 0.06, 0.002, 0.06, t + 0.12));
@@ -617,6 +626,6 @@ class SoundManager {
 export type Efeito =
   | 'mordida_cerca' | 'cerca_quebra' | 'cerca_floresce' | 'floresceu' | 'muda_cresce' | 'replantar'
   | 'bolha' | 'bolha_estoura' | 'rugido' | 'pisao' | 'curupira' | 'siri_lado' | 'mare_sobe' | 'mare_desce'
-  | 'congelar' | 'derrete' | 'capacete_cai' | 'zumbi_cai' | 'vento' | 'veneno' | 'mina_arma' | 'conquista' | 'fala' | 'cancao' | 'ronco' | 'buu';
+  | 'congelar' | 'derrete' | 'capacete_cai' | 'zumbi_cai' | 'vento' | 'veneno' | 'mina_arma' | 'conquista' | 'fala' | 'cancao' | 'ronco' | 'buu' | 'trovao';
 
 export const sound = new SoundManager();

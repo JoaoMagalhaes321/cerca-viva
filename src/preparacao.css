@@ -139,3 +139,12 @@
   .prep-dica { display: none; }
   .prep-botoes { margin-top: 6px; }
 }
+
+/* Inteligência dos zumbis na preparação */
+.prep-ia { margin: 6px 0 2px; padding: 6px 8px; border-radius: 10px; background: rgba(250, 204, 21, 0.1); border: 1.5px solid rgba(250, 204, 21, 0.35); }
+.prep-ia.hidden { display: none; }
+.prep-ia h4 { margin: 0 0 4px; font-size: 0.74rem; color: #fde68a; }
+.prep-ia h4 small { color: #cbd5e1; font-weight: 500; }
+.prep-ia-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.prep-ia-chip { font: 700 0.66rem 'Nunito', 'Outfit', sans-serif; color: #fef3c7; background: rgba(120, 53, 15, 0.45); border: 1px solid rgba(250, 204, 21, 0.5); border-radius: 999px; padding: 3px 8px; cursor: pointer; }
+.prep-ia-chip:active { transform: scale(0.96); }
