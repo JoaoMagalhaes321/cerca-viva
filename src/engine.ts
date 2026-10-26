@@ -95,7 +95,11 @@ export type ZombieVariant =
   | 'siri'
   | 'mumia'
   | 'cuca'
-  | 'boitata';
+  | 'boitata'
+  | 'saci'
+  | 'iara'
+  | 'boto'
+  | 'lobisomem';
 
 export interface ZombieEntity {
   id: number;
@@ -145,6 +149,15 @@ export interface ZombieEntity {
   capataz?: boolean;
   /** Nêmesis: o zumbi que venceu você antes e voltou com nome e cicatriz. */
   nemesis?: Nemesis;
+  /** Saci: segundos até o próximo redemoinho. Iara: até o próximo canto. */
+  truqueTimer?: number;
+  /** Boto: já se molhou e virou boto (a cerca passa a segurar). */
+  revelado?: boolean;
+  /** Lobisomem: segundos que faltam na forma atual; `humano` = a lua está escondida (ele é fraco). */
+  luaTimer?: number;
+  humano?: boolean;
+  /** Cidade: atordoado pelo clarão do Lampião-Flor (segundos). */
+  ofuscadoTimer?: number;
   /** Boitatá: segundos que ainda fica apagado (vulnerável); 0 = em chamas (não se machuca). */
   apagadoTimer?: number;
   /** Boitatá: segundos até a próxima corrida de fogo. */
@@ -275,6 +288,12 @@ export const FALAS: Record<string, string[]> = {
   colheitadeira: ['Hora da colheita!', 'Vou passar o trator!'],
   cuca: ['Nana, nenê…', 'A Cuca vem pegar!', 'Dorme, jardim…'],
   boitata: ['Ssssss… quente!', 'Fogo na serra!', 'Vem me apagar!'],
+  saci: ['Hihihi!', 'Essa é minha!', 'Pega eu!', 'Sumi!'],
+  iara: ['Vem comigo, flor…', 'Lá lá lá…', 'A água chama.'],
+  boto: ['Boa noite, moça.', 'Com licença.', 'Só passando.'],
+  boto_revelado: ['Ops. Molhei.', 'Era eu mesmo!', 'Fiu-fiu… hum.'],
+  lobisomem: ['AUUUUUU!', 'A lua é minha!', 'Cheiro de jardim…'],
+  lobisomem_humano: ['Ai… minha cabeça.', 'Cadê a lua?', 'Não olha pra mim!'],
   mumia: ['Mmmmh…', 'Cadê minhas faixas?'],
   buu: ['BUU!', 'Buuuu!', 'Hihihi!'],
   acordou: ['Ué, dormi?', 'Bom dia!', 'Acordei!'],
@@ -445,6 +464,12 @@ export class GameEngine {
   public miniEventos: MiniEventos | null = null;
   /** Vagalumes desenhados durante o enxame. */
   private vagalumes: { x: number; y: number; f: number }[] = [];
+  /** Cidade: uivo do Lobisomem (segundos) — todos os zumbis andam mais rápido. */
+  public uivoTimer = 0;
+  /** Cidade: a lua está escondida pelas nuvens (o Lobisomem vira gente). */
+  public luaEncoberta = false;
+  /** Lampião-Flor supremo: linha inteira iluminada por um tempo. */
+  private faroisPorLinha: number[] = [0, 0, 0, 0, 0];
   /** Fases dos Vasos: sementes contadas (quantos vasos restam por planta). null fora delas. */
   public vasos: Record<string, number> | null = null;
   /** Fase dos Vasos em planejamento: dá para plantar, mas o tempo não corre. */
@@ -517,6 +542,25 @@ export class GameEngine {
   }
 
   /** Serra (Mundo 5): linha do alto (tiros mais fortes) e do vale (zumbis descem mais rápido). */
+  /** Cidade à Noite: a casa está iluminada por um poste, um Lampião-Flor ou um farol? */
+  public isIluminada(r: number, c: number): boolean {
+    if (this.currentBiome.id !== 'cidade') return true;
+    if (this.faroisPorLinha[r] > 0) return true;
+    for (const p of this.currentBiome.postes ?? []) if (Math.abs(p.row - r) <= 1 && Math.abs(p.col - c) <= 1) return true;
+    for (const p of this.plants) {
+      if (p.def.id !== 'lampiao_flor') continue;
+      const alcance = p.caminho === 'farolete' ? 2 : 1;
+      if (Math.abs(p.row - r) <= alcance && Math.abs(p.col - c) <= alcance) return true;
+    }
+    return false;
+  }
+
+  /** Bueiro da linha (coluna), se houver. */
+  private bueiroDaLinha(row: number): number | null {
+    const b = (this.currentBiome.bueiros ?? []).find((x) => x.row === row);
+    return b ? b.col : null;
+  }
+
   public isAltoRow(r: number): boolean {
     return (this.currentBiome.serraAlta ?? []).includes(r);
   }
@@ -683,6 +727,9 @@ export class GameEngine {
     this.planejando = false;
     this.miniEventos = null;
     this.vagalumes = [];
+    this.uivoTimer = 0;
+    this.luaEncoberta = false;
+    this.faroisPorLinha = [0, 0, 0, 0, 0];
     if (deckIds && deckIds.length > 0) {
       this.activeDeckIds = [...deckIds];
       this.selectedPlantId = this.activeDeckIds[0];
@@ -996,6 +1043,10 @@ export class GameEngine {
         );
         if (assombrado) CharacterRenderer.drawAbobora(bCtx, x, y, this.cellW, this.cellH, r, c);
         if (this.currentBiome.id === 'serra') CharacterRenderer.drawDegrau(bCtx, x, y, this.cellW, this.cellH, r, c, this.isAltoRow(r) ? 'alto' : this.isValeRow(r) ? 'vale' : 'meio', isDark);
+        if (this.currentBiome.id === 'cidade') {
+          CharacterRenderer.drawAsfalto(bCtx, x, y, this.cellW, this.cellH, r, c);
+          if ((this.currentBiome.bueiros ?? []).some((b) => b.row === r && b.col === c)) CharacterRenderer.drawBueiro(bCtx, x, y, this.cellW, this.cellH);
+        }
 
       }
     }
@@ -1437,6 +1488,22 @@ export class GameEngine {
         plant.hp = 4500;
         plant.armored = true;
         break;
+      case 'lampiao_flor':
+        // Farol: a linha inteira fica iluminada e todos os zumbis dela ficam ofuscados
+        this.faroisPorLinha[plant.row] = 12;
+        for (const z of this.zombies) {
+          if (z.row === plant.row && z.variant !== 'zomboss_mech' && z.variant !== 'lobisomem') {
+            z.stunTimer = Math.max(z.stunTimer, 2.5);
+            z.ofuscadoTimer = 2.5;
+          }
+        }
+        this.spawnFloatingText('🔦 FAROL! Linha iluminada', plant.col + 0.5, plant.row - 0.1, '#fde68a', 1.3);
+        break;
+      case 'mandacaru':
+        for (const z of this.zombies) if (z.row === plant.row) this.applyElementalDamage(z, 90, 'nature');
+        plant.hp = Math.min(plant.maxHp, plant.hp + 600);
+        this.spawnFloatingText('🌵 CHUVA DE ESPINHOS!', plant.col + 0.5, plant.row - 0.1, '#bef264', 1.3);
+        break;
     }
   }
 
@@ -1713,6 +1780,7 @@ export class GameEngine {
       this.weatherTimer = 42;
       this.cycleWeather();
     }
+    this.cenario.luaEncoberta = this.luaEncoberta;
     this.cenario.update(dt, this.weather, this.ehNoite(), this.currentBiome.id, this.canvas.width / this.dpr, this.canvas.height / this.dpr, this.boardTop);
     CharacterRenderer.vento = this.cenario.vento;
     // Serra do Vento: rajadas empurram os zumbis para trás e aceleram as sementes
@@ -1725,7 +1793,7 @@ export class GameEngine {
         sound.efeito('vento', 0.2);
         this.spawnFloatingText('💨 RAJADA!', GRID_COLS - 1.5, -0.35, '#99f6e4', 1.2);
         for (const z of this.zombies) {
-          const chefe = z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'gargantuar' || z.variant === 'boitata';
+          const chefe = z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'gargantuar' || z.variant === 'boitata' || z.variant === 'lobisomem';
           if (!chefe && !z.isEating) z.x = Math.min(GRID_COLS + 0.3, z.x + 0.35);
           else if (!chefe) z.x = Math.min(GRID_COLS + 0.3, z.x + 0.12);
         }
@@ -1893,6 +1961,34 @@ export class GameEngine {
         p.attackTimer -= dt * speedMultiplier * terreno.ritmo * (polinizada ? 1.2 : 1) * (this.eventoAtivo('vagalumes') ? 1.25 : 1);
       }
 
+      if (p.def.id === 'lampiao_flor') {
+        // Clarão: ofusca (atordoa) os zumbis nas 8 casas em volta
+        if (p.attackTimer <= 0) {
+          p.attackTimer = p.caminho === 'vagalume' ? 6 : p.def.attackInterval;
+          const duracao = p.caminho === 'vagalume' ? 1.8 : 1.2;
+          p.scaleKick = 0.3;
+          let ofuscados = 0;
+          for (const z of this.zombies) {
+            const chefe = z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'gargantuar' || z.variant === 'boitata' || z.variant === 'lobisomem';
+            if (Math.abs(z.row - p.row) <= 1 && Math.abs(z.x - (p.col + 0.5)) <= 1.5 && !chefe) {
+              z.stunTimer = Math.max(z.stunTimer, duracao);
+              z.ofuscadoTimer = duracao;
+              ofuscados++;
+            }
+          }
+          this.spawnParticles(p.col + 0.5, p.row + 0.3, '#fde68a', 12);
+          if (ofuscados > 0) {
+            this.spawnFloatingText(`✨ CLARÃO! ${ofuscados} ofuscado${ofuscados > 1 ? 's' : ''}`, p.col + 0.5, p.row - 0.1, '#fde68a', 1.1);
+            sound.efeito('conquista', 0.3);
+          }
+        }
+      }
+      if (p.def.id === 'mandacaru' && p.caminho === 'florado' && p.attackTimer <= 0) {
+        // Flor do mandacaru: um sol de vez em quando
+        p.attackTimer = 15;
+        p.scaleKick = 0.2;
+        this.suns.push({ id: this.nextEntityId++, x: p.col + 0.5, y: p.row + 0.1, targetY: p.row + 0.5, value: 25, life: 14, collected: false });
+      }
       if (p.def.id === 'sunflower') {
         if (p.attackTimer <= 0) {
           p.attackTimer = p.def.attackInterval;
@@ -1999,6 +2095,7 @@ export class GameEngine {
       if (z.chilledTimer > 0) z.chilledTimer = Math.max(0, z.chilledTimer - dt);
       if (z.frozenTimer > 0) z.frozenTimer = Math.max(0, z.frozenTimer - dt);
       if (z.stunTimer > 0) z.stunTimer = Math.max(0, z.stunTimer - dt);
+      if ((z.ofuscadoTimer ?? 0) > 0) z.ofuscadoTimer = Math.max(0, z.ofuscadoTimer! - dt);
       if (z.reacao) {
         z.reacao.timer -= dt;
         if (z.reacao.timer <= 0) z.reacao = undefined;
@@ -2038,6 +2135,51 @@ export class GameEngine {
         }
       }
 
+      // Saci: some num redemoinho, aparece noutra linha e rouba uma carta por 10 s (sem o gorro, perde o truque)
+      if (z.variant === 'saci' && !z.lostHeadgear && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x > 1.2 && z.x < GRID_COLS - 0.2) {
+        z.truqueTimer = (z.truqueTimer ?? 5 + Math.random() * 3) - dt;
+        if (z.truqueTimer <= 0) {
+          z.truqueTimer = 8 + Math.random() * 4;
+          const lanes = this.getActiveLanes().filter((r) => r !== z.row && !this.isRiverRow(r));
+          this.spawnParticles(z.x, z.row + 0.6, '#a16207', 14);
+          if (lanes.length > 0) {
+            z.row = lanes[Math.floor(Math.random() * lanes.length)];
+            z.x = Math.max(1.2, z.x - 0.6);
+            z.isEating = false;
+          }
+          this.spawnParticles(z.x, z.row + 0.6, '#a16207', 14);
+          sound.efeito('vento', 0.3);
+          this.spawnFloatingText('🌪️ REDEMOINHO!', z.x, z.row + 0.1, '#fde68a', 1.0);
+          // Rouba uma carta: a semente fica em recarga por 10 s
+          const cartas = this.activeDeckIds.filter((id) => (this.seedCooldowns[id] ?? 0) < 6);
+          if (cartas.length > 0 && !this.vasos) {
+            const roubada = cartas[Math.floor(Math.random() * cartas.length)];
+            const def = PLANT_CATALOG.find((p) => p.id === roubada);
+            this.seedCooldowns[roubada] = Math.max(this.seedCooldowns[roubada] ?? 0, 10);
+            this.spawnFloatingText(`🌪️ ROUBOU ${def?.name ?? roubada}!`, z.x, z.row - 0.2, '#fca5a5', 1.2);
+            this.onToast(`🌪️ O Saci roubou a carta de ${def?.name ?? roubada} por 10 s! Derrube o gorro dele com vento (Flor Catavento) para acabar com o truque.`);
+            this.onUiUpdate();
+          }
+          this.falar('saci', z.x, z.row - 0.1, 0.8);
+        }
+      }
+      // Iara: canta do rio e as plantas de água perto dela param (encantadas) por 4 s
+      if (z.variant === 'iara' && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x < GRID_COLS - 0.2) {
+        z.truqueTimer = (z.truqueTimer ?? 4) - dt;
+        if (z.truqueTimer <= 0) {
+          z.truqueTimer = 9;
+          let encantadas = 0;
+          for (const p of this.plants) {
+            if (Math.abs(p.row - z.row) <= 1 && p.col + 0.5 < z.x && z.x - (p.col + 0.5) <= 3.5 && (p.def.habitat ?? 'terra') !== 'terra') {
+              p.dormindoTimer = 4;
+              encantadas++;
+            }
+          }
+          this.falar('iara', z.x, z.row - 0.1, 1);
+          sound.efeito('cancao', 0.3);
+          if (encantadas > 0) this.spawnFloatingText(`🎶 CANTO DA IARA: ${encantadas} encantada${encantadas > 1 ? 's' : ''}`, z.x, z.row - 0.25, '#c4b5fd', 1.1);
+        }
+      }
       // Zumbi Siri: anda de lado e troca de linha de tempos em tempos
       if (z.variant === 'siri' && !z.isEating && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x > 0.8 && z.x < GRID_COLS - 0.2) {
         z.trocaLinhaTimer = (z.trocaLinhaTimer ?? 4 + Math.random() * 3) - dt;
@@ -2151,7 +2293,11 @@ export class GameEngine {
           (p) => p.row === z.row && Math.abs(z.x - (p.col + 0.55)) < 0.38
         );
         const cerca = this.cercaDaLinha(z.row);
-        const naCerca = z.x <= CERCA.xDaMordida && cercaDePe(cerca);
+        const naCerca = z.x <= CERCA.xDaMordida && cercaDePe(cerca) && !(z.variant === 'boto' && !z.revelado);
+        if (z.variant === 'boto' && !z.revelado && z.x <= CERCA.xDaMordida + 0.05 && z.x > CERCA.xDaMordida - 0.05) {
+          this.spawnFloatingText('🎩 "Com licença" — passou pela cerca!', z.x, z.row + 0.1, '#e2e8f0', 1.1);
+          this.falar('boto', z.x, z.row - 0.1, 0.8);
+        }
 
         if (naCerca && cerca) {
           // Morde a cerca viva: ela segura o zumbi enquanto aguentar
@@ -2187,6 +2333,10 @@ export class GameEngine {
             z.hp -= 35 * dt;
           }
           if (targetPlant.caminho === 'espinhoso') z.hp -= 30 * dt;
+          if (targetPlant.def.id === 'mandacaru') {
+            z.hp -= (targetPlant.caminho === 'espinho_longo' ? 70 : 40) * dt;
+            if (Math.random() < 0.08) this.spawnParticles(z.x, z.row + 0.4, '#fff6e0', 3);
+          }
           if (targetPlant.def.id === MANGUE_ID && targetPlant.caminho === 'ostreiro') z.hp -= MANGUE.danoOstras * dt;
           if (targetPlant.def.id === MUSGO_ID) {
             z.wetTimer = Math.max(z.wetTimer, molhadoAoMorder(targetPlant.caminho));
@@ -2202,7 +2352,7 @@ export class GameEngine {
           const proxCol = Math.floor(z.x - 0.35);
           if (
             (z.puloCd ?? 0) <= 0 && proxCol >= 0 && proxCol < GRID_COLS && z.x - 0.35 - proxCol > 0.85 &&
-            z.variant !== 'canoeiro' && z.variant !== 'zomboss_mech' && z.variant !== 'mapinguari' && z.variant !== 'cuca' && z.variant !== 'gargantuar' && z.variant !== 'boitata' &&
+            z.variant !== 'canoeiro' && z.variant !== 'zomboss_mech' && z.variant !== 'mapinguari' && z.variant !== 'cuca' && z.variant !== 'gargantuar' && z.variant !== 'boitata' && z.variant !== 'lobisomem' &&
             ['electrified_puddle', 'ice_patch', 'scorched', 'toxic_pool'].includes(this.tiles[z.row][proxCol].hazard)
           ) {
             z.puloCd = 2.5;
@@ -2215,6 +2365,10 @@ export class GameEngine {
           // Inteligência: Capataz apressa a linha; bando anda no ritmo do mais lento
           let ritmo = 1;
           if (this.isValeRow(z.row)) ritmo *= 1.15; // descendo o vale
+          const chefeDaCidade = z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'gargantuar' || z.variant === 'boitata' || z.variant === 'lobisomem';
+          if (this.currentBiome.id === 'cidade' && !chefeDaCidade && !this.isIluminada(z.row, Math.max(0, Math.min(GRID_COLS - 1, Math.floor(z.x))))) ritmo *= 1.25; // no escuro
+          if (this.uivoTimer > 0 && z.variant !== 'lobisomem') ritmo *= 1.3; // o uivo apressa a matilha
+          if (z.variant === 'lobisomem') ritmo *= z.humano ? 0.45 : 1;
           if (this.eventoAtivo('eclipse')) ritmo *= 1.15; // o eclipse apressa a horda
           if (z.variant === 'boitata') ritmo *= (z.correndoTimer ?? 0) > 0 ? 7 : (z.apagadoTimer ?? 0) > 0 ? 0.4 : 1;
           if (!z.capataz && this.zombies.some((o) => o.capataz && o.row === z.row)) ritmo *= 1.3;
@@ -2623,6 +2777,16 @@ export class GameEngine {
       }
     }
 
+    // LOBISOMEM: fera sob a lua leva metade; gente (lua escondida) leva o dobro
+    if (target.variant === 'lobisomem') {
+      if (target.humano) {
+        finalDamage = Math.floor(finalDamage * 2);
+        if (Math.random() < 0.25) this.spawnFloatingText('😵 FRACO ×2', target.x, target.row + 0.15, '#fde68a', 1.0);
+      } else {
+        finalDamage = Math.floor(finalDamage * 0.5);
+      }
+    }
+
     // MÚMIA: as faixas não sentem gelo (não congela, não fica lenta), mas pegam fogo
     if (target.variant === 'mumia') {
       if (element === 'ice') {
@@ -2685,6 +2849,17 @@ export class GameEngine {
     // 1. WATER APPLICATION
     if (element === 'water') {
       target.wetTimer = 9.0;
+      if (target.variant === 'boto' && !target.revelado) {
+        // O moço bonito molhado vira o que é: um boto. A cerca passa a segurar, e ele fica mais lento
+        target.revelado = true;
+        target.lostHeadgear = true;
+        target.speed *= 0.75;
+        this.spawnFloatingText('🐬 ERA UM BOTO!', target.x, target.row - 0.1, '#f9a8d4', 1.4);
+        this.spawnParticles(target.x, target.row + 0.4, '#f9a8d4', 16);
+        this.falar('boto_revelado', target.x, target.row - 0.2, 1);
+        sound.efeito('bolha_estoura', 0.3);
+        this.onDescoberta?.('zumbis', 'boto');
+      }
     }
 
     // 2. TOXIN / ACID APPLICATION (Melts Cone/Bucket armor 2x faster!)
@@ -2702,6 +2877,12 @@ export class GameEngine {
       const pushDist = (target.variant === 'gargantuar' ? 0.25 : 0.72) * (noGelo ? GELO.empurraoDoVento : 1);
       if (noGelo) this.spawnFloatingText('🧊 ESCORREGOU!', target.x, target.row + 0.3, '#a5f3fc', 1.0);
       target.x = Math.min(GRID_COLS + 0.3, target.x + pushDist);
+      if (target.variant === 'saci' && !target.lostHeadgear) {
+        // O vento leva o gorro do Saci: sem ele, acabou o redemoinho (e o roubo de cartas)
+        target.lostHeadgear = true;
+        this.spawnFloatingText('🧢 O GORRO VOOU! Sem truques.', target.x, target.row - 0.1, '#fde68a', 1.3);
+        sound.efeito('capacete_cai', 0.3);
+      }
 
       // Synergy: Wind spreads Fire, Poison, Wet, or Ice from this zombie to others behind it!
       if (
@@ -2964,7 +3145,7 @@ export class GameEngine {
     if (z.capataz) this.spawnFloatingText('📯 O CAPATAZ CAIU! Linha volta ao normal', z.x, z.row + 0.1, '#fde047', 1.1);
     this.onDescoberta?.('zumbis', z.variant);
     if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
-    if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
+    if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata' || z.variant === 'lobisomem') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
     sound.efeito('zumbi_cai', 0.12);
     this.spawnParticles(z.x, z.row + 0.5, '#84cc16', 14);
 
@@ -3003,7 +3184,24 @@ export class GameEngine {
       ) {
         const nextSpawn = this.spawnsQueue.shift()!;
         if (nextSpawn.zombieType === 'nemesis' && this.nemesisDaFase) this.spawnNemesis(this.nemesisDaFase, nextSpawn.lane);
-        else this.spawnZombieByType(nextSpawn.zombieType, nextSpawn.lane);
+        else {
+          const antes = this.zombies.length;
+          this.spawnZombieByType(nextSpawn.zombieType, nextSpawn.lane);
+          const z = this.zombies[antes];
+          const bueiro = nextSpawn.bueiro && z ? this.bueiroDaLinha(z.row) : null;
+          if (z && bueiro !== null) {
+            // Cidade: sai do bueiro, no meio do gramado (o bando inteiro, um atrás do outro)
+            for (let k = antes; k < this.zombies.length; k++) {
+              const zk = this.zombies[k];
+              zk.x = bueiro + 0.5 + (k - antes) * 0.45;
+              zk.stunTimer = Math.max(zk.stunTimer, 0.9 + (k - antes) * 0.3);
+            }
+            this.spawnFloatingText('🕳️ DO BUEIRO!', z.x, z.row + 0.1, '#cbd5e1', 1.1);
+            this.spawnParticles(z.x, z.row + 0.6, '#64748b', 14);
+            sound.efeito('pisao', 0.3);
+            this.sacudir(3, 0.2);
+          }
+        }
       }
 
       this.waveProgress = Math.min(100, (this.waveElapsed / this.totalLevelDuration) * 100);
@@ -3173,6 +3371,10 @@ export class GameEngine {
       this.spawnBoitata(targetLane);
       return;
     }
+    if (type === 'lobisomem') {
+      this.spawnLobisomem(targetLane);
+      return;
+    }
 
     // Regras da fase: Blindados sobe a proteção de quem nasce
     if (this.regrasAtivas.has('blindados')) {
@@ -3182,8 +3384,8 @@ export class GameEngine {
 
     // Canoeiro só desce rio: escolhe uma linha de rio; sem rio no mapa, vira zumbi comum
     const rios = this.currentBiome.riverRows ?? [];
-    if (type === 'canoeiro') {
-      if (rios.length === 0) type = 'basic';
+    if (type === 'canoeiro' || type === 'iara') {
+      if (rios.length === 0) type = type === 'iara' ? 'cone' : 'basic';
       else if (!rios.includes(row)) row = rios[Math.floor(Math.random() * rios.length)];
     }
 
@@ -3254,6 +3456,27 @@ export class GameEngine {
       hp = 520;
       speed = 0.22;
       damage = 36;
+    } else if (type === 'saci') {
+      variant = 'saci';
+      name = 'Saci';
+      emoji = '🌪️';
+      hp = 260;
+      speed = 0.33;
+      damage = 28;
+    } else if (type === 'iara') {
+      variant = 'iara';
+      name = 'Iara';
+      emoji = '🧜';
+      hp = 440;
+      speed = 0.26;
+      damage = 30;
+    } else if (type === 'boto') {
+      variant = 'boto';
+      name = 'Boto';
+      emoji = '🐬';
+      hp = 380;
+      speed = 0.3;
+      damage = 34;
     }
     if (this.regrasAtivas.has('corrida')) speed *= 1.3;
 
@@ -3541,6 +3764,41 @@ export class GameEngine {
 
   /** Habilidades da Colheitadeira Z quando ela está em campo. */
   public updateBossSkills(dt: number): void {
+    if (this.uivoTimer > 0) this.uivoTimer = Math.max(0, this.uivoTimer - dt);
+    for (let r = 0; r < GRID_ROWS; r++) if (this.faroisPorLinha[r] > 0) this.faroisPorLinha[r] = Math.max(0, this.faroisPorLinha[r] - dt);
+    // Lobisomem: a lua aparece e some; fera enquanto ela brilha, gente quando as nuvens a escondem
+    let algumLobisomem = false;
+    for (const l of this.zombies) {
+      if (l.variant !== 'lobisomem') continue;
+      algumLobisomem = true;
+      l.luaTimer = (l.luaTimer ?? 14) - dt;
+      if (l.luaTimer <= 0) {
+        if (l.humano) {
+          l.humano = false;
+          l.luaTimer = 14;
+          l.damagePerSec = 90;
+          this.uivoTimer = 5;
+          this.luaEncoberta = false;
+          this.lightningFlash = Math.max(this.lightningFlash, 0.3);
+          this.sacudir(6, 0.4, 'forte');
+          sound.efeito('rugido', 0.5);
+          this.spawnFloatingText('🌕 AUUUUU! A LUA VOLTOU', l.x, l.row - 0.1, '#fde68a', 1.5);
+          this.onToast('🐺 UIVO! O Lobisomem virou fera e a matilha toda apressou o passo. Segure até as nuvens voltarem.');
+          this.falar('lobisomem', l.x - 0.2, l.row - 0.2, 1);
+        } else {
+          l.humano = true;
+          l.luaTimer = 9;
+          l.damagePerSec = 30;
+          this.luaEncoberta = true;
+          this.spawnParticles(l.x, l.row + 0.3, '#cbd5e1', 16);
+          this.spawnFloatingText('☁️ A LUA SE ESCONDEU: BATE AGORA (×2)', l.x, l.row - 0.1, '#e2e8f0', 1.4);
+          this.onToast('☁️ As nuvens cobriram a lua: o Lobisomem virou gente, lento e fraco. Todo dano conta em dobro por 9 s!');
+          this.falar('lobisomem_humano', l.x - 0.2, l.row - 0.2, 1);
+        }
+      }
+    }
+    if (!algumLobisomem && this.luaEncoberta) this.luaEncoberta = false;
+
     // Boitatá: corre a linha de tempos em tempos (só em chamas), e troca de linha
     for (const b of this.zombies) {
       if (b.variant !== 'boitata') continue;
@@ -3678,6 +3936,48 @@ export class GameEngine {
       confusoTimer: 0,
       apagadoTimer: 0,
       corridaTimer: 5
+    });
+  }
+
+  /** O Lobisomem, chefe da Cidade: fera sob a lua cheia, rapaz fraco quando as nuvens a escondem. */
+  public spawnLobisomem(targetLane?: number): void {
+    const lanes = this.getActiveLanes();
+    const row = typeof targetLane === 'number' && lanes.includes(targetLane) ? targetLane : lanes[Math.floor(lanes.length / 2)] ?? 2;
+    this.bossSpawned = true;
+    sound.bossMode = true;
+    sound.efeito('rugido');
+    this.lightningFlash = 0.4;
+    this.uivoTimer = 5;
+    this.onToast('🐺 O LOBISOMEM PULOU O MURO! Fera enquanto a lua brilha (meio dano); quando as nuvens a escondem ele vira gente e leva o dobro.');
+    this.spawnFloatingText('🐺 LOBISOMEM!', 7.5, row + 0.3, '#fde68a', 1.5);
+    this.falar('lobisomem', GRID_COLS - 0.4, row - 0.1, 1);
+    this.sacudir(8, 0.6, 'forte');
+    this.sapoDiz('chefe', true);
+    this.zombies.push({
+      id: this.nextEntityId++,
+      variant: 'lobisomem',
+      name: 'Lobisomem',
+      emoji: '🐺',
+      row,
+      x: GRID_COLS + 0.4,
+      hp: 2600,
+      maxHp: 2600,
+      speed: 0.34,
+      damagePerSec: 90,
+      wetTimer: 0,
+      chilledTimer: 0,
+      frozenTimer: 0,
+      burnTimer: 0,
+      poisonTimer: 0,
+      stunTimer: 0,
+      hitFlash: 0,
+      walkPhase: 0,
+      isEating: false,
+      lostHeadgear: false,
+      lostArm: false,
+      confusoTimer: 0,
+      luaTimer: 14,
+      humano: false
     });
   }
 
@@ -4236,6 +4536,18 @@ export class GameEngine {
     const isNightScene = this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia' || this.eventoAtivo('eclipse');
     sound.night = isNightScene; // a trilha troca para o tema da noite
 
+    // 2b. Cidade à Noite: escuridão fora da luz dos postes/lampiões, e os postes em si
+    if (this.currentBiome.id === 'cidade') {
+      for (let r = 0; r < GRID_ROWS; r++) {
+        for (let c = 0; c < GRID_COLS; c++) {
+          CharacterRenderer.drawEscuridao(ctx, this.boardLeft + c * this.cellW, this.boardTop + r * this.cellH, this.cellW, this.cellH, this.isIluminada(r, c), agora);
+        }
+      }
+      for (const p of this.currentBiome.postes ?? []) {
+        CharacterRenderer.drawPoste(ctx, this.boardLeft + (p.col + 0.5) * this.cellW, this.boardTop + (p.row + 0.5) * this.cellH, this.cellH, agora);
+      }
+    }
+
     // 2c. Mini-eventos: sombra do eclipse e o enxame de vagalumes
     if (this.eventoAtivo('eclipse')) {
       ctx.fillStyle = 'rgba(5, 8, 30, 0.42)';
@@ -4327,7 +4639,7 @@ export class GameEngine {
       CharacterRenderer.drawZombie(ctx, z, zx, zy, this.cellW, this.cellH, isNightScene, this.isRiverRow(z.row));
 
       // Zombie HP bar - accurately positioned above head based on variant scale
-      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata';
+      const isBoss = z.variant === 'gargantuar' || z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata' || z.variant === 'lobisomem';
       if (!isBoss) {
         const bw = Math.min(this.cellW * 0.44, 38);
         const bh = 4;
@@ -4570,7 +4882,7 @@ export class GameEngine {
     if (tremendo) ctx.restore();
 
     // 13. Barra de vida do chefe (Colheitadeira Z ou Mapinguari)
-    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata');
+    const zomboss = this.zombies.find((z) => z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata' || z.variant === 'lobisomem');
     if (zomboss) {
       const barW = Math.min(440, width * 0.65);
       const barH = 18;
@@ -4590,7 +4902,7 @@ export class GameEngine {
       ctx.fillStyle = '#fca5a5';
       ctx.textAlign = 'center';
       ctx.fillText(
-        `${zomboss.variant === 'mapinguari' ? '👁️ CHEFE: MAPINGUARI' : zomboss.variant === 'cuca' ? `🐊 CHEFE: CUCA${(zomboss.dormindoTimer ?? 0) > 0 ? ' 💤' : ''}` : zomboss.variant === 'boitata' ? `🐍 CHEFE: BOITATÁ${(zomboss.apagadoTimer ?? 0) > 0 ? ' 💧 APAGADO' : ' 🔥'}` : '💀 CHEFE FINAL: COLHEITADEIRA Z'} (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
+        `${zomboss.variant === 'mapinguari' ? '👁️ CHEFE: MAPINGUARI' : zomboss.variant === 'cuca' ? `🐊 CHEFE: CUCA${(zomboss.dormindoTimer ?? 0) > 0 ? ' 💤' : ''}` : zomboss.variant === 'boitata' ? `🐍 CHEFE: BOITATÁ${(zomboss.apagadoTimer ?? 0) > 0 ? ' 💧 APAGADO' : ' 🔥'}` : zomboss.variant === 'lobisomem' ? `🐺 CHEFE: LOBISOMEM${zomboss.humano ? ' ☁️ GENTE (×2)' : ' 🌕 FERA'}` : '💀 CHEFE FINAL: COLHEITADEIRA Z'} (${Math.max(0, Math.ceil(zomboss.hp))} / ${zomboss.maxHp} HP)`,
         width / 2,
         by + 7
       );

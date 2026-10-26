@@ -76,6 +76,10 @@ export interface BiomeDefinition {
     | 'mumia'
     | 'cuca'
     | 'boitata'
+    | 'lobisomem'
+    | 'saci'
+    | 'iara'
+    | 'boto'
   )[];
   description: string;
   /** Linhas que são rio (Mundo 3): só plantas aquáticas crescem nelas. */
@@ -87,6 +91,10 @@ export interface BiomeDefinition {
   /** Serra (Mundo 5): linhas do alto (tiros mais fortes) e do vale (zumbis descem mais rápido). */
   serraAlta?: number[];
   serraBaixa?: number[];
+  /** Cidade (Mundo 6): postes que iluminam 3×3 (no escuro os zumbis andam mais rápido). */
+  postes?: { row: number; col: number }[];
+  /** Cidade (Mundo 6): bueiros de onde alguns zumbis saem no meio do gramado. */
+  bueiros?: { row: number; col: number }[];
 }
 
 export interface SynergyRecipe {
@@ -104,6 +112,8 @@ export interface ZombieSpawnEvent {
   timeOffsetSec: number;
   zombieType: string;
   lane?: number;
+  /** Cidade: sai do bueiro da linha (no meio do gramado) em vez da borda. */
+  bueiro?: boolean;
 }
 
 export interface LevelConfig {
@@ -194,7 +204,7 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     defaultWeather: 'sunny',
     puddlesCount: 0,
     toxicCount: 0,
-    zombiePreviews: ['canoeiro', 'mapinguari', 'cone', 'cyber_sprinter'],
+    zombiePreviews: ['canoeiro', 'iara', 'saci', 'mapinguari'],
     description: 'Dois braços de rio cortam o quintal. Na água só crescem plantas aquáticas, os zumbis do rio estão sempre molhados e os canoeiros descem a correnteza. Na chuva, os raios do Junco Tesla pulam para dentro do rio!',
     riverRows: [1, 3]
   },
@@ -208,7 +218,7 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     defaultWeather: 'sunny',
     puddlesCount: 0,
     toxicCount: 0,
-    zombiePreviews: ['siri', 'canoeiro', 'bucket', 'gargantuar'],
+    zombiePreviews: ['siri', 'boto', 'canoeiro', 'gargantuar'],
     description: 'Três linhas de mangue enchem e secam com a maré. Na maré alta só plantas aquáticas vivem nelas e os canoeiros descem; na baixa vira lama que atola zumbis e encalha o Aguapé. Zumbis Siri andam de lado e trocam de linha.',
     tideRows: [0, 2, 4]
   },
@@ -226,6 +236,28 @@ export const BIOME_CATALOG: BiomeDefinition[] = [
     description: 'Gramado em degraus: nas duas linhas do alto os tiros descem com mais força (+20% de dano); nas duas do vale os zumbis descem mais rápido. Rajadas de vento empurram zumbis para trás e aceleram as sementes. No fim, o Boitatá: a cobra de fogo só se machuca quando está apagada — molhe antes de bater.',
     serraAlta: [0, 1],
     serraBaixa: [3, 4]
+  },
+  {
+    id: 'cidade',
+    name: '8. Cidade à Noite',
+    subtitle: 'Postes, Bueiros & Lua Cheia',
+    icon: '🌃',
+    startingSun: 325,
+    maxWaves: 8,
+    defaultWeather: 'lua_cheia',
+    puddlesCount: 1,
+    toxicCount: 0,
+    zombiePreviews: ['cyber_sprinter', 'bucket', 'rubber_hazard', 'lobisomem'],
+    description: 'Um quintal de cidade sob a lua cheia. Só os postes (e o Lampião-Flor) iluminam: no escuro os zumbis andam 25% mais rápido. Alguns saem dos bueiros no meio do gramado. No fim, o Lobisomem: fera enquanto a lua aparece, rapaz fraco quando as nuvens a escondem — é aí que ele se machuca.',
+    postes: [
+      { row: 1, col: 2 },
+      { row: 3, col: 5 }
+    ],
+    bueiros: [
+      { row: 0, col: 6 },
+      { row: 2, col: 4 },
+      { row: 4, col: 5 }
+    ]
   },
   {
     id: 'assombrado',
@@ -482,6 +514,36 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     overdriveDesc: 'Raízes da Maré: prende todos os zumbis da linha por 3 s, causa 60 de dano e recupera 500 de vida.',
     color: '#b45309',
     habitat: 'ambos'
+  },
+  {
+    id: 'lampiao_flor',
+    name: 'Lampião-Flor',
+    emoji: '🏮',
+    element: 'solar',
+    elementBadge: '🏮',
+    cost: 75,
+    cooldown: 7,
+    maxHp: 300,
+    attackInterval: 9,
+    damage: 0,
+    description: 'Ilumina as 8 casas em volta: ali os zumbis perdem a pressa do escuro. A cada 9 s dá um clarão que ofusca (atordoa 1,2 s) quem está na luz.',
+    overdriveDesc: 'Farol: ilumina a linha inteira por 12 s e ofusca todos os zumbis dela por 2,5 s.',
+    color: '#fbbf24'
+  },
+  {
+    id: 'mandacaru',
+    name: 'Mandacaru',
+    emoji: '🌵',
+    element: 'nature',
+    elementBadge: '🌵',
+    cost: 125,
+    cooldown: 14,
+    maxHp: 1600,
+    attackInterval: 0,
+    damage: 0,
+    description: 'Muralha de espinhos do sertão: aguenta muita mordida e devolve 40 de dano por segundo a quem morde.',
+    overdriveDesc: 'Chuva de espinhos: 90 de dano em todos os zumbis da linha e recupera 600 de vida.',
+    color: '#4f9c3a'
   },
   {
     id: 'aguape',

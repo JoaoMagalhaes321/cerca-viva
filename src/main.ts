@@ -283,7 +283,7 @@ function syncHud(): void {
   } else if (engine.weather === 'lua_cheia') {
     weatherIconEl.textContent = '🌕';
     weatherNameEl.textContent = 'Lua Cheia';
-    weatherDescEl.textContent = 'Noite da Cuca: pouco sol do céu';
+    weatherDescEl.textContent = engine.currentBiome.id === 'cidade' ? 'Cidade: escuro fora dos postes' : 'Noite da Cuca: pouco sol do céu';
   } else {
     weatherIconEl.textContent = '⛈️';
     weatherNameEl.textContent = 'Tempestade Noturna';
@@ -884,6 +884,11 @@ const MUNDOS: Record<number, { titulo: string; fundo: string; borda: string }> =
     titulo: '⛰️ MUNDO 5: SERRA DO VENTO',
     fundo: 'linear-gradient(90deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.35))',
     borda: '#cbd5e1'
+  },
+  6: {
+    titulo: '🌃 MUNDO 6: CIDADE À NOITE',
+    fundo: 'linear-gradient(90deg, rgba(30, 27, 75, 0.9), rgba(67, 56, 202, 0.35))',
+    borda: '#a5b4fc'
   }
 };
 

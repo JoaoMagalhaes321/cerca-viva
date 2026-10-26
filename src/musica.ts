@@ -34,10 +34,12 @@ export interface Faixa {
     | 'mangue' // mundo 4
     | 'serra' // mundo 5
     | 'assombrado' // Noite da Cuca
+    | 'cidade' // mundo 6
     | 'chefe' // Colheitadeira Z
     | 'chefe_mata' // Mapinguari
     | 'chefe_cuca' // Cuca
-    | 'chefe_vento'; // Boitatá
+    | 'chefe_vento' // Boitatá
+    | 'chefe_lua'; // Lobisomem
   titulo: string;
   bpm: number;
   /** Passos (colcheias) por compasso. */
@@ -593,6 +595,105 @@ const CHEFE_VENTO: Faixa = {
   ]
 };
 
+// ---------------------------------------------------------------------------
+// "Rua Vazia" — mundo 6, a cidade à noite. Dó menor, 104 bpm, baixo andando pela calçada.
+// Marimba abafada como um vibrafone de madrugada, pad de néon e chimbal em colcheias.
+// ---------------------------------------------------------------------------
+const CIDADE: Faixa = {
+  id: 'cidade',
+  titulo: 'Rua Vazia',
+  bpm: 104,
+  passosPorCompasso: 8,
+  swing: 0.14,
+  vozes: [
+    {
+      instrumento: 'marimba',
+      volume: 0.042,
+      padrao: `
+        G5 . Eb5 . C5 . . . | . . D5 . Eb5 . G5 . | F5 . D5 . Bb4 . . . | . . C5 . D5 . F5 . |
+        G5 . Eb5 . C5 . . . | . . Ab5 . G5 . F5 . | Eb5 . D5 . C5 . B4 . | C5 - - - . . . . |
+        Eb5 . G5 . C6 . Bb5 . | Ab5 . G5 . F5 . . . | D5 . F5 . Bb5 . Ab5 . | G5 . F5 . Eb5 . . . |
+        C5 . Eb5 . G5 . Ab5 . | G5 - - - F5 . Eb5 . | D5 . B4 . D5 . F5 . | Eb5 - C5 - - - . . |`
+    },
+    {
+      instrumento: 'baixo',
+      volume: 0.07,
+      padrao: `
+        C2 . Eb2 . G2 . Bb2 . | C3 . Bb2 . G2 . Eb2 . | F2 . Ab2 . C3 . Eb3 . | F2 . Eb3 . C3 . Ab2 . |
+        C2 . Eb2 . G2 . Bb2 . | Ab1 . C2 . Eb2 . G2 . | G1 . B1 . D2 . F2 . | C2 . G2 . C2 . . . |
+        Ab1 . C2 . Eb2 . G2 . | F2 . Ab2 . C3 . Ab2 . | Bb1 . D2 . F2 . Ab2 . | Eb2 . G2 . Bb2 . G2 . |
+        C2 . Eb2 . G2 . Bb2 . | Ab1 . C2 . Eb2 . C2 . | G1 . B1 . D2 . F2 . | C2 . G1 . C2 . . . |`
+    },
+    {
+      instrumento: 'pad',
+      volume: 0.017,
+      padrao: `
+        C3+Eb3+G3+Bb3 - - - - - - - | C3+Eb3+G3+Bb3 - - - - - - - | F3+Ab3+C4 - - - - - - - | F3+Ab3+C4+Eb4 - - - - - - - |
+        C3+Eb3+G3+Bb3 - - - - - - - | Ab2+C3+Eb3+G3 - - - - - - - | G2+B2+D3+F3 - - - - - - - | C3+Eb3+G3 - - - - - - - |
+        Ab2+C3+Eb3+G3 - - - - - - - | F3+Ab3+C4 - - - - - - - | Bb2+D3+F3+Ab3 - - - - - - - | Eb3+G3+Bb3 - - - - - - - |
+        C3+Eb3+G3+Bb3 - - - - - - - | Ab2+C3+Eb3 - - - - - - - | G2+B2+D3+F3 - - - - - - - | C3+Eb3+G3 - - - - - - - |`
+    },
+    {
+      instrumento: 'bateria',
+      volume: 0.038,
+      padrao: `
+        K h h h s h h h | K h h h s h K h | K h h h s h h h | K h h h s h s h |
+        K h h h s h h h | K h h h s h K h | K h h h s h h h | K h s h K . . . |
+        K h h h s h h h | K h h h s h K h | K h h h s h h h | K h h h s h s h |
+        K h h h s h h h | K h h h s h K h | K h h h s h h h | K s K s K . . . |`
+    }
+  ]
+};
+
+// ---------------------------------------------------------------------------
+// "Uivo" — chefe Lobisomem. Ré menor, 144 bpm, galope com a lua no céu.
+// Metais em quintas, baixo em oitavas e o lider uivando em notas longas que sobem.
+// ---------------------------------------------------------------------------
+const CHEFE_LUA: Faixa = {
+  id: 'chefe_lua',
+  titulo: 'Uivo',
+  bpm: 144,
+  passosPorCompasso: 8,
+  swing: 0,
+  vozes: [
+    {
+      instrumento: 'baixo',
+      volume: 0.078,
+      padrao: `
+        D2 D2 D3 D2 D2 D3 D2 C2 | D2 D2 D3 D2 F2 E2 D2 C2 | Bb1 Bb1 Bb2 Bb1 Bb1 Bb2 Bb1 A1 | C2 C2 C3 C2 E2 G2 A2 C3 |
+        D2 D2 D3 D2 D2 D3 D2 C2 | D2 D2 D3 D2 F2 E2 D2 C2 | G1 G1 G2 G1 G1 G2 G1 F1 | A1 A1 A2 A1 C#2 E2 G2 A2 |
+        Bb1 - Bb2 - A1 - A2 - | G1 - G2 - F1 - F2 - | E1 - E2 - G1 - G2 - | A1 A1 A2 A1 A2 A2 A1 A1 |`
+    },
+    {
+      instrumento: 'metais',
+      volume: 0.03,
+      padrao: `
+        D4+A4 . D4+A4 . . . D4+A4 . | . . . . C4+G4 . D4+A4 . |
+        Bb3+F4 . Bb3+F4 . . . Bb3+F4 . | C4+G4 . C4+G4 . C4+G4 . C4+G4 . |
+        D4+A4 . D4+A4 . . . D4+A4 . | . . . . C4+G4 . D4+A4 . |
+        G3+D4 . G3+D4 . . . G3+D4 . | A3+E4 . A3+E4 . A3+C#4+E4 A3+C#4+E4 A3+C#4+E4 . |
+        Bb3+D4+F4 - - - A3+C#4+E4 - - - | G3+Bb3+D4 - - - F3+A3+C4 - - - |
+        E3+G3+Bb3 - - - G3+Bb3+D4 - - - | A3+C#4+E4 . A3+C#4+E4 . A3+C#4+E4 . . . |`
+    },
+    {
+      instrumento: 'lider',
+      volume: 0.032,
+      padrao: `
+        . . . . . . . . | . . . . . . . . | . . . . . . . . | . . . . A4 - C5 - |
+        D5 - - - - - F5 - | E5 - - - D5 - C5 - | Bb4 - - - - - D5 - | C#5 - - - - - E5 - |
+        F5 - - - - - - - | E5 - - - C5 - A4 - | G5 - - - - - E5 - | A5 - - - - - . . |`
+    },
+    {
+      instrumento: 'bateria',
+      volume: 0.055,
+      padrao: `
+        K H S H K H S H | K H S H K S S H | K H S H K H S H | K H S H K S K S |
+        K H S H K H S H | K H S H K S S H | K H S H K H S H | K S S S K S S S |
+        K H . H S H . H | K H . H S H . H | K H . H S H . H | K S K S K S S S |`
+    }
+  ]
+};
+
 export const FAIXAS: Record<Faixa['id'], Faixa> = {
   dia: DIA,
   noite: NOITE,
@@ -601,10 +702,12 @@ export const FAIXAS: Record<Faixa['id'], Faixa> = {
   mangue: MANGUE,
   serra: SERRA,
   assombrado: ASSOMBRADO,
+  cidade: CIDADE,
   chefe: CHEFE,
   chefe_mata: CHEFE_MATA,
   chefe_cuca: CHEFE_CUCA,
-  chefe_vento: CHEFE_VENTO
+  chefe_vento: CHEFE_VENTO,
+  chefe_lua: CHEFE_LUA
 };
 
 // ---------------------------------------------------------------------------

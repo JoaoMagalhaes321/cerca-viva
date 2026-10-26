@@ -28,7 +28,7 @@ describe('Trilha sonora', () => {
   });
 
   it('há um tema para cada mundo e um para cada chefe', () => {
-    expect(Object.keys(FAIXAS)).toHaveLength(11);
+    expect(Object.keys(FAIXAS)).toHaveLength(13);
     expect(temaDoBioma('front_yard', false)).toBe('dia');
     expect(temaDoBioma('front_yard', true)).toBe('noite');
     expect(temaDoBioma('bioluminescent_swamp', true)).toBe('pantano');
@@ -40,8 +40,10 @@ describe('Trilha sonora', () => {
     expect(temaDoChefe('igarape')).toBe('chefe_mata');
     expect(temaDoChefe('assombrado')).toBe('chefe_cuca');
     expect(temaDoChefe('serra')).toBe('chefe_vento');
+    expect(temaDoBioma('cidade', true)).toBe('cidade');
+    expect(temaDoChefe('cidade')).toBe('chefe_lua');
     const titulos = new Set(Object.values(FAIXAS).map((f) => f.titulo));
-    expect(titulos.size).toBe(11);
+    expect(titulos.size).toBe(13);
   });
 
   it('"-" segura a nota e "." corta', () => {
