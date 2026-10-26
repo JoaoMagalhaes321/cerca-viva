@@ -1,7 +1,30 @@
 import { PlayerProgress, LevelConfig } from './types';
 import { getLevelById, getNextLevel, LEVEL_CATALOG } from './levels';
+import { PLANT_CATALOG, SYNERGY_RECIPES } from './types';
+import { sanitizarProgresso, CatalogosProgresso } from './progresso-sanitizar';
 
 const PROGRESS_STORAGE_KEY = 'pvz_player_progress_v1';
+/**
+ * Cópia do texto salvo antes de qualquer correção automática (D-20261025-2). Guarda só a última
+ * correção; para voltar, copie o valor desta chave para PROGRESS_STORAGE_KEY.
+ */
+export const PROGRESS_BACKUP_KEY = 'pvz_player_progress_v1_antes_da_correcao';
+
+function catalogosAtuais(): CatalogosProgresso {
+  return {
+    fases: LEVEL_CATALOG,
+    plantas: PLANT_CATALOG.map((p) => p.id),
+    combos: SYNERGY_RECIPES.map((r) => r.id)
+  };
+}
+
+function guardarCopiaDoOriginal(texto: string): void {
+  try {
+    localStorage.setItem(PROGRESS_BACKUP_KEY, texto);
+  } catch {
+    // Sem espaço ou sem localStorage: segue sem a cópia.
+  }
+}
 
 export const DEFAULT_PLAYER_PROGRESS: PlayerProgress = {
   currentLevelId: 1,
@@ -15,25 +38,30 @@ export class ProgressionManager {
   public static getProgress(): PlayerProgress {
     if (this.cachedProgress) return this.cachedProgress;
 
+    let stored: string | null = null;
     try {
-      const stored = localStorage.getItem(PROGRESS_STORAGE_KEY);
-      if (stored) {
-        const parsed = JSON.parse(stored) as PlayerProgress;
-        if (
-          typeof parsed.currentLevelId === 'number' &&
-          typeof parsed.maxUnlockedLevelId === 'number' &&
-          Array.isArray(parsed.unlockedPlants)
-        ) {
-          // Ensure peashooter is always present
-          if (!parsed.unlockedPlants.includes('peashooter')) {
-            parsed.unlockedPlants.unshift('peashooter');
-          }
-          this.cachedProgress = parsed;
-          return this.cachedProgress;
-        }
-      }
+      stored = localStorage.getItem(PROGRESS_STORAGE_KEY);
     } catch (e) {
-      console.warn('[ProgressionManager] Erro ao carregar progresso, usando padrão:', e);
+      console.warn('[ProgressionManager] localStorage indisponível, usando padrão:', e);
+    }
+    if (stored) {
+      let bruto: unknown = undefined;
+      try {
+        bruto = JSON.parse(stored);
+      } catch (e) {
+        console.warn('[ProgressionManager] Progresso salvo não é JSON válido, usando padrão:', e);
+      }
+      if (bruto !== undefined) {
+        const r = sanitizarProgresso(bruto, catalogosAtuais());
+        this.cachedProgress = r.progresso;
+        if (r.mudou) {
+          console.warn('[ProgressionManager] Progresso salvo corrigido:', r.correcoes.join('; '));
+          guardarCopiaDoOriginal(stored);
+          this.saveProgress(r.progresso);
+        }
+        return this.cachedProgress;
+      }
+      guardarCopiaDoOriginal(stored);
     }
 
     this.cachedProgress = { ...DEFAULT_PLAYER_PROGRESS, unlockedPlants: [...DEFAULT_PLAYER_PROGRESS.unlockedPlants] };
@@ -99,6 +127,21 @@ export class ProgressionManager {
       unlockedPlantId,
       isNewUnlock
     };
+  }
+
+  /** Combos que o jogador já descobriu (fez pelo menos uma vez). */
+  public static getDiscoveredCombos(): string[] {
+    return this.getProgress().discoveredCombos ?? [];
+  }
+
+  /** Marca o combo como descoberto. Devolve true só na primeira vez. */
+  public static discoverCombo(synergyId: string): boolean {
+    const progress = this.getProgress();
+    const known = progress.discoveredCombos ?? [];
+    if (known.includes(synergyId)) return false;
+    progress.discoveredCombos = [...known, synergyId];
+    this.saveProgress(progress);
+    return true;
   }
 
   public static resetProgress(): PlayerProgress {

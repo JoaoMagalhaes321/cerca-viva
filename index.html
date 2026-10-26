@@ -6,11 +6,16 @@
     <meta name="theme-color" content="#0f172a" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
-    <title>PvZ: Evolution — Next-Gen Tactical Defense</title>
+    <title>Cerca Viva</title>
+    <link rel="icon" type="image/svg+xml" href="marca/icone.svg" />
+    <link rel="apple-touch-icon" href="marca/icone-180.png" />
+    <link rel="manifest" href="manifest.webmanifest" />
+    <meta name="apple-mobile-web-app-title" content="Cerca Viva" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Fredoka:wght@500;600;700&family=Lilita+One&family=Outfit:wght@400;600;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/src/style.css" />
+    <link rel="stylesheet" href="/src/tema-cartoon.css" />
   </head>
   <body>
     <div id="app">
@@ -62,10 +67,10 @@
             <button class="icon-btn" id="menu-home-btn" title="Voltar ao Menu Inicial">🏠 Menu</button>
             <button class="icon-btn" id="deck-btn" title="Escolher Sementes & Bioma">🎒 Deck</button>
             <button class="icon-btn" id="almanac-btn" title="Almanaque Ilustrado & Sinergias">📖 Guia</button>
-            <button class="icon-btn" id="boss-btn" title="Invocar Chefe Final Dr. Zomboss Agora!">💀 Chefe</button>
+            <button class="icon-btn so-dev" id="boss-btn" hidden title="Invocar o chefe final (Colheitadeira Z) agora!">💀 Chefe</button>
             <button class="icon-btn" id="music-btn" title="Alternar Trilha Sonora Dinâmica">🎵 Som</button>
             <button class="icon-btn" id="speed-btn" title="Alternar Velocidade (1x / 2x)">⏩ 1x</button>
-            <button class="icon-btn" id="weather-cycle-btn" title="Simular Mudança Climática">🌦️</button>
+            <button class="icon-btn so-dev" id="weather-cycle-btn" hidden title="Simular Mudança Climática">🌦️</button>
             <button class="icon-btn" id="pause-btn" title="Pausar Jogo">⏸️</button>
           </div>
         </div>
@@ -122,9 +127,30 @@
         <div class="menu-particles" id="menu-particles"></div>
         <div class="main-menu-container">
           <div class="title-logo-box">
-            <div class="logo-badge">NEXT-GEN TACTICAL EDITION</div>
-            <h1 class="logo-title">PLANTS <span class="vs-text">VS</span> ZOMBIES</h1>
-            <h2 class="logo-subtitle">🌱 EVOLUTION 🧟</h2>
+            <h1 class="logo-cerca-viva-box">
+              <svg class="logo-cerca-viva" role="img" aria-label="Cerca Viva" viewBox="8 54 598 232">
+              <g stroke="#2a2416" stroke-width="14" fill="#2a2416">
+              <circle cx="70" cy="214" r="52"/><circle cx="150" cy="196" r="58"/><circle cx="236" cy="206" r="54"/>
+              <circle cx="318" cy="192" r="60"/><circle cx="404" cy="204" r="55"/><circle cx="486" cy="194" r="58"/>
+              <circle cx="546" cy="218" r="44"/><rect x="22" y="208" width="560" height="64" rx="26"/></g>
+              <g fill="#4caf3a">
+              <circle cx="70" cy="214" r="52"/><circle cx="150" cy="196" r="58"/><circle cx="236" cy="206" r="54"/>
+              <circle cx="318" cy="192" r="60"/><circle cx="404" cy="204" r="55"/><circle cx="486" cy="194" r="58"/>
+              <circle cx="546" cy="218" r="44"/><rect x="22" y="208" width="560" height="64" rx="26"/></g>
+              <g fill="#6cc84a"><circle cx="132" cy="176" r="24"/><circle cx="300" cy="170" r="26"/><circle cx="470" cy="174" r="24"/><circle cx="222" cy="190" r="16"/></g>
+              <g fill="#2f7d24"><circle cx="110" cy="246" r="7"/><circle cx="268" cy="250" r="6"/><circle cx="430" cy="248" r="7"/><circle cx="520" cy="244" r="5"/></g>
+              <ellipse cx="462" cy="222" rx="17" ry="21" fill="#ffffff" stroke="#2a2416" stroke-width="5"/>
+              <ellipse cx="502" cy="222" rx="17" ry="21" fill="#ffffff" stroke="#2a2416" stroke-width="5"/>
+              <circle cx="458" cy="226" r="8" fill="#2a2416"/><circle cx="498" cy="226" r="8" fill="#2a2416"/>
+              <circle cx="461" cy="222" r="2.6" fill="#ffffff"/><circle cx="501" cy="222" r="2.6" fill="#ffffff"/>
+              <g stroke="#2a2416" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+              <path d="M318 136 C 318 112, 322 96, 330 84" fill="none"/>
+              <path d="M329 86 C 344 66, 372 64, 384 72 C 372 92, 348 98, 329 86 Z" fill="#8ee05a"/>
+              <path d="M326 96 C 310 80, 288 80, 278 88 C 290 104, 310 106, 326 96 Z" fill="#6cc84a"/></g>
+              <text x="300" y="168" text-anchor="middle" font-family="'Lilita One', sans-serif" font-size="118" fill="#fff6e0" stroke="#2a2416" stroke-width="16" stroke-linejoin="round" paint-order="stroke fill" letter-spacing="2">Cerca Viva</text>
+              </svg>
+            </h1>
+            <p class="logo-tagline">A defesa mais verde do bairro.</p>
           </div>
 
           <div class="menu-action-buttons">
@@ -136,6 +162,37 @@
               </div>
             </button>
 
+            <div class="menu-modes-row">
+              <button class="menu-sec-btn menu-mode-btn" id="menu-infinito-btn">
+                <span class="mode-icon">♾️</span>
+                <span class="mode-text">
+                  <strong>Modo Infinito</strong>
+                  <small id="menu-infinito-info">Quantas ondas você aguenta?</small>
+                </span>
+              </button>
+              <button class="menu-sec-btn menu-mode-btn" id="menu-desafio-btn">
+                <span class="mode-icon">📅</span>
+                <span class="mode-text">
+                  <strong>Desafio do Dia</strong>
+                  <small id="menu-desafio-info">Um desafio novo por dia</small>
+                </span>
+              </button>
+              <button class="menu-sec-btn menu-mode-btn" id="menu-expedicao-btn">
+                <span class="mode-icon">🧭</span>
+                <span class="mode-text">
+                  <strong>Expedição</strong>
+                  <small id="menu-expedicao-info">Uma corrida com mapa de caminhos</small>
+                </span>
+              </button>
+              <button class="menu-sec-btn menu-mode-btn menu-halloween hidden" id="menu-halloween-btn">
+                <span class="mode-icon">🎃</span>
+                <span class="mode-text">
+                  <strong>Noite da Cuca</strong>
+                  <small id="menu-halloween-info">Evento de Halloween</small>
+                </span>
+              </button>
+            </div>
+
             <div class="menu-secondary-row">
               <button class="menu-sec-btn" id="menu-levels-btn">
                 <span>🗺️</span> Fases
@@ -146,8 +203,17 @@
               <button class="menu-sec-btn" id="menu-almanac-btn">
                 <span>📖</span> Almanaque
               </button>
+              <button class="menu-sec-btn" id="menu-herbario-btn" title="Tudo o que você já descobriu">
+                <span>📗</span> Herbário <small id="menu-herbario-info" class="menu-btn-info"></small>
+              </button>
+              <button class="menu-sec-btn" id="menu-zen-btn" title="Regue suas plantas todo dia e ganhe sol nas batalhas">
+                <span>🪴</span> Jardim Zen <small id="menu-zen-info" class="menu-btn-info"></small>
+              </button>
               <button class="menu-sec-btn" id="menu-sound-btn">
                 <span>🎵</span> Trilha Sonora
+              </button>
+              <button class="menu-sec-btn" id="menu-acess-btn">
+                <span>♿</span> Acessibilidade
               </button>
             </div>
           </div>
@@ -178,7 +244,7 @@
             <small>Clique em uma planta abaixo para adicionar ou remover do seu Deck</small>
           </div>
 
-          <!-- All 10 Plants Grid with Live 2.5D Portraits -->
+          <!-- All Plants Grid with Live 2.5D Portraits -->
           <div class="deck-plant-grid" id="deck-plant-grid"></div>
 
           <div class="modal-footer-row">
@@ -201,8 +267,8 @@
 
           <div class="almanac-tabs">
             <button class="tab-btn active" data-tab="synergies">⚡ Reações Elementais (Combos)</button>
-            <button class="tab-btn" data-tab="plants">🌻 Plantas (10)</button>
-            <button class="tab-btn" data-tab="zombies">🧟 Zumbis & Chefe (6)</button>
+            <button class="tab-btn" data-tab="plants">🌻 Plantas (11)</button>
+            <button class="tab-btn" data-tab="zombies">🧟 Zumbis & Chefe (9)</button>
           </div>
 
           <div id="almanac-content" class="almanac-content"></div>
@@ -238,7 +304,7 @@
                   <span id="reward-plant-badge" class="element-badge">☀️ Solar</span>
                   <span id="reward-plant-cost" class="cost-badge">☀️ 50 Sol</span>
                 </div>
-                <h3 id="reward-plant-name">Girassol Prisma</h3>
+                <h3 id="reward-plant-name">Lírio Prisma</h3>
                 <p id="reward-plant-desc">Gera +25 Sol periodicamente para expandir suas defesas.</p>
                 <div class="reward-overdrive-box">
                   <strong>Poder de Adubo:</strong>
@@ -280,6 +346,10 @@
           <h2 id="result-title">Jardim Defendido!</h2>
           <p id="result-subtitle">Você dominou as sinergias elementais!</p>
           <div class="result-stats" id="result-stats"></div>
+          <div class="result-replay hidden" id="result-replay">
+            <span class="result-replay-titulo">🎬 Melhor momento: <b id="result-replay-motivo"></b></span>
+            <canvas id="result-replay-canvas" width="480" height="270"></canvas>
+          </div>
           <div class="modal-footer-row" style="justify-content: center; gap: 10px; flex-wrap: wrap;">
             <button class="primary-btn" id="game-over-next-btn">▶️ Próxima Fase</button>
             <button class="secondary-btn" id="change-deck-btn">🎒 Deck / Bioma</button>

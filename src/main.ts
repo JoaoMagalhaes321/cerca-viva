@@ -1,7 +1,12 @@
-import { GameEngine, ZombieVariant } from './engine';
+import { GameEngine, PlantEntity, ZombieVariant } from './engine';
 import { CharacterRenderer } from './renderer';
+import { preloadSprites } from './sprites';
+import { confete, vibrar } from './feedback';
 import { sound } from './audio';
+import { Modos } from './modos';
+import { iniciarInstalacao } from './instalar';
 import { LiveUpdater } from './updater';
+import { iniciarLivroCombos, registrarCombo, renderLivroCombos } from './livro-combos';
 import {
   BIOME_CATALOG,
   BiomeDefinition,
@@ -9,10 +14,25 @@ import {
   MUTATION_CATALOG,
   MutationDefinition,
   PLANT_CATALOG,
-  SYNERGY_RECIPES
+  PlantDefinition
 } from './types';
 import { ProgressionManager } from './progression';
-import { LEVEL_CATALOG, getNextLevel } from './levels';
+import { LEVEL_CATALOG, biomaDoMundo, fechaMundo, getNextLevel } from './levels';
+import { Tutorial } from './tutorial';
+import { aplicarModoDev, modoDevDaPagina } from './modo-dev';
+
+import { BalaoFlorescer } from './florescer-ui';
+import { HerbarioUi } from './herbario-ui';
+import { ExpedicaoUi } from './expedicao-ui';
+import { Preparacao } from './preparacao';
+import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
+import { JardimZen } from './zen-ui';
+import { mostrarAbertura } from './abertura';
+import { tocarReplay } from './replay';
+import { aplicarAcessibilidade } from './acessibilidade';
+import { nivelDeInteligencia } from './inteligencia';
+import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
+import { AcessibilidadeUi } from './acessibilidade-ui';
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
@@ -112,16 +132,44 @@ function showToast(msg: string): void {
   }, 3200);
 }
 
+/** Planta adulta e inteira, só para desenhar retratos (cards, almanaque, recompensa). */
+function plantaDeRetrato(def: PlantDefinition): PlantEntity {
+  return {
+    id: 0, def, row: 0, col: 0, hp: def.maxHp, maxHp: def.maxHp, attackTimer: 0, overdriveTimer: 0,
+    animPhase: 0.4, scaleKick: 0, armored: false, adubada: false, idade: 99, caminho: null, caminhoTimer: 0,
+    armTimer: 0, armed: true
+  };
+}
+
+// O Herbário precisa existir antes do motor: o motor já registra o bioma ao montar o tabuleiro
+const herbario = new HerbarioUi((msg) => showToast(msg));
+
 let engine!: GameEngine;
 
 engine = new GameEngine(canvas, {
+  onCombo: (id) => registrarCombo(id),
   onUiUpdate: () => {
     if (engine) syncHud();
   },
   onMutationPrompt: (choices) => openMutationModal(choices),
+  onBloomPrompt: (plant) => balaoFlorescer.abrir(plant),
+  onDescoberta: (categoria, id) => herbario.registrar(categoria, id),
   onGameEnd: (won) => openGameOverModal(won),
   onToast: (msg) => showToast(msg)
 });
+
+const balaoFlorescer = new BalaoFlorescer(
+  engine,
+  document.getElementById('canvas-container') as HTMLElement,
+  canvas
+);
+
+const tutorial = new Tutorial(
+  engine,
+  document.getElementById('canvas-container') as HTMLElement,
+  canvas,
+  seedBarEl
+);
 
 function buildSeedPackets(): void {
   seedBarEl.innerHTML = '';
@@ -149,21 +197,7 @@ function buildSeedPackets(): void {
     if (pCtx) {
       CharacterRenderer.drawPlant(
         pCtx,
-        {
-          id: 0,
-          def: plant,
-          row: 0,
-          col: 0,
-          hp: plant.maxHp,
-          maxHp: plant.maxHp,
-          attackTimer: 0,
-          overdriveTimer: 0,
-          animPhase: 0.4,
-          scaleKick: 0,
-          armored: false,
-          armTimer: 0,
-          armed: true
-        },
+        plantaDeRetrato(plant),
         22,
         24,
         46,
@@ -184,10 +218,19 @@ function buildSeedPackets(): void {
   }
 }
 
+let ultimasMutacoes: string | null = null;
+
 function syncHud(): void {
+  // O tema do HUD muda com o clima (noite e névoa escurecem a faixa do topo)
+  document.body.dataset.weather = engine.weather;
   sunAmountEl.textContent = String(engine.sun);
-  waveLabelEl.textContent = `ONDA ${engine.wave} / ${engine.maxWaves}`;
-  if (currentLevel) {
+  waveLabelEl.textContent =
+    engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
+  if (modos.ativo()) {
+    stageBadgeEl.textContent = modos.rotulo();
+  } else if (expedicao.ativo()) {
+    stageBadgeEl.textContent = expedicao.rotulo();
+  } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
@@ -201,6 +244,10 @@ function syncHud(): void {
     weatherIconEl.textContent = '🌧️';
     weatherNameEl.textContent = 'Chuva Tática';
     weatherDescEl.textContent = 'Zumbis Molhados (+Combo ⚡/❄️)';
+  } else if (engine.weather === 'lua_cheia') {
+    weatherIconEl.textContent = '🌕';
+    weatherNameEl.textContent = 'Lua Cheia';
+    weatherDescEl.textContent = 'Noite da Cuca: pouco sol do céu';
   } else {
     weatherIconEl.textContent = '⛈️';
     weatherNameEl.textContent = 'Tempestade Noturna';
@@ -224,6 +271,10 @@ function syncHud(): void {
   powerRainBtn.classList.toggle('active', engine.activePower === 'raincloud');
   powerSolarBtn.classList.toggle('active', engine.activePower === 'solarbeam');
 
+  // A lista de mutações só é refeita quando muda (o HUD é atualizado várias vezes por segundo na luta)
+  const assinaturaMutacoes = [...engine.unlockedMutations].join(',');
+  if (assinaturaMutacoes === ultimasMutacoes) return;
+  ultimasMutacoes = assinaturaMutacoes;
   if (engine.unlockedMutations.size === 0) {
     mutListEl.innerHTML = `<span class="mut-empty">Sobreviva até a 🚩 para evoluir</span>`;
   } else {
@@ -254,11 +305,24 @@ function updateCooldownOverlays(): void {
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
 }
 
+// Deck só com plantas já liberadas; se nenhuma do deck estiver liberada, usa as liberadas
+/** Plantas liberadas agora: as da Aventura e, na fase do evento, as do evento. */
+function plantasLiberadas(): string[] {
+  const base = ProgressionManager.getProgress().unlockedPlants;
+  return currentLevel?.evento === 'halloween' ? [...base, ...PLANTAS_HALLOWEEN] : base;
+}
+
+function unlockedDeck(ids: string[]): string[] {
+  const unlocked = plantasLiberadas();
+  const deck = ids.filter((id) => unlocked.includes(id));
+  return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+}
+
 // DECK BUILDER ("ESCOLHA SUAS SEMENTES") & BIOME SELECTOR
 function openDeckModal(): void {
   engine.paused = true;
   draftBiome = engine.currentBiome;
-  draftDeckIds = [...engine.activeDeckIds];
+  draftDeckIds = unlockedDeck(engine.activeDeckIds);
   renderDeckModalContents();
   deckModal.classList.remove('hidden');
 }
@@ -286,6 +350,8 @@ function renderDeckModalContents(): void {
   }
 
   // 2. Render Deck Count & Plants with lock status
+  // Planta bloqueada nunca aparece como "No deck" nem conta no total
+  draftDeckIds = unlockedDeck(draftDeckIds);
   deckCountEl.textContent = `${draftDeckIds.length}`;
   deckPlantGridEl.innerHTML = '';
   const progress = ProgressionManager.getProgress();
@@ -294,7 +360,7 @@ function renderDeckModalContents(): void {
     const isUnlocked = progress.unlockedPlants.includes(plant.id);
     const inDeck = draftDeckIds.includes(plant.id);
     const unlockLevel = LEVEL_CATALOG.find((l) => l.unlockedPlantOnClear === plant.id);
-    const unlockHint = unlockLevel ? `Fase ${unlockLevel.world}-${unlockLevel.stage}` : 'Aventura';
+    const unlockHint = plant.evento ? '🎃 Noite da Cuca' : unlockLevel ? `Fase ${unlockLevel.world}-${unlockLevel.stage}` : 'Aventura';
 
     const item = document.createElement('div');
     item.className = `deck-plant-item ${inDeck ? 'in-deck' : ''} ${!isUnlocked ? 'locked' : ''}`;
@@ -323,21 +389,7 @@ function renderDeckModalContents(): void {
     if (pCtx) {
       CharacterRenderer.drawPlant(
         pCtx,
-        {
-          id: 0,
-          def: plant,
-          row: 0,
-          col: 0,
-          hp: plant.maxHp,
-          maxHp: plant.maxHp,
-          attackTimer: 0,
-          overdriveTimer: 0,
-          animPhase: 0.4,
-          scaleKick: 0,
-          armored: false,
-          armTimer: 0,
-          armed: true
-        },
+        plantaDeRetrato(plant),
         28,
         30,
         54,
@@ -387,20 +439,7 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
   almanacContentEl.innerHTML = '';
 
   if (tab === 'synergies') {
-    for (const syn of SYNERGY_RECIPES) {
-      const card = document.createElement('div');
-      card.className = 'almanac-card';
-      card.style.borderColor = syn.color + '66';
-      card.innerHTML = `
-        <div style="font-size: 2rem; min-width: 48px; text-align: center;">⚡</div>
-        <div class="almanac-card-info">
-          <span class="badge-pill" style="color:${syn.color};">${syn.badges}</span>
-          <h4>${syn.title}</h4>
-          <p>${syn.description}</p>
-        </div>
-      `;
-      almanacContentEl.appendChild(card);
-    }
+    renderLivroCombos(almanacContentEl);
   } else if (tab === 'plants') {
     for (const plant of PLANT_CATALOG) {
       const card = document.createElement('div');
@@ -419,21 +458,7 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
       if (pCtx) {
         CharacterRenderer.drawPlant(
           pCtx,
-          {
-            id: 0,
-            def: plant,
-            row: 0,
-            col: 0,
-            hp: plant.maxHp,
-            maxHp: plant.maxHp,
-            attackTimer: 0,
-            overdriveTimer: 0,
-            animPhase: 0.4,
-            scaleKick: 0,
-            armored: false,
-            armTimer: 0,
-            armed: true
-          },
+          plantaDeRetrato(plant),
           32,
           36,
           62,
@@ -453,62 +478,87 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
     }[] = [
       {
         variant: 'basic',
-        name: 'Zumbi de Jardim',
+        name: 'Zumbi Comum',
         hp: 190,
         speedText: 'Normal',
-        desc: 'Invasor comum de gravata vermelha. Perde o braço aos 35% de HP e a cabeça ao cair.'
+        desc: 'O grosso da horda, de moletom rasgado. Perde o braço aos 35% de HP e a cabeça ao cair.'
       },
       {
         variant: 'cone',
-        name: 'Zumbi Cabeça-de-Cone',
+        name: 'Zumbi Operário',
         hp: 390,
         speedText: 'Normal',
-        desc: 'Cone de tráfego dobra sua resistência. O cone voa quando perde metade da vida!'
+        desc: 'O capacete de obra dobra sua resistência. O capacete voa quando ele perde metade da vida!'
       },
       {
         variant: 'cyber_sprinter',
-        name: 'Zumbi Corredor Turbo',
+        name: 'Corredor Cibernético',
         hp: 260,
         speedText: 'Muito Rápido',
-        desc: 'Equipado com visor neon. Use Gelo (❄️), Vento (💨) ou Noz Blindada para freá-lo!'
+        desc: 'Equipado com visor neon. Use Gelo (❄️), Vento (💨) ou o Cacto-Muralha para freá-lo!'
       },
       {
         variant: 'bucket',
-        name: 'Zumbi Blindado (Balde)',
+        name: 'Zumbi Motoqueiro',
         hp: 680,
         speedText: 'Lento',
-        desc: 'Balde de ferro ultra resistente. Nepentes Ácida (☣️) derrete sua armadura 2x mais rápido!'
+        desc: 'Capacete de moto ultra resistente. A Nepentes Ácida (☣️) derrete o capacete 2x mais rápido!'
       },
       {
         variant: 'rubber_hazard',
-        name: 'Zumbi Isolador Emborrachado',
+        name: 'Zumbi Isolante',
         hp: 440,
         speedText: 'Normal (Lama: 85%)',
         desc: '⚡ IMUNE A RAIOS! Traje de borracha dissipa choques elétricos (0 dano). VULNERÁVEL: ☣️ Ácido (+160% de dano) e 🔥 Fogo derretem a borracha!'
       },
       {
         variant: 'pyro_scavenger',
-        name: 'Zumbi Lança-Chamas de Sucata',
+        name: 'Saqueador Piro',
         hp: 490,
         speedText: 'Normal',
         desc: '🔥 Dispara jatos térmicos que incineram plantas de Natureza com dano duplo! CONTRA-ATAQUE: 💧 Água apaga o maçarico e atordoa por 2.8s!'
       },
       {
+        variant: 'canoeiro',
+        name: 'Zumbi Canoeiro',
+        hp: 380,
+        speedText: 'Rápido na canoa · lento nadando',
+        desc: '🛶 Só aparece no rio do Mundo 3 e desce a correnteza depressa. Na metade da vida a canoa afunda e ele segue nadando, bem devagar. Sempre molhado: os raios do ⚡ Junco Tesla pulam até ele!'
+      },
+      {
         variant: 'gargantuar',
-        name: 'Titã Devorador (Sub-Chefe)',
+        name: 'Colosso do Ferro-Velho (Sub-Chefe)',
         hp: 1450,
         speedText: 'Pesado',
-        desc: 'Colosso com elmo viking e clava elétrica. Combine reações elementais e Adubo Supremo!'
+        desc: 'Gigante com garra de sucata e muita vida. Combine reações elementais e Adubo Supremo!'
+      },
+      {
+        variant: 'siri',
+        name: 'Zumbi Siri',
+        hp: 420,
+        speedText: 'Normal · rápido na água',
+        desc: '🦀 Do mangue (Mundo 4): anda de lado e troca de linha de tempos em tempos, então não adianta defender uma linha só. A carapaça segura metade do dano de projéteis de Natureza; ☣️ ácido e 🔥 fogo passam direto. Na lama da maré baixa não atola.'
+      },
+      {
+        variant: 'mapinguari',
+        name: 'Mapinguari (Chefe do Igarapé)',
+        hp: 3200,
+        speedText: 'Pesado',
+        desc: '👁️ Do folclore amazônico: um olho só, boca na barriga e pelo grosso. Ruge (trava as plantas da linha), dá pisões que ferem as plantas perto e chama canoeiros pelo rio. 🔥 Fogo queima o pelo (+60% de dano) e, parado (❄️ congelado ou atordoado), o olho fica exposto (+40%).'
       },
       {
         variant: 'zomboss_mech',
-        name: 'Dr. Zomboss Mecha-Titã (Chefe Final)',
+        name: 'Colheitadeira Z (Chefe Final)',
         hp: 3600,
-        speedText: 'Salto Propulsor',
-        desc: 'Robô gigante pilotado pelo Dr. Zomboss! Salta entre linhas, bombardeia o jardim com plasma/ácido e invoca Corredores Turbo!'
+        speedText: 'Troca de linha',
+        desc: 'Colheitadeira gigante pilotada por um zumbi fazendeiro! Troca de linha, joga sucata que deixa o chão queimado ou tóxico e chama Corredores Cibernéticos!'
       }
     ];
 
+    const nota = document.createElement('p');
+    nota.className = 'almanac-nota';
+    nota.innerHTML = '🧬 <b>Mutações de zumbi:</b> do Mundo 2 em diante (e nas ondas altas do Infinito) alguns zumbis nascem na versão elite, com um selo na cabeça: ⚙️ <b>de Ferro</b> (capacete que segura Natureza — use ácido), 🦀 <b>Gigante</b>, 🛶 <b>em Dupla</b> e 💨 <b>Veloz</b>.';
+    almanacContentEl.appendChild(nota);
     for (const zInfo of zombiesInfo) {
       const card = document.createElement('div');
       card.className = 'almanac-card';
@@ -522,6 +572,8 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
       `;
       const c = card.querySelector('canvas') as HTMLCanvasElement;
       const zCtx = c.getContext('2d');
+      const almanacScale =
+        zInfo.variant === 'zomboss_mech' ? 0.42 : zInfo.variant === 'gargantuar' || zInfo.variant === 'mapinguari' ? 0.68 : 1;
       if (zCtx) {
         CharacterRenderer.drawZombie(
           zCtx,
@@ -546,12 +598,13 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
             walkPhase: 0.5,
             isEating: false,
             lostHeadgear: false,
-            lostArm: false
+            lostArm: false,
+            confusoTimer: 0
           },
           34,
-          44,
-          56,
-          64
+          60 - 64 * almanacScale * 0.24,
+          56 * almanacScale,
+          64 * almanacScale
         );
       }
       almanacContentEl.appendChild(card);
@@ -579,44 +632,86 @@ function openMutationModal(choices: MutationDefinition[]): void {
   mutationModal.classList.remove('hidden');
 }
 
+/** Fase da Aventura (a do progresso salvo). A fase do evento nunca entra aqui: o evento é só um botão à parte. */
+function faseDaAventura(): LevelConfig {
+  return currentLevel && !currentLevel.evento ? currentLevel : ProgressionManager.getCurrentLevel();
+}
+
 function updateMenuStageInfo(): void {
-  if (menuStageInfoEl && currentLevel) {
-    menuStageInfoEl.textContent = `Aventura: ${currentLevel.name}`;
+  if (menuStageInfoEl) {
+    menuStageInfoEl.textContent = `Aventura: ${faseDaAventura().name}`;
   }
 }
 
+/** Abre a tela de preparação (zumbis da fase + sementes) e só então começa a fase. */
 function startLevel(level: LevelConfig): void {
+  modos.sair();
+  expedicao.sair();
   currentLevel = level;
-  ProgressionManager.setCurrentLevel(level.id);
-
-  if (level.world === 2) {
-    const swamp = BIOME_CATALOG.find((b) => b.id === 'bioluminescent_swamp');
-    if (swamp) draftBiome = swamp;
-  } else {
-    const garden = BIOME_CATALOG.find((b) => b.id === 'sunny_garden') || BIOME_CATALOG[0];
-    draftBiome = garden;
+  if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
+  updateMenuStageInfo();
+  // A 1-1 tem uma planta só e o tutorial: vai direto
+  if (level.id === 1) {
+    iniciarFase(level);
+    return;
   }
+  engine.paused = true;
+  preparacao.abrir(
+    level,
+    () => iniciarFase(level),
+    () => {
+      if (mainMenuScreen.classList.contains('hidden')) showMainMenu();
+    }
+  );
+}
 
-  const progress = ProgressionManager.getProgress();
-  draftDeckIds = draftDeckIds.filter((id) => progress.unlockedPlants.includes(id));
+function iniciarFase(level: LevelConfig): void {
+  currentLevel = level;
+  if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
+
+  draftBiome = BIOME_CATALOG.find((b) => b.id === biomaDoMundo(level.world)) || BIOME_CATALOG[0];
+
+  const liberadas = plantasLiberadas();
+  draftDeckIds = draftDeckIds.filter((id) => liberadas.includes(id));
   if (draftDeckIds.length === 0) {
-    draftDeckIds = [...progress.unlockedPlants].slice(0, MAX_DECK_SIZE);
+    draftDeckIds = [...liberadas].slice(0, MAX_DECK_SIZE);
   }
+  // Regra "deck da fase": a fase impõe as sementes (só as já liberadas)
+  const deckDaPartida =
+    regrasDaFase(level).includes('deck_fixo') && level.deckFixo
+      ? level.deckFixo.filter((id) => liberadas.includes(id))
+      : draftDeckIds;
 
-  engine.initBoard(draftBiome, draftDeckIds, currentLevel);
+  engine.initBoard(draftBiome, deckDaPartida.length > 0 ? deckDaPartida : draftDeckIds, currentLevel);
+  aplicarRegrasDaFase(engine, level);
+  // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns (no evento, fixo)
+  engine.chanceElite = level.evento ? 0.15 : level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
+  // Zumbis cada vez mais espertos: nível por fase (inteligencia.ts)
+  engine.inteligencia = nivelDeInteligencia(level.world, level.stage);
+  // Jardim Zen: regou ontem ou hoje, começa com mais sol
+  const bonusZen = jardimZen.bonusDeHoje();
+  if (bonusZen > 0) {
+    engine.sun += bonusZen;
+    window.setTimeout(() => showToast(`🪴 Jardim Zen: +${bonusZen}☀️ de sol inicial por ter regado as plantas.`), 1200);
+  }
   buildSeedPackets();
   syncHud();
   updateMenuStageInfo();
   hideMainMenuAndPlay();
   showToast(`⚔️ Iniciando ${currentLevel.name}!`);
+  tutorial.iniciarSeFor(currentLevel.id);
 }
 
 function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): void {
   const plant = PLANT_CATALOG.find((p) => p.id === plantId);
   if (!plant) return;
+  preparacao.marcarNova(plantId);
 
-  rewardBannerTitle.textContent = 'NOVA SEMENTE DESBLOQUEADA!';
-  rewardDialogHeading.textContent = 'Você obteve uma nova planta!';
+  const mundoFechado = currentLevel && !currentLevel.evento && fechaMundo(currentLevel.id) ? currentLevel.world : null;
+  rewardBannerTitle.textContent = mundoFechado ? `🏆 MUNDO ${mundoFechado} CONCLUÍDO! NOVA SEMENTE` : 'NOVA SEMENTE DESBLOQUEADA!';
+  rewardDialogHeading.textContent = mundoFechado
+    ? `Você salvou o Mundo ${mundoFechado}! De presente, uma nova planta:`
+    : 'Você obteve uma nova planta!';
   rewardPlantBadge.textContent = `${plant.elementBadge} ${plant.element.toUpperCase()}`;
   rewardPlantCost.textContent = `☀️ ${plant.cost} Sol`;
   rewardPlantName.textContent = plant.name;
@@ -629,21 +724,7 @@ function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): v
     ctx.clearRect(0, 0, rewardPlantCanvas.width, rewardPlantCanvas.height);
     CharacterRenderer.drawPlant(
       ctx,
-      {
-        id: 0,
-        def: plant,
-        row: 0,
-        col: 0,
-        hp: plant.maxHp,
-        maxHp: plant.maxHp,
-        attackTimer: 0,
-        overdriveTimer: 0,
-        animPhase: 0.5,
-        scaleKick: 0.35,
-        armored: false,
-        armTimer: 0,
-        armed: true
-      },
+      plantaDeRetrato(plant),
       65,
       68,
       110,
@@ -674,7 +755,32 @@ function showPlantRewardModal(plantId: string, nextLevel: LevelConfig | null): v
 
   sound.playSunCollect();
   plantRewardModal.classList.remove('hidden');
+  confete(plantRewardModal);
+  vibrar('medio');
 }
+
+const MUNDOS: Record<number, { titulo: string; fundo: string; borda: string }> = {
+  1: {
+    titulo: '🏡 MUNDO 1: JARDIM DIURNO & FRONTAL',
+    fundo: 'linear-gradient(90deg, rgba(22, 101, 52, 0.85), rgba(20, 83, 45, 0.35))',
+    borda: '#4ade80'
+  },
+  2: {
+    titulo: '🍄 MUNDO 2: PÂNTANO BIOLUMINESCENTE',
+    fundo: 'linear-gradient(90deg, rgba(15, 118, 110, 0.85), rgba(13, 148, 136, 0.35))',
+    borda: '#2dd4bf'
+  },
+  3: {
+    titulo: '🛶 MUNDO 3: IGARAPÉ AMAZÔNICO',
+    fundo: 'linear-gradient(90deg, rgba(3, 105, 161, 0.85), rgba(14, 116, 144, 0.35))',
+    borda: '#38bdf8'
+  },
+  4: {
+    titulo: '🦀 MUNDO 4: MANGUE DA MARÉ',
+    fundo: 'linear-gradient(90deg, rgba(120, 53, 15, 0.85), rgba(180, 83, 9, 0.35))',
+    borda: '#fb923c'
+  }
+};
 
 function renderLevelsGrid(): void {
   const progress = ProgressionManager.getProgress();
@@ -691,19 +797,14 @@ function renderLevelsGrid(): void {
       worldHeader.style.margin = '12px 0 6px 0';
       worldHeader.style.padding = '8px 14px';
       worldHeader.style.borderRadius = '8px';
-      worldHeader.style.background =
-        lvl.world === 1
-          ? 'linear-gradient(90deg, rgba(22, 101, 52, 0.85), rgba(20, 83, 45, 0.35))'
-          : 'linear-gradient(90deg, rgba(15, 118, 110, 0.85), rgba(13, 148, 136, 0.35))';
-      worldHeader.style.borderLeft = lvl.world === 1 ? '4px solid #4ade80' : '4px solid #2dd4bf';
+      const mundo = MUNDOS[lvl.world] ?? MUNDOS[1];
+      worldHeader.style.background = mundo.fundo;
+      worldHeader.style.borderLeft = `4px solid ${mundo.borda}`;
       worldHeader.style.fontWeight = 'bold';
       worldHeader.style.fontSize = '0.94rem';
       worldHeader.style.color = '#f0fdf4';
       worldHeader.style.letterSpacing = '0.5px';
-      worldHeader.innerHTML =
-        lvl.world === 1
-          ? '🏡 MUNDO 1: JARDIM DIURNO & FRONTAL'
-          : '🍄 MUNDO 2: PÂNTANO BIOLUMINESCENTE';
+      worldHeader.innerHTML = mundo.titulo;
       levelsGridEl.appendChild(worldHeader);
     }
 
@@ -739,8 +840,46 @@ function renderLevelsGrid(): void {
   }
 }
 
+let pararReplay: (() => void) | null = null;
+/** Mostra (ou esconde) o replay do melhor momento na tela de resultado. */
+function mostrarReplay(): void {
+  pararReplay?.();
+  pararReplay = null;
+  const caixa = document.getElementById('result-replay')!;
+  const m = engine.gravador.melhor;
+  if (!m || m.fotos.length < 5) {
+    caixa.classList.add('hidden');
+    return;
+  }
+  document.getElementById('result-replay-motivo')!.textContent = m.motivo;
+  caixa.classList.remove('hidden');
+  pararReplay = tocarReplay(document.getElementById('result-replay-canvas') as HTMLCanvasElement, m);
+}
+
 function openGameOverModal(won: boolean): void {
-  if (won && currentLevel) {
+  document.getElementById('compartilhar-desafio-btn')?.remove();
+  mostrarReplay();
+  if (modos.ativo()) {
+    modos.mostrarResultado(won);
+    return;
+  }
+  if (expedicao.ativo()) {
+    expedicao.mostrarResultado(won);
+    return;
+  }
+  if (won && engine.plants.length > 0) {
+    const p = engine.plants[Math.floor(Math.random() * engine.plants.length)];
+    engine.falar('vitoria', p.col + 0.5, p.row);
+  }
+  herbario.checarConquistas({
+    venceu: won,
+    modo: currentLevel?.evento ? 'evento' : 'aventura',
+    mundo: currentLevel?.world,
+    deck: engine.activeDeckIds,
+    marcas: engine.marcas,
+    derrotadosNaPartida: engine.tiposDerrotados
+  });
+  if (won && currentLevel && !currentLevel.evento) {
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
 
@@ -750,15 +889,20 @@ function openGameOverModal(won: boolean): void {
     }
   }
 
-  resultIconEl.textContent = won ? '🏆' : '🧠';
+  const evento = currentLevel?.evento === 'halloween';
+  resultIconEl.textContent = won ? (evento ? '🎃' : '🏆') : evento ? '🐊' : '🧠';
   resultTitleEl.textContent = won
-    ? (currentLevel ? `${currentLevel.name} Concluída!` : 'Jardim Evoluído e Defendido!')
-    : 'Os Zumbis Invadiram!';
+    ? (evento
+      ? 'A Cuca foi dormir!'
+      : currentLevel && fechaMundo(currentLevel.id)
+        ? `🏆 Mundo ${currentLevel.world} Concluído!`
+        : currentLevel ? `${currentLevel.name} Concluída!` : 'Jardim Evoluído e Defendido!')
+    : evento ? 'A Cuca levou o jardim!' : 'Os Zumbis Invadiram!';
   resultSubtitleEl.textContent = won
-    ? (currentLevel ? 'Parabéns! Você defendeu seu jardim com maestria tática!' : `Vitória em ${engine.currentBiome.name}!`)
-    : 'Experimente ajustar seu Deck de Sementes ou consultar o Guia de Sinergias!';
+    ? (evento ? 'O jardim assombrado está salvo até o ano que vem. Feliz Halloween! 🎃' : currentLevel ? 'Parabéns! Você defendeu seu jardim com maestria tática!' : `Vitória em ${engine.currentBiome.name}!`)
+    : evento ? 'Dica: Abóbora-Brasa queima múmias em dobro, e o Feixe Orbital acorda a Cuca.' : 'Experimente ajustar seu Deck de Sementes ou consultar o Guia de Sinergias!';
 
-  const nextLvl = currentLevel ? getNextLevel(currentLevel.id) : null;
+  const nextLvl = currentLevel && !evento ? getNextLevel(currentLevel.id) : null;
   if (won && nextLvl) {
     gameOverNextBtn.style.display = 'inline-block';
     gameOverNextBtn.textContent = `▶️ Próxima Fase (${nextLvl.world}-${nextLvl.stage})`;
@@ -788,7 +932,15 @@ function openGameOverModal(won: boolean): void {
       <strong>${currentLevel ? `🗺️ Fase ${currentLevel.world}-${currentLevel.stage}` : `${engine.currentBiome.icon} ${engine.currentBiome.name}`}</strong>
     </div>
   `;
+  gameOverModal.classList.toggle('vitoria', won);
+  gameOverModal.classList.toggle('derrota', !won);
   gameOverModal.classList.remove('hidden');
+  if (won) {
+    confete(gameOverModal);
+    vibrar('medio');
+  } else {
+    vibrar('forte');
+  }
 }
 
 // Button Listeners
@@ -805,7 +957,11 @@ closeDeckBtn.addEventListener('click', () => {
 
 startBattleBtn.addEventListener('click', () => {
   deckModal.classList.add('hidden');
-  startLevel(currentLevel);
+  if (modos.ativo()) modos.reiniciar();
+  else if (expedicao.ativo()) {
+    showMainMenu();
+    expedicao.abrir();
+  } else startLevel(currentLevel);
 });
 
 openAlmanacFromDeckBtn.addEventListener('click', () => {
@@ -881,7 +1037,12 @@ speedBtn.addEventListener('click', () => {
   speedBtn.textContent = `⏩ ${engine.gameSpeed}x`;
 });
 
+// Botões de teste (💀 Chefe e 🌦️ Clima): só no modo dev (npm run dev ou ?dev=1). Ver src/modo-dev.ts.
+const MODO_DEV = modoDevDaPagina();
+aplicarModoDev(MODO_DEV);
+
 bossBtn.addEventListener('click', () => {
+  if (!MODO_DEV) return;
   sound.startSoundtrack();
   engine.spawnZombossFinalBoss();
 });
@@ -893,6 +1054,7 @@ musicBtn.addEventListener('click', () => {
 });
 
 weatherCycleBtn.addEventListener('click', () => {
+  if (!MODO_DEV) return;
   engine.cycleWeather();
 });
 
@@ -904,12 +1066,18 @@ pauseBtn.addEventListener('click', () => {
 
 restartBtn.addEventListener('click', () => {
   gameOverModal.classList.add('hidden');
-  startLevel(currentLevel);
+  if (modos.ativo()) modos.reiniciar();
+  else if (expedicao.ativo()) {
+    showMainMenu();
+    expedicao.abrir();
+  } else startLevel(currentLevel);
 });
 
 // Main Menu Controls
 function showMainMenu(): void {
   engine.paused = true;
+  tutorial.parar();
+  balaoFlorescer.fechar();
   updateMenuStageInfo();
   mainMenuScreen.classList.remove('hidden');
 }
@@ -922,7 +1090,8 @@ function hideMainMenuAndPlay(): void {
 }
 
 menuPlayBtn.addEventListener('click', () => {
-  startLevel(currentLevel);
+  // INICIAR JOGO é sempre a Aventura, mesmo depois de jogar a Noite da Cuca
+  startLevel(faseDaAventura());
 });
 
 menuLevelsBtn.addEventListener('click', () => {
@@ -944,6 +1113,24 @@ menuAlmanacBtn.addEventListener('click', () => {
   openAlmanacModal('synergies');
 });
 
+aplicarAcessibilidade();
+const acessUi = new AcessibilidadeUi(showToast);
+
+// 🎃 Noite da Cuca: botão do menu só na época do evento (1/out a 2/nov)
+const menuHalloweenBtn = document.getElementById('menu-halloween-btn') as HTMLButtonElement;
+if (halloweenAtivo()) {
+  menuHalloweenBtn.classList.remove('hidden');
+  const dias = diasRestantesDoHalloween();
+  document.getElementById('menu-halloween-info')!.textContent = dias > 0 ? `Evento: faltam ${dias} ${dias === 1 ? 'dia' : 'dias'}` : 'Último dia do evento!';
+  menuHalloweenBtn.addEventListener('click', () => {
+    // As duas plantas do evento já entram no deck; o resto é o deck de sempre
+    draftDeckIds = [...PLANTAS_HALLOWEEN, ...draftDeckIds.filter((id) => !PLANTAS_HALLOWEEN.includes(id))].slice(0, MAX_DECK_SIZE);
+    preparacao.marcarNova(PLANTAS_HALLOWEEN[0]);
+    startLevel(NIVEL_HALLOWEEN);
+  });
+}
+document.getElementById('menu-acess-btn')!.addEventListener('click', () => acessUi.abrir());
+
 menuSoundBtn.addEventListener('click', () => {
   const on = sound.toggleMusic();
   menuSoundBtn.innerHTML = on ? '<span>🎵</span> Som: Ligado' : '<span>🔇</span> Som: Mudo';
@@ -951,7 +1138,71 @@ menuSoundBtn.addEventListener('click', () => {
 });
 
 menuHomeBtn.addEventListener('click', () => {
+  modos.sair();
+  expedicao.sair();
   showMainMenu();
+});
+
+// Modo Infinito e Desafio do Dia
+const modos = new Modos({
+  engine,
+  deck: () => {
+    const unlocked = ProgressionManager.getProgress().unlockedPlants;
+    const deck = draftDeckIds.filter((id) => unlocked.includes(id));
+    return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+  },
+  prepararPartida: () => {
+    expedicao.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  toast: (msg) => showToast(msg),
+  conquistas: (fim) => herbario.checarConquistas(fim)
+});
+
+// Jardim Zen (rega diária com bônus de sol)
+const jardimZen = new JardimZen(plantaDeRetrato, (msg) => showToast(msg));
+
+// Tela de preparação antes de cada fase
+const preparacao = new Preparacao({
+  maxDeck: MAX_DECK_SIZE,
+  retrato: plantaDeRetrato,
+  liberadas: () => plantasLiberadas(),
+  deck: () => draftDeckIds,
+  definirDeck: (ids) => {
+    draftDeckIds = [...ids];
+  },
+  dicaBloqueada: (id) => {
+    if (PLANTAS_HALLOWEEN.includes(id)) return 'só na 🎃 Noite da Cuca (evento de outubro).';
+    const lvl = LEVEL_CATALOG.find((l) => l.unlockedPlantOnClear === id);
+    return lvl ? `libera ao vencer a Fase ${lvl.world}-${lvl.stage}.` : 'libera na Aventura.';
+  },
+  toast: (msg) => showToast(msg),
+  abrirAlmanaque: () => {
+    almanacReturnTo = 'main-menu';
+    openAlmanacModal('plants');
+  }
+});
+
+// Modo Expedição (corrida com mapa de caminhos)
+const expedicao = new ExpedicaoUi({
+  engine,
+  deck: () => {
+    const unlocked = ProgressionManager.getProgress().unlockedPlants;
+    const deck = draftDeckIds.filter((id) => unlocked.includes(id));
+    return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+  },
+  prepararPartida: () => {
+    modos.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  mostrarMenu: () => showMainMenu(),
+  toast: (msg) => showToast(msg),
+  registrarNoHerbario: (concluida, nos) => herbario.registrarExpedicao(concluida, nos),
+  conquistas: (fim) => herbario.checarConquistas(fim)
 });
 
 // Start on Main Menu with Progression Info
@@ -960,9 +1211,17 @@ updateMenuStageInfo();
 
 // Initialize & Start Game Loop
 LiveUpdater.init();
+iniciarLivroCombos({
+  palco: document.getElementById('canvas-container') as HTMLElement,
+  botoes: [almanacBtn, menuAlmanacBtn],
+  aba: almanacModal.querySelector<HTMLElement>('.tab-btn[data-tab="synergies"]')
+});
+iniciarInstalacao((msg) => showToast(msg));
 buildSeedPackets();
+// Redesenha os retratos das sementes quando os sprites terminarem de carregar
+preloadSprites().then(() => buildSeedPackets());
 syncHud();
-showToast(`🌱 Modo Aventura: ${currentLevel.name}! Toque em INICIAR JOGO.`);
+mostrarAbertura(() => showToast(`🌱 Modo Aventura: ${currentLevel.name}! Toque em INICIAR JOGO.`));
 
 let lastTime = performance.now();
 let lastHudSync = 0;
@@ -976,6 +1235,8 @@ function loop(now: number): void {
   // Throttle DOM tree updates to 10 FPS (every 100ms) to maximize canvas draw calls on mobile
   if (now - lastHudSync > 100) {
     updateCooldownOverlays();
+    tutorial.tick();
+    balaoFlorescer.tick();
     lastHudSync = now;
   }
 

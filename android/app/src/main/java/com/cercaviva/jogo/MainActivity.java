@@ -1,4 +1,4 @@
-package com.pvzevolution.game;
+package com.cercaviva.jogo;
 
 import android.os.Bundle;
 import android.view.View;

@@ -1,10 +1,43 @@
-// High-Detail 2.5D Stylized Vector & Skeletal Character Renderer for PvZ: Evolution
-// Includes dismemberment ragdoll parts (Cone, Bucket, Zombie Arm, Zombie Head),
-// biting animations, and 10 specialized elemental plant characters.
+// Renderizador dos personagens do jogo.
+// Plantas e zumbis são sprites SVG (public/sprites): estilo cartoon de dia e luz noturna nas fases escuras.
+// O gramado e a cerca viva continuam desenhados em código.
 
-import { PhysicsDebris, PlantEntity, ZombieEntity } from './engine';
+import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant, PULO_DURACAO } from './engine';
+import { CERCA, CercaViva } from './cerca';
+import { MUDA, estagioDaPlanta, prontaParaFlorescer } from './florescer';
+import { getSpriteClarao, getSprite, SpriteImage } from './sprites';
+
+// Brilho redondo (degradê radial) desenhado uma vez por cor e reaproveitado: criar o degradê
+// a cada quadro para cada planta e projétil custava caro no celular.
+const brilhos = new Map<string, HTMLCanvasElement>();
 
 export class CharacterRenderer {
+  /** Efeitos extras (brilhos das plantas). O motor desliga quando o aparelho não aguenta. */
+  public static efeitos = true;
+  /** Rajada de vento do cenário (0 a 1): inclina as plantas. */
+  public static vento = 0;
+
+  /** Textura de brilho na cor pedida (alfa em hexa, ex.: '44'), pronta para drawImage. */
+  public static brilho(cor: string, alfa = '66'): HTMLCanvasElement {
+    const chave = cor + alfa;
+    let c = brilhos.get(chave);
+    if (!c) {
+      c = document.createElement('canvas');
+      c.width = c.height = 64;
+      const g = c.getContext('2d');
+      if (g) {
+        const grad = g.createRadialGradient(32, 32, 2, 32, 32, 32);
+        grad.addColorStop(0, cor + alfa);
+        grad.addColorStop(1, cor + '00');
+        g.fillStyle = grad;
+        g.fillRect(0, 0, 64, 64);
+      }
+      brilhos.set(chave, c);
+    }
+    return c;
+  }
+
+  // Casa do gramado no estilo cartoon (dia/chuva) ou com a luz noturna (noite/pântano).
   public static drawLawnTileDetail(
     ctx: CanvasRenderingContext2D,
     x: number,
@@ -17,150 +50,555 @@ export class CharacterRenderer {
     isRain: boolean,
     isSwamp: boolean = false
   ): void {
-    const isEven = (row + col) % 2 === 0;
+    const even = (row + col) % 2 === 0;
+    const dark = isNight || isSwamp;
+    const pal = isSwamp
+      ? { a: '#123630', b: '#163f37', tuft: '#24604f', edge: 'rgba(45, 212, 191, 0.16)' }
+      : isNight
+        ? { a: '#14382f', b: '#184237', tuft: '#2a6352', edge: 'rgba(45, 212, 191, 0.12)' }
+        : isRain
+          ? { a: '#6fbf4f', b: '#64b246', tuft: '#4a8f33', edge: '' }
+          : { a: '#80cf4e', b: '#72c143', tuft: '#4f9d2e', edge: '' };
 
-    const grad = ctx.createLinearGradient(x, y, x, y + h);
-    if (isSwamp) {
-      grad.addColorStop(0, isEven ? '#042f2e' : '#022c22');
-      grad.addColorStop(1, isEven ? '#061c17' : '#031410');
-    } else if (isNight) {
-      grad.addColorStop(0, isEven ? '#163a30' : '#122f27');
-      grad.addColorStop(1, isEven ? '#0f2922' : '#0c211b');
-    } else if (isRain) {
-      grad.addColorStop(0, isEven ? '#1e5645' : '#184739');
-      grad.addColorStop(1, isEven ? '#153f32' : '#113328');
-    } else {
-      grad.addColorStop(0, isEven ? '#287a4e' : '#216641');
-      grad.addColorStop(1, isEven ? '#1e5e3b' : '#184d30');
-    }
-
-    ctx.fillStyle = grad;
+    ctx.save();
+    ctx.fillStyle = even ? pal.a : pal.b;
+    ctx.fillRect(x, y, w, h);
+    // Luz vindo de cima à esquerda: cada casa um pouco mais clara no canto e mais escura embaixo à direita
+    const luz = ctx.createLinearGradient(x, y, x + w, y + h);
+    luz.addColorStop(0, dark ? 'rgba(255,255,255,0.04)' : 'rgba(255,255,255,0.10)');
+    luz.addColorStop(1, dark ? 'rgba(0,0,0,0.10)' : 'rgba(42,36,22,0.07)');
+    ctx.fillStyle = luz;
     ctx.fillRect(x, y, w, h);
 
-    ctx.strokeStyle = isSwamp ? 'rgba(45, 212, 191, 0.15)' : 'rgba(255, 255, 255, 0.05)';
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x + 0.5, y + 0.5, w - 1, h - 1);
+    // Faixa clara no topo e sombra na base de cada casa
+    ctx.fillStyle = dark ? 'rgba(255, 255, 255, 0.03)' : 'rgba(255, 255, 255, 0.09)';
+    ctx.fillRect(x, y, w, Math.max(3, h * 0.08));
+    ctx.fillStyle = dark ? 'rgba(0, 0, 0, 0.24)' : 'rgba(42, 36, 22, 0.13)';
+    ctx.fillRect(x, y + h - 4, w, 4);
 
-    const seed = (row * 17 + col * 31) % 10;
-    ctx.save();
-    ctx.strokeStyle = isSwamp
-      ? 'rgba(45, 212, 191, 0.4)'
-      : isNight
-      ? 'rgba(52, 211, 153, 0.22)'
-      : 'rgba(134, 239, 172, 0.28)';
-    ctx.lineWidth = 2;
-    ctx.lineCap = 'round';
+    if (pal.edge) {
+      ctx.strokeStyle = pal.edge;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.roundRect(x + 2.5, y + 2.5, w - 5, h - 5, 6);
+      ctx.stroke();
+    }
 
-    const gx = x + w * (0.2 + (seed % 5) * 0.14);
-    const gy = y + h * (0.25 + ((seed * 3) % 5) * 0.12);
-    ctx.beginPath();
-    ctx.moveTo(gx, gy);
-    ctx.quadraticCurveTo(gx - 4, gy - 7, gx - 6, gy - 10);
-    ctx.moveTo(gx, gy);
-    ctx.quadraticCurveTo(gx + 3, gy - 8, gx + 5, gy - 11);
-    ctx.stroke();
+    // Detalhes sempre iguais para a mesma casa (sem Math.random)
+    let seed = ((row + 1) * 73856093) ^ ((col + 1) * 19349663);
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
 
-    // Swamp details: glowing mini mushroom sprouts or ripples
-    if (isSwamp) {
-      if (seed % 3 === 0) {
-        const mx = x + w * 0.72;
-        const my = y + h * 0.62;
-        ctx.fillStyle = 'rgba(20, 184, 166, 0.9)';
+    // Mancha de terra ou pedrinhas em algumas casas
+    if (rnd() < 0.22) {
+      const px = x + w * (0.2 + rnd() * 0.6);
+      const py = y + h * (0.3 + rnd() * 0.5);
+      ctx.fillStyle = dark ? 'rgba(0,0,0,0.18)' : 'rgba(120, 90, 40, 0.16)';
+      ctx.beginPath();
+      ctx.ellipse(px, py, w * 0.12, h * 0.07, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = dark ? '#2d4a44' : '#b7b09a';
+      ctx.strokeStyle = dark ? '#0b1f1c' : '#6b6452';
+      ctx.lineWidth = 1;
+      for (let i = 0; i < 2; i++) {
         ctx.beginPath();
-        ctx.arc(mx, my - 4, 3.5, Math.PI, 0);
+        ctx.ellipse(px + (rnd() - 0.5) * w * 0.18, py + (rnd() - 0.5) * h * 0.08, 2.6, 1.8, 0, 0, Math.PI * 2);
         ctx.fill();
-        ctx.strokeStyle = '#99f6e4';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.moveTo(mx, my - 4);
-        ctx.lineTo(mx, my);
-        ctx.stroke();
-      } else {
-        ctx.strokeStyle = 'rgba(20, 184, 166, 0.22)';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.ellipse(x + w * 0.5, y + h * 0.7, w * 0.26, 4, 0, 0, Math.PI * 2);
         ctx.stroke();
       }
     }
 
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
-    ctx.fillRect(x, y + h - 5, w, 5);
+    ctx.strokeStyle = pal.tuft;
+    ctx.lineWidth = Math.max(1.6, w * 0.022);
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    for (let i = 0; i < 4; i++) {
+      const tx = x + w * (0.15 + rnd() * 0.7);
+      const ty = y + h * (0.3 + rnd() * 0.55);
+      const k = w * 0.045;
+      ctx.beginPath();
+      ctx.moveTo(tx - k, ty - k * 1.2);
+      ctx.lineTo(tx, ty);
+      ctx.lineTo(tx + k * 0.9, ty - k * 1.5);
+      ctx.stroke();
+    }
+
+    if (rnd() < 0.3) {
+      const fx = x + w * (0.2 + rnd() * 0.6);
+      const fy = y + h * (0.25 + rnd() * 0.5);
+      const r = Math.max(2.2, w * 0.03);
+      if (dark) {
+        // Cogumelo que brilha
+        ctx.fillStyle = '#b9f5e2';
+        ctx.fillRect(fx - r * 0.25, fy - r * 0.2, r * 0.5, r * 1.4);
+        ctx.shadowColor = '#3cffc8';
+        ctx.shadowBlur = 8;
+        ctx.fillStyle = '#3cffc8';
+        ctx.beginPath();
+        ctx.arc(fx, fy, r, Math.PI, 0);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      } else {
+        // Florzinha de cinco pétalas, em cores variadas
+        const cores = ['#fff6c9', '#ffc1d9', '#c9e4ff', '#ffe08a'];
+        ctx.fillStyle = cores[Math.floor(rnd() * cores.length)];
+        ctx.strokeStyle = '#2a2416';
+        ctx.lineWidth = 1.1;
+        for (let q = 0; q < 5; q++) {
+          const a = (q / 5) * Math.PI * 2;
+          ctx.beginPath();
+          ctx.ellipse(fx + Math.cos(a) * r * 0.9, fy + Math.sin(a) * r * 0.9, r * 0.75, r * 0.5, a, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.fillStyle = '#ffb020';
+        ctx.beginPath();
+        ctx.arc(fx, fy, r * 0.5, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    }
     ctx.restore();
   }
 
-  public static drawMower(
+  // Jardim Assombrado: abóbora pequena ou vela num canto de algumas casas (vai no cache do tabuleiro)
+  public static drawAbobora(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number): void {
+    const seed = ((row * 7 + col * 13) * 2654435761) >>> 0;
+    const r = (seed % 1000) / 1000;
+    if (r > 0.34) return;
+    const cx = x + w * (0.78 + (r - 0.17) * 0.3);
+    const cy = y + h * 0.82;
+    const s = Math.max(6, h * 0.11);
+    ctx.save();
+    if (r < 0.24) {
+      // Abóbora com cara
+      ctx.fillStyle = 'rgba(0,0,0,0.3)';
+      ctx.beginPath();
+      ctx.ellipse(cx, cy + s * 0.9, s * 1.3, s * 0.35, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#2a1608';
+      ctx.fillStyle = '#e8701b';
+      for (const dx of [-0.6, 0.6, 0]) {
+        ctx.beginPath();
+        ctx.ellipse(cx + dx * s, cy, s * 0.75, s, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillStyle = '#3f8a2a';
+      ctx.fillRect(cx - s * 0.15, cy - s * 1.35, s * 0.3, s * 0.5);
+      ctx.strokeRect(cx - s * 0.15, cy - s * 1.35, s * 0.3, s * 0.5);
+      // Olhos e boca acesos
+      ctx.fillStyle = '#ffe066';
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.5, cy - s * 0.1);
+      ctx.lineTo(cx - s * 0.2, cy - s * 0.45);
+      ctx.lineTo(cx - s * 0.1, cy - s * 0.1);
+      ctx.moveTo(cx + s * 0.5, cy - s * 0.1);
+      ctx.lineTo(cx + s * 0.2, cy - s * 0.45);
+      ctx.lineTo(cx + s * 0.1, cy - s * 0.1);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(cx - s * 0.5, cy + s * 0.25);
+      ctx.lineTo(cx - s * 0.3, cy + s * 0.5);
+      ctx.lineTo(cx - s * 0.1, cy + s * 0.3);
+      ctx.lineTo(cx + s * 0.1, cy + s * 0.5);
+      ctx.lineTo(cx + s * 0.3, cy + s * 0.3);
+      ctx.lineTo(cx + s * 0.5, cy + s * 0.25);
+      ctx.lineTo(cx + s * 0.35, cy + s * 0.55);
+      ctx.lineTo(cx - s * 0.35, cy + s * 0.55);
+      ctx.fill();
+    } else {
+      // Lápide torta
+      ctx.translate(cx, cy);
+      ctx.rotate((r - 0.29) * 2);
+      ctx.fillStyle = '#6b7280';
+      ctx.strokeStyle = '#111827';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.7, s * 0.6);
+      ctx.lineTo(-s * 0.7, -s * 0.5);
+      ctx.arc(0, -s * 0.5, s * 0.7, Math.PI, 0);
+      ctx.lineTo(s * 0.7, s * 0.6);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      ctx.strokeStyle = '#374151';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(-s * 0.3, -s * 0.5);
+      ctx.lineTo(s * 0.3, -s * 0.5);
+      ctx.moveTo(0, -s * 0.8);
+      ctx.lineTo(0, -s * 0.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  // Casa de terra (linha fechada na fase): sulcos e pedrinhas, sem grama
+  public static drawDirtTile(
     ctx: CanvasRenderingContext2D,
-    mx: number,
-    my: number,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    row: number,
+    col: number,
+    isDark: boolean
+  ): void {
+    const even = (row + col) % 2 === 0;
+    ctx.save();
+    ctx.fillStyle = isDark ? (even ? '#0f1f21' : '#0d1b1d') : even ? '#c39466' : '#b98a5e';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = isDark ? 'rgba(255, 255, 255, 0.04)' : 'rgba(120, 82, 48, 0.45)';
+    ctx.lineWidth = Math.max(1.5, h * 0.025);
+    ctx.lineCap = 'round';
+    for (let i = 1; i <= 3; i++) {
+      const fy = y + (h * i) / 4;
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.08, fy);
+      ctx.lineTo(x + w * 0.92, fy);
+      ctx.stroke();
+    }
+    let seed = ((row + 3) * 83492791) ^ ((col + 5) * 2654435761);
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    ctx.fillStyle = isDark ? 'rgba(255, 255, 255, 0.05)' : 'rgba(90, 62, 36, 0.55)';
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.ellipse(x + w * (0.1 + rnd() * 0.8), y + h * (0.1 + rnd() * 0.8), Math.max(1.5, w * 0.025), Math.max(1.2, w * 0.018), 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.fillStyle = isDark ? 'rgba(0, 0, 0, 0.24)' : 'rgba(42, 36, 22, 0.13)';
+    ctx.fillRect(x, y + h - 4, w, 4);
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ CERCA VIVA
+
+  /**
+   * A cerca viva de uma linha, no caminho de pedra à esquerda do gramado.
+   * Na terra: moitas com contorno grosso (como no logo). No rio: tapete de aguapé flutuando.
+   * Muda = brotinho crescendo; florida = flores e espinhos; quebrada = toco com a etiqueta de replantar.
+   */
+  public static drawCerca(
+    ctx: CanvasRenderingContext2D,
+    c: CercaViva,
+    cx: number,
+    cy: number,
     cellH: number,
-    active: boolean
+    isNight: boolean,
+    agua: boolean,
+    temSol: boolean
   ): void {
     const s = cellH / 90;
+    const ink = isNight ? '#04090c' : '#2a2416';
+    const t = c.animPhase;
+    const vida = c.maxHp > 0 ? c.hp / c.maxHp : 0;
     ctx.save();
-    ctx.translate(mx, my);
+    ctx.translate(cx, cy);
     ctx.scale(s, s);
+    ctx.lineJoin = 'round';
+    ctx.lineCap = 'round';
 
-    if (active) {
-      ctx.translate(0, Math.sin(performance.now() * 0.06) * 2.5);
-    }
-
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.beginPath();
-    ctx.ellipse(0, 18, 26, 9, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(-12, -2);
-    ctx.lineTo(-26, -24);
-    ctx.lineTo(-18, -28);
-    ctx.stroke();
-
-    if (active) {
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.45)';
+    if (c.estagio === 'quebrada') {
+      // Toco e raízes secas
+      ctx.fillStyle = isNight ? '#2b2420' : '#7a5230';
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2.5;
       ctx.beginPath();
-      ctx.arc(20, 8, 14, 0, Math.PI * 2);
+      ctx.roundRect(-9, 4, 18, 16, 4);
       ctx.fill();
-    }
-
-    const bodyGrad = ctx.createLinearGradient(-18, -14, 18, 16);
-    bodyGrad.addColorStop(0, '#ef4444');
-    bodyGrad.addColorStop(1, '#991b1b');
-    ctx.fillStyle = bodyGrad;
-    ctx.strokeStyle = '#450a0a';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(-18, -8, 38, 22, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#cbd5e1';
-    ctx.beginPath();
-    ctx.roundRect(-8, -17, 18, 11, 4);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#475569';
-    ctx.fillRect(-4, -22, 6, 5);
-
-    const drawWheel = (wx: number, wy: number, r: number) => {
-      ctx.fillStyle = '#1e293b';
-      ctx.beginPath();
-      ctx.arc(wx, wy, r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
       ctx.stroke();
-      ctx.fillStyle = '#e2e8f0';
+      ctx.strokeStyle = isNight ? '#3a3028' : '#5c3b1e';
+      ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(wx, wy, r * 0.42, 0, Math.PI * 2);
+      ctx.moveTo(-6, 4);
+      ctx.lineTo(-12, -8);
+      ctx.moveTo(5, 4);
+      ctx.lineTo(10, -6);
+      ctx.stroke();
+      // Etiqueta pulsando: custo para replantar
+      const pulso = 1 + Math.sin(t * 2.5) * 0.06;
+      ctx.save();
+      ctx.translate(0, -22);
+      ctx.scale(pulso, pulso);
+      ctx.fillStyle = temSol ? '#fef08a' : 'rgba(148, 163, 184, 0.9)';
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-22, -11, 44, 22, 9);
       ctx.fill();
-    };
-    drawWheel(-11, 14, 9);
-    drawWheel(13, 14, 8);
+      ctx.stroke();
+      ctx.fillStyle = ink;
+      ctx.font = "800 11px 'Outfit', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(`${CERCA.replantar}☀️`, 0, 1);
+      ctx.restore();
+      ctx.restore();
+      return;
+    }
 
+    // Tamanho: a muda cresce; a cerca balança de leve
+    const cresc = c.estagio === 'muda' ? 0.3 + 0.7 * c.crescimento : 1;
+    const sway = Math.sin(t) * 0.02;
+    ctx.transform(1, 0, sway, 1, 0, 0);
+    ctx.scale(cresc, cresc);
+
+    // Folhas ficam pardas conforme a cerca apanha
+    const mix = (a: [number, number, number], b: [number, number, number], k: number): string =>
+      `rgb(${Math.round(a[0] + (b[0] - a[0]) * k)}, ${Math.round(a[1] + (b[1] - a[1]) * k)}, ${Math.round(a[2] + (b[2] - a[2]) * k)})`;
+    const dano = 1 - Math.min(1, vida / 0.9);
+    const verde: [number, number, number] = agua ? [143, 212, 110] : isNight ? [32, 92, 72] : [76, 175, 58];
+    const claro: [number, number, number] = agua ? [180, 230, 140] : isNight ? [52, 130, 100] : [108, 200, 74];
+    const pardo: [number, number, number] = [150, 110, 60];
+    const corA = mix(verde, pardo, dano);
+    const corB = mix(claro, pardo, dano * 0.8);
+
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 3;
+    if (agua) {
+      // Tapete de aguapé: folhas redondas boiando, com a ondinha da água
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.55)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(0, 22, 26, 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2.5;
+      const folhas: [number, number, number][] = [[-14, 14, 11], [10, 16, 12], [-2, 6, 10], [16, 4, 8], [-16, 0, 8]];
+      for (const [fx, fy, r] of folhas) {
+        const ry = r * 0.55;
+        ctx.fillStyle = (fx + fy) % 3 === 0 ? corB : corA;
+        ctx.beginPath();
+        ctx.ellipse(fx, fy + Math.sin(t + fx) * 1.2, r, ry, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+    } else {
+      // Moitas da cerca (como no logo): círculos grandes de contorno grosso
+      const moitas: [number, number, number][] = [[-14, 6, 14], [0, -4, 16], [14, 6, 13], [-5, 14, 11], [8, 15, 11]];
+      for (const [mx, my, r] of moitas) {
+        ctx.fillStyle = corA;
+        ctx.beginPath();
+        ctx.arc(mx, my, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.fillStyle = corB;
+      for (const [mx, my, r] of [[-6, -8, 6], [10, 0, 5], [-16, 2, 4]] as [number, number, number][]) {
+        ctx.beginPath();
+        ctx.arc(mx, my, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      // Base de terra
+      ctx.fillStyle = isNight ? '#1a2f28' : '#5f3d22';
+      ctx.beginPath();
+      ctx.ellipse(0, 24, 22, 4, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (c.estagio === 'muda') {
+      // Brotinho no topo
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(0, -12);
+      ctx.lineTo(0, -28);
+      ctx.stroke();
+      ctx.fillStyle = '#8ee05a';
+      ctx.beginPath();
+      ctx.ellipse(-7, -26, 8, 4, -0.5, 0, Math.PI * 2);
+      ctx.ellipse(7, -29, 8, 4, 0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else if (c.estagio === 'florida') {
+      // Espinhos
+      ctx.strokeStyle = ink;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      for (const [sx, sy, a] of [[22, 0, 0], [24, 12, 0.3], [20, -10, -0.4], [-24, 4, Math.PI]] as [number, number, number][]) {
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx + Math.cos(a) * 7, sy + Math.sin(a) * 7);
+      }
+      ctx.stroke();
+      // Flores
+      const petala = agua ? '#b69cff' : '#fff6c9';
+      const miolo = agua ? '#ffd23a' : '#ffb020';
+      for (const [fx, fy] of [[-10, -12], [12, -8], [2, 2], [-18, 8]] as [number, number][]) {
+        const wob = Math.sin(t * 1.5 + fx) * 0.8;
+        ctx.fillStyle = petala;
+        ctx.strokeStyle = ink;
+        ctx.lineWidth = 1.4;
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2 + t * 0.1;
+          ctx.beginPath();
+          ctx.ellipse(fx + Math.cos(a) * 3.2, fy + wob + Math.sin(a) * 3.2, 2.6, 1.7, a, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.fillStyle = miolo;
+        ctx.beginPath();
+        ctx.arc(fx, fy + wob, 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Barra de vida quando está machucada
+    if (vida < 0.98 && c.estagio !== 'muda') {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.85)';
+      ctx.fillRect(-20, -36, 40, 5);
+      ctx.fillStyle = vida > 0.5 ? '#4ade80' : vida > 0.25 ? '#facc15' : '#ef4444';
+      ctx.fillRect(-20, -36, 40 * Math.max(0, vida), 5);
+    }
+    ctx.restore();
+  }
+
+  // ------------------------------------------------------------------ PLANTAS (sprites)
+
+  /** Casa de rio (Mundo 3), desenhada uma vez no cache do gramado. */
+  public static drawRiverTile(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    row: number,
+    col: number,
+    isDark: boolean
+  ): void {
+    const par = (row + col) % 2 === 0;
+    ctx.fillStyle = isDark ? (par ? '#0c3440' : '#0e3a47') : par ? '#3aaad8' : '#43b6e3';
+    ctx.fillRect(x, y, w, h);
+
+    let seed = row * 97 + col * 31 + 5;
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = isDark ? 'rgba(127, 245, 224, 0.22)' : 'rgba(255, 255, 255, 0.4)';
+    for (let k = 0; k < 2; k++) {
+      const x0 = x + w * (0.12 + rnd() * 0.55);
+      const y0 = y + h * (0.3 + rnd() * 0.45);
+      const l = w * 0.12;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo(x0 + l * 0.5, y0 - 4, x0 + l, y0);
+      ctx.quadraticCurveTo(x0 + l * 1.5, y0 + 4, x0 + l * 2, y0);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Casa de lama do mangue (maré baixa): areia escura e molhada com buracos de siri. */
+  public static drawMudTile(
+    ctx: CanvasRenderingContext2D,
+    x: number,
+    y: number,
+    w: number,
+    h: number,
+    row: number,
+    col: number,
+    isDark: boolean
+  ): void {
+    const par = (row + col) % 2 === 0;
+    ctx.fillStyle = isDark ? (par ? '#1a2a26' : '#182622') : par ? '#8b6b48' : '#80613f';
+    ctx.fillRect(x, y, w, h);
+    let seed = row * 131 + col * 17 + 9;
+    const rnd = (): number => {
+      seed = (seed * 1103515245 + 12345) & 0x7fffffff;
+      return seed / 0x7fffffff;
+    };
+    ctx.save();
+    // Brilho de areia molhada
+    ctx.fillStyle = isDark ? 'rgba(127, 245, 224, 0.06)' : 'rgba(255, 255, 255, 0.12)';
+    ctx.beginPath();
+    ctx.ellipse(x + w * (0.3 + rnd() * 0.4), y + h * (0.4 + rnd() * 0.3), w * 0.22, h * 0.07, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Buracos de siri e raízes de mangue
+    ctx.fillStyle = isDark ? '#0b1412' : '#4a3320';
+    for (let k = 0; k < 2; k++) {
+      ctx.beginPath();
+      ctx.ellipse(x + w * (0.15 + rnd() * 0.7), y + h * (0.25 + rnd() * 0.6), 3, 2, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.strokeStyle = isDark ? '#1f3a33' : '#5c3b1e';
+    ctx.lineWidth = 2;
+    ctx.lineCap = 'round';
+    const rx = x + w * (0.2 + rnd() * 0.6);
+    ctx.beginPath();
+    ctx.moveTo(rx, y + h * 0.9);
+    ctx.quadraticCurveTo(rx + 6, y + h * 0.6, rx + 2, y + h * 0.3);
+    ctx.moveTo(rx, y + h * 0.9);
+    ctx.quadraticCurveTo(rx - 8, y + h * 0.65, rx - 4, y + h * 0.4);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  /** Planta submersa (bolhas) ou encalhada (rachaduras de lama) nas linhas de maré. */
+  public static drawPresa(ctx: CanvasRenderingContext2D, cx: number, cy: number, cellH: number, submersa: boolean, t: number): void {
+    ctx.save();
+    if (submersa) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+      ctx.lineWidth = 1.5;
+      for (let k = 0; k < 3; k++) {
+        const f = ((t * 0.0012 + k * 0.33) % 1);
+        ctx.globalAlpha = 1 - f;
+        ctx.beginPath();
+        ctx.arc(cx - 10 + k * 10, cy + cellH * 0.2 - f * cellH * 0.5, 2.5 + k, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+    } else {
+      ctx.strokeStyle = 'rgba(74, 51, 32, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 24, cy + cellH * 0.34);
+      ctx.lineTo(cx - 12, cy + cellH * 0.3);
+      ctx.lineTo(cx - 4, cy + cellH * 0.38);
+      ctx.moveTo(cx + 6, cy + cellH * 0.36);
+      ctx.lineTo(cx + 16, cy + cellH * 0.3);
+      ctx.lineTo(cx + 26, cy + cellH * 0.35);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Correnteza: traços claros descendo o rio (desenhado a cada quadro). */
+  public static drawRiverFlow(
+    ctx: CanvasRenderingContext2D,
+    x0: number,
+    x1: number,
+    top: number,
+    cellW: number,
+    cellH: number,
+    t: number,
+    isDark: boolean
+  ): void {
+    const span = x1 - x0;
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = isDark ? 'rgb(160, 255, 235)' : '#ffffff';
+    for (let i = 0; i < 10; i++) {
+      const fase = (i * 0.618 + t * 0.00004) % 1;
+      const x = x1 - fase * span;
+      const y = top + cellH * (0.16 + ((i * 0.37) % 1) * 0.68);
+      const len = cellW * (0.22 + ((i * 0.53) % 1) * 0.2);
+      ctx.globalAlpha = Math.sin(fase * Math.PI) * (isDark ? 0.35 : 0.5);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      ctx.lineTo(x + len, y);
+      ctx.stroke();
+    }
     ctx.restore();
   }
 
@@ -173,1154 +611,311 @@ export class CharacterRenderer {
     cellH: number,
     isNight: boolean
   ): void {
-    const s = (cellH / 92) * (1 + p.scaleKick * 0.7);
+    const estagio = estagioDaPlanta(p.idade, p.caminho);
+    const s = (cellH / 92) * (1 + p.scaleKick * 0.7) * (estagio === 'muda' ? MUDA.tamanho : 1);
     const t = p.animPhase;
-    const sway = Math.sin(t) * 3.2;
+    const sway = Math.sin(t) * 3.2 + CharacterRenderer.vento * (8 + Math.sin(t * 4) * 3);
     const breathe = 1 + Math.sin(t * 1.3) * 0.035;
 
     ctx.save();
 
-    // 1. Ground Shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+    // Sombra macia no chão, embaixo da planta
+    ctx.fillStyle = isNight ? 'rgba(0, 0, 0, 0.28)' : 'rgba(30, 50, 12, 0.22)';
     ctx.beginPath();
-    ctx.ellipse(
-      cx,
-      cy + cellH * 0.28,
-      cellW * 0.31,
-      cellH * 0.12,
-      0,
-      0,
-      Math.PI * 2
-    );
+    ctx.ellipse(cx + 2, cy + cellH * 0.3, cellW * 0.26 * (1 + p.scaleKick * 0.2), cellH * 0.07, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // 2. Elemental Ambient Glow
+    // Brilho elemental (supremo, noite, elétrico, fogo e mina armada).
+    // No modo econômico só o brilho do supremo continua.
     if (
       p.overdriveTimer > 0 ||
-      isNight ||
-      p.def.element === 'electric' ||
-      p.def.element === 'fire' ||
-      (p.def.id === 'plasma_mine' && p.armed)
+      (this.efeitos &&
+        (isNight ||
+          p.def.element === 'electric' ||
+          p.def.element === 'fire' ||
+          (p.def.id === 'plasma_mine' && p.armed)))
     ) {
       const radius = p.overdriveTimer > 0 ? cellW * 0.68 : cellW * 0.48;
-      const grad = ctx.createRadialGradient(cx, cy, 4, cx, cy, radius);
-      grad.addColorStop(0, p.def.color + (p.overdriveTimer > 0 ? '88' : '44'));
-      grad.addColorStop(1, 'transparent');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, radius, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.drawImage(
+        this.brilho(p.def.color, p.overdriveTimer > 0 ? '88' : '44'),
+        cx - radius,
+        cy - radius,
+        radius * 2,
+        radius * 2
+      );
     }
 
-    ctx.translate(cx, cy + cellH * 0.18);
-    ctx.scale(s, s * breathe);
+    // Vida: pulinho de vez em quando e esmagar-e-esticar ao atirar (recua e alarga, depois volta)
+    const pulo = Math.pow(Math.max(0, Math.sin(t * 0.55 + p.id)), 16);
+    const kick = p.scaleKick;
+    ctx.translate(cx, cy + cellH * 0.18 - pulo * cellH * 0.06);
+    ctx.scale(s * (1 + kick * 0.28 - pulo * 0.05), s * breathe * (1 - kick * 0.22 + pulo * 0.08));
 
-    if (p.def.id !== 'wallnut' && p.def.id !== 'plasma_mine') {
-      this.drawBaseLeaves(ctx, p.def.element, t);
-    }
+    const img = getSprite(p.def.id, isNight);
+    if (img) {
+      const k = PLANT_SPRITE_SCALE;
+      // Balanço a partir da base e recuo ao atirar
+      ctx.transform(1, 0, -sway * 0.012, 1, 0, 0);
+      ctx.translate(-p.scaleKick * 8, 0);
 
-    switch (p.def.id) {
-      case 'sunflower':
-        this.drawSunflower(ctx, t, sway, p.overdriveTimer > 0);
-        break;
-      case 'peashooter':
-        this.drawPeashooter(ctx, t, sway, p.scaleKick);
-        break;
-      case 'aquashooter':
-        this.drawAquaShooter(ctx, t, sway, p.scaleKick);
-        break;
-      case 'volt_reed':
-        this.drawVoltReed(ctx, t, sway);
-        break;
-      case 'frost_shroom':
-        this.drawFrostShroom(ctx, t, sway);
-        break;
-      case 'pyro_pepper':
-        this.drawPyroPepper(ctx, t, sway);
-        break;
-      case 'gale_clover':
-        this.drawGaleClover(ctx, t, sway);
-        break;
-      case 'venom_pitcher':
-        this.drawVenomPitcher(ctx, t, sway, p.scaleKick);
-        break;
-      case 'plasma_mine':
-        this.drawPlasmaMine(ctx, p, t);
-        break;
-      case 'wallnut':
-        this.drawWallnut(ctx, p, t);
-        break;
-    }
-
-    ctx.restore();
-  }
-
-  private static drawBaseLeaves(
-    ctx: CanvasRenderingContext2D,
-    element: string,
-    t: number
-  ): void {
-    const leafColor =
-      element === 'ice'
-        ? '#0ea5e9'
-        : element === 'electric'
-          ? '#14b8a6'
-          : element === 'toxin'
-            ? '#65a30d'
-            : '#16a34a';
-    const leafBorder = '#052e16';
-
-    ctx.save();
-    ctx.fillStyle = leafColor;
-    ctx.strokeStyle = leafBorder;
-    ctx.lineWidth = 2.2;
-
-    const angles = [-0.45, 0.45, -2.6, 2.6];
-    angles.forEach((ang, idx) => {
-      ctx.save();
-      ctx.rotate(ang + Math.sin(t + idx) * 0.05);
-      ctx.beginPath();
-      ctx.ellipse(14, 4, 13, 6, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    });
-    ctx.restore();
-  }
-
-  private static drawEyes(
-    ctx: CanvasRenderingContext2D,
-    xOffset: number,
-    yOffset: number,
-    angry = false,
-    glowColor?: string
-  ): void {
-    ctx.save();
-    ctx.translate(xOffset, yOffset);
-
-    [-6, 6].forEach((ex, i) => {
-      ctx.fillStyle = glowColor || '#0f172a';
-      ctx.beginPath();
-      ctx.ellipse(ex, 0, 3.6, 4.8, 0, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(ex + 1.2, -1.6, 1.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Secondary micro-reflection (Pixar/anime glossy eye depth)
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.75)';
-      ctx.beginPath();
-      ctx.arc(ex - 1.0, 1.3, 0.8, 0, Math.PI * 2);
-      ctx.fill();
-
-      if (angry) {
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        if (i === 0) {
-          ctx.moveTo(ex - 4, -5);
-          ctx.lineTo(ex + 4, -2);
-        } else {
-          ctx.moveTo(ex - 4, -2);
-          ctx.lineTo(ex + 4, -5);
-        }
-        ctx.stroke();
+      let dy = 0;
+      if (p.def.id === 'plasma_mine' && !p.armed) {
+        // Ainda armando: meio enterrada e apagada
+        dy = 7;
+        ctx.globalAlpha = 0.78;
       }
-    });
+
+      if (p.def.id === 'wallnut' && p.armored) {
+        // Armadura de titânio: halo azul atrás do cacto (sem shadowBlur, que é caro)
+        ctx.drawImage(this.brilho('#38bdf8', 'cc'), -56, -84, 112, 112);
+      }
+
+      ctx.drawImage(img, -80 * k, 6 - 172 * k + dy, 160 * k, 180 * k);
+      ctx.globalAlpha = 1;
+
+      if (p.def.id === 'wallnut') {
+        this.drawWallDamage(ctx, p.hp / p.maxHp);
+      }
+
+      if (estagio === 'florida') {
+        // Coroa de flores por cima da planta florida
+        const cor = p.def.color;
+        const pontos: [number, number][] = [[-31, -22], [31, -22], [0, -56]];
+        for (let k = 0; k < 3; k++) {
+          const fx = pontos[k][0];
+          const fy = pontos[k][1] + Math.sin(t * 1.2 + k) * 2;
+          ctx.fillStyle = '#fff6c9';
+          ctx.strokeStyle = '#2a2416';
+          ctx.lineWidth = 1.6;
+          for (let q = 0; q < 5; q++) {
+            const a = (q / 5) * Math.PI * 2 + t * 0.15;
+            ctx.beginPath();
+            ctx.ellipse(fx + Math.cos(a) * 4, fy + Math.sin(a) * 4, 3.2, 2, a, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+          ctx.fillStyle = cor;
+          ctx.beginPath();
+          ctx.arc(fx, fy, 3, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+    }
+
     ctx.restore();
-  }
 
-  private static drawSunflower(
-    ctx: CanvasRenderingContext2D,
-    t: number,
-    sway: number,
-    overdrive: boolean
-  ): void {
-    ctx.strokeStyle = '#15803d';
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, 4);
-    ctx.quadraticCurveTo(-5 + sway * 0.5, -14, sway, -28);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(sway, -30);
-
-    const petalCount = 12;
-    ctx.save();
-    ctx.rotate(Math.sin(t * 0.5) * 0.15 + (overdrive ? t * 2 : 0));
-    for (let i = 0; i < petalCount; i++) {
+    if (prontaParaFlorescer(p.idade, p.caminho)) {
+      // ✨ pulsando: toque para escolher o caminho
+      const pulso = 1 + Math.sin(performance.now() * 0.006) * 0.15;
       ctx.save();
-      ctx.rotate((i * Math.PI * 2) / petalCount);
-      const pGrad = ctx.createLinearGradient(0, -14, 0, -28);
-      pGrad.addColorStop(0, '#f59e0b');
-      pGrad.addColorStop(1, '#fef08a');
-      ctx.fillStyle = pGrad;
-      ctx.strokeStyle = '#78350f';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      ctx.ellipse(0, -20, 5.5, 9, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
+      ctx.translate(cx + cellW * 0.3, cy - cellH * 0.46);
+      ctx.scale(pulso, pulso);
+      ctx.drawImage(this.brilho('#fde047', '99'), -16, -16, 32, 32);
+      ctx.font = `${Math.max(13, cellH * 0.19)}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('✨', 0, 1);
       ctx.restore();
     }
-    ctx.restore();
-
-    const faceGrad = ctx.createRadialGradient(-3, -4, 2, 0, 0, 16);
-    faceGrad.addColorStop(0, '#92400e');
-    faceGrad.addColorStop(1, '#451a03');
-    ctx.fillStyle = faceGrad;
-    ctx.strokeStyle = '#270e02';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, 15.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    this.drawEyes(ctx, 1, -2, false);
-    ctx.strokeStyle = '#fde047';
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(1, 3, 5.5, 0.15 * Math.PI, 0.85 * Math.PI);
-    ctx.stroke();
-
-    ctx.fillStyle = 'rgba(251, 146, 60, 0.55)';
-    ctx.beginPath();
-    ctx.arc(-8, 2, 2.8, 0, Math.PI * 2);
-    ctx.arc(10, 2, 2.8, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.restore();
   }
 
-  private static drawPeashooter(
-    ctx: CanvasRenderingContext2D,
-    _t: number,
-    sway: number,
-    recoil: number
-  ): void {
-    const recoilX = -recoil * 16;
-
-    ctx.strokeStyle = '#15803d';
-    ctx.lineWidth = 6.5;
+  // Rachaduras do Cacto-Muralha conforme perde vida
+  private static drawWallDamage(ctx: CanvasRenderingContext2D, hpRatio: number): void {
+    if (hpRatio >= 0.65) return;
+    ctx.save();
+    ctx.strokeStyle = 'rgba(30, 40, 20, 0.8)';
+    ctx.lineWidth = 2;
     ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
     ctx.beginPath();
-    ctx.moveTo(0, 4);
-    ctx.quadraticCurveTo(-6, -12, sway + recoilX * 0.5, -28);
+    ctx.moveTo(-18, -30);
+    ctx.lineTo(-12, -22);
+    ctx.lineTo(-16, -14);
+    ctx.lineTo(-10, -6);
     ctx.stroke();
-
-    ctx.save();
-    ctx.translate(sway + recoilX, -30);
-
-    ctx.fillStyle = '#16a34a';
-    ctx.strokeStyle = '#052e16';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(-16, -6, 8, 4.5, -0.4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    const headGrad = ctx.createRadialGradient(-4, -6, 3, 0, 0, 18);
-    headGrad.addColorStop(0, '#86efac');
-    headGrad.addColorStop(0.5, '#22c55e');
-    headGrad.addColorStop(1, '#15803d');
-    ctx.fillStyle = headGrad;
-    ctx.strokeStyle = '#052e16';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.ellipse(-2, 0, 16, 14.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#22c55e';
-    ctx.beginPath();
-    ctx.moveTo(8, -8);
-    ctx.lineTo(22, -10);
-    ctx.lineTo(22, 8);
-    ctx.lineTo(8, 7);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#4ade80';
-    ctx.beginPath();
-    ctx.ellipse(22, -1, 4.5, 9.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#052e16';
-    ctx.beginPath();
-    ctx.ellipse(22.5, -1, 2.5, 6.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    this.drawEyes(ctx, 2, -4, true);
-    ctx.restore();
-  }
-
-  private static drawAquaShooter(
-    ctx: CanvasRenderingContext2D,
-    t: number,
-    sway: number,
-    recoil: number
-  ): void {
-    const recoilX = -recoil * 15;
-
-    ctx.strokeStyle = '#0284c7';
-    ctx.lineWidth = 6.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 4);
-    ctx.quadraticCurveTo(-5, -12, sway + recoilX * 0.5, -28);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(sway + recoilX, -30);
-
-    ctx.fillStyle = '#7dd3fc';
-    ctx.strokeStyle = '#0c4a6e';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-8, -11);
-    ctx.quadraticCurveTo(-22, -22, -16, -2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    const headGrad = ctx.createRadialGradient(-4, -6, 2, 0, 0, 18);
-    headGrad.addColorStop(0, '#bae6fd');
-    headGrad.addColorStop(0.5, '#0ea5e9');
-    headGrad.addColorStop(1, '#0369a1');
-    ctx.fillStyle = headGrad;
-    ctx.strokeStyle = '#082f49';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.ellipse(-2, 0, 16.5, 14.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#38bdf8';
-    ctx.beginPath();
-    ctx.roundRect(9, -8, 14, 15, 5);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#082f49';
-    ctx.beginPath();
-    ctx.ellipse(22, -0.5, 2.5, 5.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    const dropX = Math.cos(t * 2.2) * 19;
-    const dropY = Math.sin(t * 2.2) * 8 - 14;
-    ctx.fillStyle = '#e0f2fe';
-    ctx.beginPath();
-    ctx.arc(dropX, dropY, 3.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    this.drawEyes(ctx, 2, -3, false);
-    ctx.restore();
-  }
-
-  private static drawVoltReed(
-    ctx: CanvasRenderingContext2D,
-    t: number,
-    sway: number
-  ): void {
-    ctx.save();
-    ctx.strokeStyle = '#0f766e';
-    ctx.lineWidth = 7;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, 4);
-    ctx.quadraticCurveTo(sway * 0.4, -16, sway, -36);
-    ctx.stroke();
-
-    ctx.strokeStyle = '#facc15';
-    ctx.lineWidth = 2.5;
-    [-10, -18, -26].forEach((ry) => {
-      ctx.beginPath();
-      ctx.moveTo(sway * 0.4 - 5, ry);
-      ctx.lineTo(sway * 0.4 + 5, ry);
-      ctx.stroke();
-    });
-
-    ctx.translate(sway, -38);
-
-    const grad = ctx.createRadialGradient(-2, -2, 2, 0, 0, 16);
-    grad.addColorStop(0, '#f3e8ff');
-    grad.addColorStop(0.5, '#a855f7');
-    grad.addColorStop(1, '#581c87');
-    ctx.fillStyle = grad;
-    ctx.strokeStyle = '#3b0764';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, 14, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(0, -14);
-    ctx.lineTo(0, -24);
-    ctx.stroke();
-
-    ctx.fillStyle = '#7dd3fc';
-    ctx.beginPath();
-    ctx.arc(0, -25, 4.5 + Math.sin(t * 6) * 1.2, 0, Math.PI * 2);
-    ctx.fill();
-
-    if (Math.sin(t * 8) > 0) {
-      ctx.strokeStyle = '#e0f2fe';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(-9, -22);
-      ctx.lineTo(0, -25);
-      ctx.lineTo(9, -20);
-      ctx.stroke();
-    }
-
-    this.drawEyes(ctx, 3, -1, true, '#fef08a');
-    ctx.restore();
-  }
-
-  private static drawFrostShroom(
-    ctx: CanvasRenderingContext2D,
-    _t: number,
-    sway: number
-  ): void {
-    ctx.save();
-    ctx.translate(sway * 0.5, 0);
-
-    const stemGrad = ctx.createLinearGradient(-10, -22, 10, 4);
-    stemGrad.addColorStop(0, '#e0f2fe');
-    stemGrad.addColorStop(1, '#7dd3fc');
-    ctx.fillStyle = stemGrad;
-    ctx.strokeStyle = '#0c4a6e';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(-11, -22, 22, 24, 8);
-    ctx.fill();
-    ctx.stroke();
-
-    const capGrad = ctx.createRadialGradient(-4, -32, 3, 0, -28, 24);
-    capGrad.addColorStop(0, '#cffafe');
-    capGrad.addColorStop(0.5, '#06b6d4');
-    capGrad.addColorStop(1, '#0e7490');
-    ctx.fillStyle = capGrad;
-    ctx.beginPath();
-    ctx.moveTo(-22, -20);
-    ctx.quadraticCurveTo(-18, -44, 0, -46);
-    ctx.quadraticCurveTo(18, -44, 22, -20);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#ecfeff';
-    [
-      [-10, -36],
-      [0, -44],
-      [10, -35]
-    ].forEach(([ix, iy]) => {
-      ctx.beginPath();
-      ctx.arc(ix, iy, 3.2, 0, Math.PI * 2);
-      ctx.fill();
-    });
-
-    this.drawEyes(ctx, 2, -11, true);
-    ctx.restore();
-  }
-
-  private static drawPyroPepper(
-    ctx: CanvasRenderingContext2D,
-    t: number,
-    sway: number
-  ): void {
-    ctx.save();
-    ctx.translate(sway * 0.7, -6);
-
-    const flameH = 38 + Math.sin(t * 7) * 5;
-    const flameGrad = ctx.createRadialGradient(0, -18, 4, 0, -22, 28);
-    flameGrad.addColorStop(0, '#fef08a');
-    flameGrad.addColorStop(0.5, '#f97316');
-    flameGrad.addColorStop(1, 'rgba(239, 68, 68, 0)');
-    ctx.fillStyle = flameGrad;
-    ctx.beginPath();
-    ctx.ellipse(0, -18, 19, flameH * 0.65, 0, 0, Math.PI * 2);
-    ctx.fill();
-
-    const pepGrad = ctx.createLinearGradient(-12, -36, 12, 6);
-    pepGrad.addColorStop(0, '#fb923c');
-    pepGrad.addColorStop(0.4, '#ef4444');
-    pepGrad.addColorStop(1, '#991b1b');
-    ctx.fillStyle = pepGrad;
-    ctx.strokeStyle = '#450a0a';
-    ctx.lineWidth = 2.6;
-
-    ctx.beginPath();
-    ctx.moveTo(-10, -30);
-    ctx.quadraticCurveTo(14, -32, 12, -8);
-    ctx.quadraticCurveTo(10, 8, -8, 6);
-    ctx.quadraticCurveTo(-18, -6, -10, -30);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.fillStyle = '#16a34a';
-    ctx.beginPath();
-    ctx.roundRect(-7, -37, 12, 7, 3);
-    ctx.fill();
-    ctx.stroke();
-
-    this.drawEyes(ctx, 2, -19, true, '#fef08a');
-
-    ctx.strokeStyle = '#fef08a';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-4, -8);
-    ctx.lineTo(0, -10);
-    ctx.lineTo(4, -7);
-    ctx.lineTo(8, -10);
-    ctx.stroke();
-
-    ctx.restore();
-  }
-
-  // NEW PLANT: Gale Clover (Trevo Ventania — Wind Turbine Fan Leaves)
-  private static drawGaleClover(
-    ctx: CanvasRenderingContext2D,
-    t: number,
-    sway: number
-  ): void {
-    ctx.strokeStyle = '#0d9488';
-    ctx.lineWidth = 6;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(0, 4);
-    ctx.quadraticCurveTo(-4, -14, sway * 0.5, -28);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.translate(sway * 0.5, -30);
-
-    // Spinning 4-Leaf Turbine Propeller
-    ctx.save();
-    ctx.rotate(t * 3.8);
-    for (let i = 0; i < 4; i++) {
-      ctx.save();
-      ctx.rotate((i * Math.PI) / 2);
-      const bladeGrad = ctx.createLinearGradient(0, -4, 0, -24);
-      bladeGrad.addColorStop(0, '#14b8a6');
-      bladeGrad.addColorStop(1, '#99f6e4');
-      ctx.fillStyle = bladeGrad;
-      ctx.strokeStyle = '#042f2e';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.quadraticCurveTo(-11, -18, 0, -24);
-      ctx.quadraticCurveTo(11, -18, 0, 0);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-    ctx.restore();
-
-    // Center Aerodynamic Hub Face
-    ctx.fillStyle = '#0f766e';
-    ctx.strokeStyle = '#042f2e';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.arc(0, 0, 11, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    this.drawEyes(ctx, 1, -1, true, '#ccfbf1');
-    ctx.restore();
-  }
-
-  // NEW PLANT: Venom Pitcher (Nepentes Ácida — Carnivorous Acid Pitcher)
-  private static drawVenomPitcher(
-    ctx: CanvasRenderingContext2D,
-    t: number,
-    sway: number,
-    recoil: number
-  ): void {
-    const recoilX = -recoil * 14;
-    ctx.save();
-    ctx.translate(sway * 0.6 + recoilX, -22);
-
-    // Carnivorous Pitcher Body (Purple/Lime Gradient)
-    const pGrad = ctx.createLinearGradient(-14, -18, 14, 18);
-    pGrad.addColorStop(0, '#a3e635');
-    pGrad.addColorStop(0.55, '#4d7c0f');
-    pGrad.addColorStop(1, '#581c87');
-    ctx.fillStyle = pGrad;
-    ctx.strokeStyle = '#1a2e05';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.roundRect(-15, -16, 30, 34, [10, 10, 16, 16]);
-    ctx.fill();
-    ctx.stroke();
-
-    // Glowing Acid Pool Inside Rim
-    ctx.fillStyle = '#bef264';
-    ctx.strokeStyle = '#365314';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(0, -16, 14, 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Top Carnivorous Hood Leaf with Teeth
-    ctx.fillStyle = '#65a30d';
-    ctx.beginPath();
-    ctx.moveTo(-14, -17);
-    ctx.quadraticCurveTo(0, -34, 16, -20);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
-    // Bubbling Acid Orbs
-    const by = -20 - ((t * 6) % 10);
-    ctx.fillStyle = '#d9f99d';
-    ctx.beginPath();
-    ctx.arc(4, by, 3, 0, Math.PI * 2);
-    ctx.fill();
-
-    this.drawEyes(ctx, 3, -2, true, '#fef08a');
-    ctx.restore();
-  }
-
-  // NEW PLANT: Plasma Potato Mine (Batata-Mina — Burrows then Pops Up Armed)
-  private static drawPlasmaMine(
-    ctx: CanvasRenderingContext2D,
-    p: PlantEntity,
-    t: number
-  ): void {
-    ctx.save();
-
-    // Dirt Mound around base
-    ctx.fillStyle = '#78350f';
-    ctx.strokeStyle = '#451a03';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.ellipse(0, 4, 22, 8, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    if (!p.armed) {
-      // Unarmed: Buried underground, only antenna blinking slowly
-      ctx.strokeStyle = '#64748b';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, 2);
-      ctx.lineTo(0, -14);
-      ctx.stroke();
-
-      ctx.fillStyle = Math.sin(t * 4) > 0 ? '#f59e0b' : '#475569';
-      ctx.beginPath();
-      ctx.arc(0, -16, 4.5, 0, Math.PI * 2);
-      ctx.fill();
-    } else {
-      // Armed: Popped out of ground with glowing red beacon & fierce eyes!
-      const pGrad = ctx.createRadialGradient(-4, -12, 3, 0, -8, 20);
-      pGrad.addColorStop(0, '#f59e0b');
-      pGrad.addColorStop(1, '#92400e');
-      ctx.fillStyle = pGrad;
-      ctx.strokeStyle = '#451a03';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.ellipse(0, -8, 18, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-
-      // Blinking Red Detonator Antenna
-      ctx.strokeStyle = '#475569';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(0, -22);
-      ctx.lineTo(0, -32);
-      ctx.stroke();
-
-      const blink = Math.sin(t * 12) > 0;
-      ctx.fillStyle = blink ? '#ef4444' : '#991b1b';
-      ctx.beginPath();
-      ctx.arc(0, -34, 5.5, 0, Math.PI * 2);
-      ctx.fill();
-
-      this.drawEyes(ctx, 2, -10, true, '#fef08a');
-    }
-
-    ctx.restore();
-  }
-
-  private static drawWallnut(
-    ctx: CanvasRenderingContext2D,
-    p: PlantEntity,
-    t: number
-  ): void {
-    ctx.save();
-    const sway = Math.sin(t * 0.7) * 1.5;
-    ctx.translate(sway, -18);
-
-    const hpRatio = p.hp / p.maxHp;
-
-    const nutGrad = ctx.createRadialGradient(-6, -10, 4, 0, 0, 26);
-    if (p.armored) {
-      nutGrad.addColorStop(0, '#e2e8f0');
-      nutGrad.addColorStop(0.5, '#64748b');
-      nutGrad.addColorStop(1, '#1e293b');
-    } else {
-      nutGrad.addColorStop(0, '#fbbf24');
-      nutGrad.addColorStop(0.5, '#b45309');
-      nutGrad.addColorStop(1, '#78350f');
-    }
-
-    ctx.fillStyle = nutGrad;
-    ctx.strokeStyle = p.armored ? '#0f172a' : '#451a03';
-    ctx.lineWidth = 3;
-
-    ctx.beginPath();
-    ctx.roundRect(-20, -24, 40, 44, [18, 18, 14, 14]);
-    ctx.fill();
-    ctx.stroke();
-
-    ctx.strokeStyle = p.armored ? '#38bdf8' : 'rgba(69, 26, 3, 0.45)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.roundRect(-15, -19, 30, 34, 12);
-    ctx.stroke();
-
-    if (hpRatio < 0.65) {
-      ctx.strokeStyle = '#270e02';
-      ctx.lineWidth = 2.2;
-      ctx.beginPath();
-      ctx.moveTo(-14, -16);
-      ctx.lineTo(-7, -9);
-      ctx.lineTo(-11, -3);
-      ctx.stroke();
-    }
     if (hpRatio < 0.35) {
       ctx.beginPath();
-      ctx.moveTo(14, -12);
-      ctx.lineTo(6, -4);
-      ctx.lineTo(11, 5);
+      ctx.moveTo(16, -34);
+      ctx.lineTo(10, -26);
+      ctx.lineTo(15, -18);
+      ctx.lineTo(9, -10);
+      ctx.moveTo(-4, -2);
+      ctx.lineTo(3, 0);
+      ctx.lineTo(0, 4);
       ctx.stroke();
     }
-
-    this.drawEyes(ctx, 2, -6, hpRatio < 0.5);
-
-    ctx.strokeStyle = '#270e02';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    if (hpRatio > 0.4) {
-      ctx.moveTo(-5, 6);
-      ctx.lineTo(7, 6);
-    } else {
-      ctx.arc(1, 9, 5, Math.PI, 0);
-    }
-    ctx.stroke();
-
     ctx.restore();
   }
 
-  // HIGH-DETAIL 2.5D SKELETAL ZOMBIE RENDERER WITH DISMEMBERMENT & BITING
+  // ------------------------------------------------------------------ ZUMBIS (sprites em camadas)
+
   public static drawZombie(
     ctx: CanvasRenderingContext2D,
     z: ZombieEntity,
     zx: number,
     zy: number,
-    cellW: number,
-    cellH: number
+    _cellW: number,
+    cellH: number,
+    isNight = false,
+    agua = false
   ): void {
     const isZomboss = z.variant === 'zomboss_mech';
-    const isBoss = z.variant === 'gargantuar' || isZomboss;
-    const baseScale = (cellH / 92) * (isZomboss ? 1.55 : isBoss ? 1.32 : 0.96);
+    const canoeiro = z.variant === 'canoeiro';
+    const nadando = canoeiro && z.lostHeadgear;
+    const naAgua = agua && !isZomboss;
+    // Linha d'água: quem anda no rio fica com a água na canela; a canoa flutua; quem nada afunda até o peito
+    const waterY = zy + cellH * 0.24 - (naAgua && !canoeiro ? cellH * 0.13 : 0);
+    const afunda = nadando ? cellH * 0.3 : 0;
+    const mapinguari = z.variant === 'mapinguari' || z.variant === 'cuca';
+    const isBoss = z.variant === 'gargantuar' || isZomboss || mapinguari;
+    const baseScale = (cellH / 92) * (isZomboss ? 1.55 : mapinguari ? 1.42 : isBoss ? 1.32 : 0.96) * (z.elite === 'gigante' ? 1.3 : 1);
     const walk = z.walkPhase;
-    const legSwing = z.isEating ? 0 : Math.sin(walk) * 8;
     const armBob = z.isEating
       ? Math.sin(performance.now() * 0.025) * 9
       : Math.cos(walk * 1.2) * 4;
-    const bodyTilt = z.isEating
-      ? -0.22
+    // Mastigando: a cabeça/corpo dá cabeçadas curtas no ritmo da mordida
+    const mastiga = z.isEating ? Math.max(0, Math.sin(performance.now() * 0.02)) * 0.06 : 0;
+    const bodyTilt = (z.isEating
+      ? -0.1
       : z.variant === 'cyber_sprinter'
-        ? -0.18
-        : -0.07;
+        ? -0.05
+        : -0.03) - mastiga;
+    const spec = ZOMBIE_SPRITES[z.variant] ?? ZOMBIE_SPRITES.basic;
+    const k = spec.k;
 
     ctx.save();
-
-    // 1. Ground Shadow
-    ctx.fillStyle = 'rgba(0, 0, 0, 0.46)';
-    ctx.beginPath();
-    ctx.ellipse(
-      zx,
-      zy + cellH * 0.31,
-      cellW * (isZomboss ? 0.55 : isBoss ? 0.38 : 0.26),
-      cellH * (isZomboss ? 0.16 : 0.11),
-      0,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-
-    // Special High-Detail Renderer for DR. ZOMBOSS MECHA-TITAN!
-    if (isZomboss) {
-      this.drawZombossMech(ctx, z, zx, zy, baseScale, walk);
-      ctx.restore();
-      return;
-    }
-
-    const bounceY = z.isEating ? 0 : Math.abs(Math.sin(walk)) * -4.5;
-    ctx.translate(zx, zy + cellH * 0.24 + bounceY);
-    ctx.scale(baseScale, baseScale);
-
-    // Back Leg
-    ctx.strokeStyle = '#1e293b';
-    ctx.lineWidth = 7;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-3, -16);
-    ctx.lineTo(-3 - legSwing, -2);
-    ctx.stroke();
-
-    // Front Leg
-    ctx.strokeStyle = '#334155';
-    ctx.beginPath();
-    ctx.moveTo(3, -16);
-    ctx.lineTo(3 + legSwing, -2);
-    ctx.stroke();
-
-    ctx.save();
-    ctx.rotate(bodyTilt);
-
-    // Back Outstretched Zombie Arm
-    ctx.strokeStyle = '#4d7c0f';
-    ctx.lineWidth = 5.5;
-    ctx.beginPath();
-    ctx.moveTo(-2, -32);
-    ctx.lineTo(-22, -30 + armBob);
-    ctx.stroke();
-
-    // Back gas tank for Pyro Scavenger
-    if (z.variant === 'pyro_scavenger') {
-      ctx.save();
-      ctx.fillStyle = '#b91c1c';
-      ctx.strokeStyle = '#450a0a';
-      ctx.lineWidth = 1.8;
+    if (naAgua) {
       ctx.beginPath();
-      ctx.roundRect(8, -42, 9, 22, 3);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#94a3b8';
-      ctx.fillRect(9, -45, 7, 3);
-      ctx.restore();
-    }
-
-    // Torso
-    const coatColor =
-      z.variant === 'cyber_sprinter'
-        ? '#0284c7'
-        : z.variant === 'rubber_hazard'
-          ? '#eab308'
-          : z.variant === 'pyro_scavenger'
-            ? '#78350f'
-            : isBoss
-              ? '#3f3f46'
-              : '#334155';
-    ctx.fillStyle = coatColor;
-    ctx.strokeStyle = '#0f172a';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.roundRect(-11, -38, 22, 24, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    if (z.variant === 'rubber_hazard') {
-      // Black & Yellow Hazard caution stripes on torso
-      ctx.save();
-      ctx.beginPath();
-      ctx.roundRect(-11, -38, 22, 24, 6);
+      ctx.rect(zx - cellH * 3, zy - cellH * 4, cellH * 6, waterY - (zy - cellH * 4));
       ctx.clip();
-      ctx.strokeStyle = '#18181b';
-      ctx.lineWidth = 3.5;
-      for (let s = -30; s <= 20; s += 8) {
-        ctx.beginPath();
-        ctx.moveTo(-15 + s, -40);
-        ctx.lineTo(5 + s, -12);
-        ctx.stroke();
-      }
-      ctx.restore();
     }
 
-    // Red Tie (only for office zombies)
-    if (z.variant !== 'rubber_hazard' && z.variant !== 'pyro_scavenger') {
-      ctx.fillStyle = '#dc2626';
-      ctx.beginPath();
-      ctx.moveTo(-2, -35);
-      ctx.lineTo(-6, -21);
-      ctx.lineTo(-1, -18);
-      ctx.lineTo(2, -21);
-      ctx.closePath();
-      ctx.fill();
-    }
+    const pulo = (z.pulandoTimer ?? 0) > 0 ? Math.sin((1 - z.pulandoTimer! / PULO_DURACAO) * Math.PI) * -cellH * 0.4 : 0;
+    const lift = pulo !== 0 ? pulo : isZomboss
+      ? Math.sin(walk * 1.4) * 3
+      : canoeiro
+        ? Math.sin(walk * 0.9) * 1.8
+        : z.isEating
+          ? 0
+          : Math.abs(Math.sin(walk)) * -4.5;
+    ctx.translate(zx, zy + cellH * 0.24 + lift + afunda);
+    // Vida: esmaga no passo (ombros caem, corpo alarga) e recua ao levar dano
+    const passo = z.isEating || isZomboss || canoeiro ? 0 : Math.abs(Math.sin(walk));
+    const dano = z.hitFlash;
+    ctx.scale(
+      baseScale * (z.confusoTimer > 0 ? -1 : 1) * (1 + passo * 0.03 + dano * 0.06),
+      baseScale * (1 - passo * 0.045 - dano * 0.08)
+    );
+    if (dano > 0) ctx.rotate(dano * 0.08);
 
-    // Front Zombie Arm (Only drawn if not yet severed by damage!)
-    if (!z.lostArm) {
-      ctx.strokeStyle = '#3f6212';
-      ctx.lineWidth = 6;
-      ctx.beginPath();
-      ctx.moveTo(5, -31);
-      ctx.lineTo(-19, -25 - armBob);
-      ctx.stroke();
-    } else {
-      // Torn sleeve stump
-      ctx.fillStyle = '#1e293b';
-      ctx.beginPath();
-      ctx.arc(5, -31, 4, 0, Math.PI * 2);
-      ctx.fill();
-    }
+    const place = (img: SpriteImage): void => {
+      ctx.drawImage(img, -spec.ox * k, -spec.feet * k, spec.w * k, spec.h * k);
+    };
+    // Gira uma camada em torno de um ponto do desenho (coordenadas do SVG)
+    const rotateAround = (px: number, py: number, angle: number): void => {
+      const ax = (px - spec.ox) * k;
+      const ay = (py - spec.feet) * k;
+      ctx.translate(ax, ay);
+      ctx.rotate(angle);
+      ctx.translate(-ax, -ay);
+    };
 
-    // Weapon: Scrap Flamethrower for Pyro Scavenger
-    if (z.variant === 'pyro_scavenger') {
-      ctx.save();
-      ctx.translate(-19, -25 - armBob);
-      // Metal scrap blowtorch
-      ctx.strokeStyle = '#57534e';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(0, 0);
-      ctx.lineTo(-22, 4);
-      ctx.stroke();
-
-      // Nozzle flare
-      ctx.fillStyle = '#292524';
-      ctx.beginPath();
-      ctx.moveTo(-22, 1);
-      ctx.lineTo(-28, -2);
-      ctx.lineTo(-28, 10);
-      ctx.lineTo(-22, 7);
-      ctx.closePath();
-      ctx.fill();
-
-      if (!z.torchDoused) {
-        // Flickering flamethrower pilot flame
-        const flameLen = 12 + Math.sin(performance.now() * 0.04) * 6;
-        const flm = ctx.createLinearGradient(-28, 4, -28 - flameLen, 4);
-        flm.addColorStop(0, '#fef08a');
-        flm.addColorStop(0.4, '#f97316');
-        flm.addColorStop(1, 'rgba(239, 68, 68, 0)');
-        ctx.fillStyle = flm;
-        ctx.beginPath();
-        ctx.moveTo(-28, 1);
-        ctx.lineTo(-28 - flameLen, 4);
-        ctx.lineTo(-28, 7);
-        ctx.closePath();
-        ctx.fill();
-      } else {
-        // Doused smoke puffs
-        ctx.fillStyle = 'rgba(148, 163, 184, 0.7)';
-        ctx.beginPath();
-        ctx.arc(-32, 2, 3.5, 0, Math.PI * 2);
-        ctx.arc(-37, 0, 5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
-    }
-
-    if (isBoss) {
-      ctx.save();
-      ctx.translate(-21, -28 - armBob);
-      ctx.rotate(-0.4);
-      ctx.fillStyle = '#78350f';
-      ctx.strokeStyle = '#270e02';
-      ctx.lineWidth = 2;
-      ctx.fillRect(-4, -26, 9, 32);
-      ctx.strokeRect(-4, -26, 9, 32);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(-7, -30, 15, 8);
-      ctx.restore();
-    }
-
-    // Zombie Head
     ctx.save();
-    ctx.translate(-2, -49);
+    ctx.rotate(
+      canoeiro
+        ? Math.sin(walk * 0.9) * 0.025
+        : bodyTilt + (z.isEating || isZomboss ? 0 : Math.sin(walk) * 0.03)
+    );
 
-    const skinGrad = ctx.createRadialGradient(-3, -3, 2, 0, 0, 15);
-    skinGrad.addColorStop(0, '#bef264');
-    skinGrad.addColorStop(0.6, '#84cc16');
-    skinGrad.addColorStop(1, '#4d7c0f');
-    ctx.fillStyle = skinGrad;
-    ctx.strokeStyle = '#1a2e05';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.roundRect(-13, -12, 25, 23, 9);
-    ctx.fill();
-    ctx.stroke();
+    const body = getSprite(`${z.variant}--corpo`, isNight);
+    if (body) place(body);
 
-    // Bulging Yellow/Red Zombie Eyes
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.arc(-8, -2, 4.5, 0, Math.PI * 2);
-    ctx.arc(-1, -2, 3.6, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
+    if (isZomboss) {
+      const reel = getSprite('zomboss_mech--molinete', isNight);
+      if (reel) {
+        ctx.save();
+        rotateAround(74, 168, -performance.now() * 0.006);
+        place(reel);
+        ctx.restore();
+      }
+    }
 
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.arc(-9, -2, 1.8, 0, Math.PI * 2);
-    ctx.arc(-2, -2, 1.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Chomping Jaw Animation
-    const jawOpen = z.isEating ? Math.abs(Math.sin(performance.now() * 0.025)) * 4 : 0;
-    ctx.fillStyle = '#1a2e05';
-    ctx.beginPath();
-    ctx.roundRect(-10, 4, 12, 5 + jawOpen, 2);
-    ctx.fill();
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(-8, 4, 3, 3);
-    ctx.fillRect(-3, 4, 3, 3);
-
-    // HEADGEAR (Only drawn while zombie still has headgear!)
-    if (!z.lostHeadgear) {
-      if (z.variant === 'cone') {
-        const coneGrad = ctx.createLinearGradient(-10, -34, 10, -10);
-        coneGrad.addColorStop(0, '#fb923c');
-        coneGrad.addColorStop(1, '#c2410c');
-        ctx.fillStyle = coneGrad;
-        ctx.strokeStyle = '#431407';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.moveTo(-14, -9);
-        ctx.lineTo(-3, -34);
-        ctx.lineTo(4, -34);
-        ctx.lineTo(14, -9);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(-7, -21, 14, 4);
-      } else if (z.variant === 'bucket') {
-        const bGrad = ctx.createLinearGradient(-12, -30, 12, -8);
-        bGrad.addColorStop(0, '#f1f5f9');
-        bGrad.addColorStop(0.5, '#94a3b8');
-        bGrad.addColorStop(1, '#475569');
-        ctx.fillStyle = bGrad;
-        ctx.strokeStyle = '#0f172a';
-        ctx.lineWidth = 2.3;
-        ctx.beginPath();
-        ctx.moveTo(-14, -8);
-        ctx.lineTo(-11, -29);
-        ctx.lineTo(12, -29);
-        ctx.lineTo(14, -8);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      } else if (z.variant === 'cyber_sprinter') {
-        ctx.fillStyle = '#38bdf8';
-        ctx.strokeStyle = '#0284c7';
-        ctx.lineWidth = 1.5;
-        ctx.beginPath();
-        ctx.roundRect(-13, -6, 16, 6, 3);
-        ctx.fill();
-        ctx.stroke();
-      } else if (z.variant === 'rubber_hazard') {
-        // Yellow rubber hazmat hood
-        ctx.fillStyle = '#ca8a04';
-        ctx.strokeStyle = '#713f12';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.arc(0, -6, 15, Math.PI, 0);
-        ctx.fill();
-        ctx.stroke();
-
-        // Protective dark visor
-        ctx.fillStyle = '#09090b';
-        ctx.fillRect(-10, -7, 20, 8);
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 1.4;
-        ctx.strokeRect(-10, -7, 20, 8);
-
-        // Grounding rod with blue electric sparks
-        ctx.strokeStyle = '#ea580c';
-        ctx.lineWidth = 2.8;
-        ctx.beginPath();
-        ctx.moveTo(0, -18);
-        ctx.lineTo(0, -32);
-        ctx.stroke();
-
-        ctx.fillStyle = '#f97316';
-        ctx.beginPath();
-        ctx.arc(0, -33, 3.5, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Spark effect
-        const sparkTime = performance.now() * 0.01;
-        ctx.strokeStyle = '#38bdf8';
+    if (spec.pivot) {
+      const [px, py] = spec.pivot;
+      if (!z.lostArm) {
+        const doused = z.variant === 'pyro_scavenger' && z.torchDoused;
+        const arm = getSprite(`${z.variant}--${doused ? 'braco-apagado' : 'braco'}`, isNight);
+        if (arm) {
+          ctx.save();
+          // O canoeiro rema: o remo vai e volta bem mais que o balanço do braço de quem anda
+          rotateAround(px, py, canoeiro ? Math.sin(walk * 1.1) * 0.28 : armBob * 0.02);
+          place(arm);
+          if (z.variant === 'pyro_scavenger' && !doused) {
+            this.drawPilotFlame(ctx, (2 - spec.ox) * k, (118 - spec.feet) * k);
+          }
+          ctx.restore();
+        }
+      } else {
+        // Toco do braço arrancado
+        ctx.fillStyle = spec.sleeve;
+        ctx.strokeStyle = '#2a2416';
         ctx.lineWidth = 1.6;
         ctx.beginPath();
-        ctx.moveTo(-4, -32 + Math.sin(sparkTime) * 3);
-        ctx.lineTo(4, -34 - Math.sin(sparkTime) * 3);
-        ctx.stroke();
-      } else if (z.variant === 'pyro_scavenger') {
-        // Scrap welding mask with molten glowing eye slit
-        ctx.fillStyle = '#292524';
-        ctx.strokeStyle = '#44403c';
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        ctx.roundRect(-14, -13, 27, 25, 4);
+        ctx.arc((px - spec.ox) * k, (py - spec.feet) * k, 4.2, 0, Math.PI * 2);
         ctx.fill();
         ctx.stroke();
-
-        // Glowing molten slit
-        ctx.fillStyle = z.torchDoused ? '#57534e' : '#f97316';
-        ctx.beginPath();
-        ctx.roundRect(-10, -5, 19, 4.5, 2);
-        ctx.fill();
-
-        // Welder rivets
-        ctx.fillStyle = '#a8a29e';
-        [-11, 10].forEach((rx) => {
-          ctx.beginPath();
-          ctx.arc(rx, -9, 1.8, 0, Math.PI * 2);
-          ctx.arc(rx, 7, 1.8, 0, Math.PI * 2);
-          ctx.fill();
-        });
-      } else if (isBoss) {
-        ctx.fillStyle = '#27272a';
-        ctx.beginPath();
-        ctx.arc(0, -8, 13, Math.PI, 0);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#fef08a';
-        ctx.beginPath();
-        ctx.moveTo(-11, -13);
-        ctx.lineTo(-20, -24);
-        ctx.lineTo(-6, -17);
-        ctx.moveTo(11, -13);
-        ctx.lineTo(20, -24);
-        ctx.lineTo(6, -17);
-        ctx.fill();
       }
     }
 
-    ctx.restore(); // end head
-    ctx.restore(); // end torso
+    if ((z.variant === 'cone' || z.variant === 'bucket' || canoeiro) && !z.lostHeadgear) {
+      const gear = getSprite(`${z.variant}--capacete`, isNight);
+      if (gear) {
+        place(gear);
+        if (z.elite === 'ferro') {
+          // Capacete de ferro: rebites escuros por cima
+          ctx.fillStyle = '#334155';
+          ctx.strokeStyle = '#0f172a';
+          ctx.lineWidth = 1.2;
+          for (const [rx, ry] of [[50, 30], [70, 24], [90, 32]] as [number, number][]) {
+            ctx.beginPath();
+            ctx.arc((rx - spec.ox) * k, (ry - spec.feet) * k, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+          }
+        }
+      }
+    }
 
-    // 3. Elemental Status Overlays
+    // Clarão branco quando leva dano (silhueta do corpo e do braço)
+    if (dano > 0.05) {
+      ctx.globalAlpha = Math.min(0.85, dano * 0.85);
+      const clarao = getSpriteClarao(`${z.variant}--corpo`, isNight);
+      if (clarao) place(clarao);
+      if (spec.pivot && !z.lostArm) {
+        const bracoClarao = getSpriteClarao(`${z.variant}--braco`, isNight);
+        if (bracoClarao) place(bracoClarao);
+      }
+      ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+
+    // Efeitos elementais por cima do zumbi
+    const top = -(spec.feet - spec.head) * k;
+    const mid = top / 2;
     if (z.frozenTimer > 0) {
-      ctx.fillStyle = 'rgba(103, 232, 249, 0.52)';
+      ctx.fillStyle = 'rgba(103, 232, 249, 0.5)';
       ctx.strokeStyle = '#cffafe';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(-20, -64, 40, 66, 8);
+      ctx.roundRect(-spec.halfW, top - 4, spec.halfW * 2, -top + 6, 8);
       ctx.fill();
       ctx.stroke();
-    } else if (z.wetTimer > 0) {
+    } else if (z.wetTimer > 0 && !naAgua) {
       ctx.strokeStyle = '#38bdf8';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(0, -32, 24, 0, Math.PI * 2);
+      ctx.arc(0, mid, -top * 0.42, 0, Math.PI * 2);
       ctx.stroke();
     }
 
@@ -1329,130 +924,202 @@ export class CharacterRenderer {
       ctx.lineWidth = 2.2;
       ctx.setLineDash([4, 3]);
       ctx.beginPath();
-      ctx.arc(0, -32, 26, 0, Math.PI * 2);
+      ctx.arc(0, mid, -top * 0.46, 0, Math.PI * 2);
       ctx.stroke();
       ctx.setLineDash([]);
     }
 
     if (z.burnTimer > 0) {
-      ctx.fillStyle = 'rgba(249, 115, 22, 0.58)';
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.5)';
       ctx.beginPath();
-      ctx.arc(0, -30, 20 + Math.sin(performance.now() * 0.03) * 4, 0, Math.PI * 2);
+      ctx.arc(0, mid, -top * 0.32 + Math.sin(performance.now() * 0.03) * 4, 0, Math.PI * 2);
       ctx.fill();
     }
 
+    if (z.capataz) {
+      // Apito do Capataz em cima da cabeça, com um anel amarelo
+      ctx.save();
+      if (z.confusoTimer > 0) ctx.scale(-1, 1);
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, spec.halfW * 1.1, 6, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = '15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📯', 0, top - 8 + Math.sin(performance.now() * 0.006) * 2);
+      ctx.restore();
+    }
+    if (z.elite) {
+      // Selo da mutação em cima da cabeça
+      ctx.save();
+      if (z.confusoTimer > 0) ctx.scale(-1, 1);
+      ctx.font = '14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText(ELITES[z.elite].icone, 0, top - 6);
+      ctx.restore();
+    }
+
+    if (z.confusoTimer > 0) {
+      // Interrogação balançando em cima da cabeça (desespelhada)
+      ctx.save();
+      ctx.scale(-1, 1);
+      ctx.font = "800 16px 'Outfit', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#ffb020';
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 3;
+      const qy = top - 10 + Math.sin(performance.now() * 0.008) * 3;
+      ctx.strokeText('?', 0, qy);
+      ctx.fillText('?', 0, qy);
+      ctx.restore();
+    }
+
+    ctx.restore();
+
+    if (naAgua) {
+      const raio = spec.halfW * baseScale * (canoeiro && !nadando ? 2.1 : 1.15);
+      this.drawRipple(ctx, zx, waterY, raio, z.walkPhase);
+    }
+  }
+
+  /** O Curupira correndo pela linha (aliado do folclore). */
+  public static drawCurupira(ctx: CanvasRenderingContext2D, x: number, y: number, cellH: number, isNight: boolean, t: number): void {
+    const img = getSprite('curupira', isNight);
+    if (!img) return;
+    const s = (cellH / 92) * 0.95;
+    const bob = Math.abs(Math.sin(t * 0.02)) * -6;
+    ctx.save();
+    ctx.translate(x, y + cellH * 0.18 + bob);
+    ctx.scale(s, s);
+    ctx.rotate(0.12);
+    const k = PLANT_SPRITE_SCALE;
+    ctx.drawImage(img, -80 * k, 6 - 172 * k, 160 * k, 180 * k);
     ctx.restore();
   }
 
-  // DR. ZOMBOSS ZOMBOT MECHA-TITAN RENDERER (Final Wave Boss!)
-  private static drawZombossMech(
-    ctx: CanvasRenderingContext2D,
-    z: ZombieEntity,
-    zx: number,
-    zy: number,
-    scale: number,
-    walk: number
-  ): void {
-    const hover = Math.sin(walk * 1.4) * 4;
-    ctx.translate(zx, zy + 20 + hover);
-    ctx.scale(scale, scale);
-
-    // 1. Heavy Hydraulic Mech Legs
-    const step = Math.sin(walk) * 6;
-    ctx.strokeStyle = '#334155';
-    ctx.lineWidth = 9;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    ctx.moveTo(-10, -14);
-    ctx.lineTo(-12 - step, 2);
-    ctx.moveTo(10, -14);
-    ctx.lineTo(12 + step, 2);
-    ctx.stroke();
-
-    // 2. Massive Armored Mech Torso & Elemental Core
-    const chassisGrad = ctx.createLinearGradient(-26, -54, 26, -10);
-    chassisGrad.addColorStop(0, '#475569');
-    chassisGrad.addColorStop(0.5, '#1e293b');
-    chassisGrad.addColorStop(1, '#0f172a');
-    ctx.fillStyle = chassisGrad;
-    ctx.strokeStyle = '#94a3b8';
-    ctx.lineWidth = 2.6;
-    ctx.beginPath();
-    ctx.roundRect(-24, -48, 48, 36, 10);
-    ctx.fill();
-    ctx.stroke();
-
-    // Glowing Chest Reactor Core (Changes color between Fire / Ice / Plasma)
-    const coreColor =
-      Math.sin(performance.now() * 0.004) > 0 ? '#f97316' : '#38bdf8';
-    ctx.fillStyle = coreColor;
-    ctx.beginPath();
-    ctx.arc(0, -30, 9, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Extended Mechanical Claw Cannon Arm
-    ctx.strokeStyle = '#64748b';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(-22, -32);
-    ctx.lineTo(-38, -28 + Math.cos(walk * 2) * 3);
-    ctx.stroke();
-
-    ctx.fillStyle = '#ef4444';
-    ctx.beginPath();
-    ctx.arc(-40, -28 + Math.cos(walk * 2) * 3, 6, 0, Math.PI * 2);
-    ctx.fill();
-
-    // 3. Dr. Zomboss Inside Glass Cockpit Dome!
+  /** Pegada ao contrário (aponta para trás, de onde o Curupira veio). */
+  /** Casinha do jardineiro: telhado, porta, janela (acesa à noite) e chaminé; cabe no canto acima do caminho. */
+  public static drawCasinha(ctx: CanvasRenderingContext2D, x: number, baseY: number, noite: boolean, bioma: string): void {
+    const w = Math.max(40, Math.min(64, baseY * 1.3));
+    const h = w * 0.62;
+    const y = baseY - h - 2;
+    const parede = noite ? '#3b2f3f' : bioma === 'assombrado' ? '#6b5a7a' : '#f1e0b8';
+    const telhado = noite ? '#5a2a32' : bioma === 'assombrado' ? '#3a2a44' : '#c2452b';
+    const ink = noite ? '#04090c' : '#2a2416';
     ctx.save();
-    ctx.translate(0, -56);
-
-    // Dr. Zomboss Giant Brainy Head
-    ctx.fillStyle = '#a3e635';
-    ctx.strokeStyle = '#1a2e05';
     ctx.lineWidth = 2;
+    ctx.strokeStyle = ink;
+    // parede
+    ctx.fillStyle = parede;
     ctx.beginPath();
-    ctx.arc(0, -4, 14, 0, Math.PI * 2);
+    ctx.roundRect(x, y + h * 0.35, w, h * 0.65, 3);
     ctx.fill();
     ctx.stroke();
-
-    // Brain ridges on top
-    ctx.strokeStyle = '#4d7c0f';
-    ctx.lineWidth = 1.6;
+    // telhado
+    ctx.fillStyle = telhado;
     ctx.beginPath();
-    ctx.arc(-4, -10, 5, Math.PI, 0);
-    ctx.arc(4, -10, 5, Math.PI, 0);
-    ctx.stroke();
-
-    // Evil Glowing Red/Yellow Eyes
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.arc(-6, -2, 3.5, 0, Math.PI * 2);
-    ctx.arc(3, -2, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#dc2626';
-    ctx.beginPath();
-    ctx.arc(-7, -2, 1.6, 0, Math.PI * 2);
-    ctx.arc(2, -2, 1.6, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Translucent Glass Cockpit Dome Over Dr. Zomboss
-    const glassGrad = ctx.createRadialGradient(-6, -12, 2, 0, -4, 22);
-    glassGrad.addColorStop(0, 'rgba(224, 242, 254, 0.55)');
-    glassGrad.addColorStop(1, 'rgba(56, 189, 248, 0.22)');
-    ctx.fillStyle = glassGrad;
-    ctx.strokeStyle = '#7dd3fc';
-    ctx.lineWidth = 2.2;
-    ctx.beginPath();
-    ctx.arc(0, 6, 20, Math.PI, 0);
+    ctx.moveTo(x - w * 0.1, y + h * 0.38);
+    ctx.lineTo(x + w * 0.5, y);
+    ctx.lineTo(x + w * 1.1, y + h * 0.38);
     ctx.closePath();
     ctx.fill();
     ctx.stroke();
-
+    // chaminé
+    ctx.fillStyle = noite ? '#2a2026' : '#8a6a4a';
+    ctx.fillRect(x + w * 0.72, y + h * 0.06, w * 0.12, h * 0.2);
+    ctx.strokeRect(x + w * 0.72, y + h * 0.06, w * 0.12, h * 0.2);
+    // porta
+    ctx.fillStyle = noite ? '#1b1418' : '#8a5a34';
+    ctx.beginPath();
+    ctx.roundRect(x + w * 0.16, y + h * 0.55, w * 0.22, h * 0.45, [4, 4, 0, 0]);
+    ctx.fill();
+    ctx.stroke();
+    // janela (acesa à noite)
+    ctx.fillStyle = noite ? '#ffd36b' : '#bfe9ff';
+    ctx.beginPath();
+    ctx.roundRect(x + w * 0.56, y + h * 0.5, w * 0.28, h * 0.26, 3);
+    ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.7, y + h * 0.5);
+    ctx.lineTo(x + w * 0.7, y + h * 0.76);
+    ctx.moveTo(x + w * 0.56, y + h * 0.63);
+    ctx.lineTo(x + w * 0.84, y + h * 0.63);
+    ctx.stroke();
+    if (noite) {
+      ctx.fillStyle = 'rgba(255, 211, 107, 0.18)';
+      ctx.beginPath();
+      ctx.arc(x + w * 0.7, y + h * 0.63, w * 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
-  // PVZ 1 STYLE RAGDOLL DEBRIS RENDERER (Falling Arm, Cone, Bucket, Head)
+  /** Grama amassada / barro revirado por onde o zumbi passou. */
+  public static drawRastro(ctx: CanvasRenderingContext2D, x: number, y: number, cellW: number, alpha: number, lama: boolean): void {
+    ctx.save();
+    ctx.globalAlpha = alpha * (lama ? 0.5 : 0.28);
+    ctx.fillStyle = lama ? '#3b2a14' : '#2f5a1a';
+    ctx.beginPath();
+    ctx.ellipse(x, y, cellW * 0.13, cellW * 0.045, 0.1, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  public static drawPegada(ctx: CanvasRenderingContext2D, x: number, y: number, cellH: number, alpha: number): void {
+    const s = cellH / 90;
+    ctx.save();
+    ctx.globalAlpha = alpha * 0.8;
+    ctx.translate(x, y);
+    ctx.scale(s, s);
+    ctx.fillStyle = '#5f3d22';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 4.2, 6, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // Dedos apontando para a esquerda (o pé está ao contrário)
+    for (let i = 0; i < 3; i++) {
+      ctx.beginPath();
+      ctx.arc(-6, -4 + i * 4, 1.6, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /** Ondinha na linha d'água (zumbis no rio e plantas aquáticas). */
+  public static drawRipple(ctx: CanvasRenderingContext2D, x: number, y: number, raio: number, fase: number): void {
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.6)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(x, y, raio, Math.max(2.5, raio * 0.16), 0, 0, Math.PI * 2);
+    ctx.stroke();
+    const r2 = raio * (1.15 + Math.sin(fase * 1.3) * 0.08);
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.28)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 1, r2, Math.max(3, r2 * 0.18), 0, 0.15 * Math.PI, 0.85 * Math.PI);
+    ctx.stroke();
+    ctx.restore();
+  }
+
+  // Chama piloto tremulando na ponta do lança-chamas
+  private static drawPilotFlame(ctx: CanvasRenderingContext2D, x: number, y: number): void {
+    const len = 7 + Math.sin(performance.now() * 0.04) * 3;
+    const grad = ctx.createLinearGradient(x, y, x - len, y);
+    grad.addColorStop(0, '#fef08a');
+    grad.addColorStop(0.45, '#f97316');
+    grad.addColorStop(1, 'rgba(239, 68, 68, 0)');
+    ctx.fillStyle = grad;
+    ctx.beginPath();
+    ctx.moveTo(x, y - 2.4);
+    ctx.lineTo(x - len, y);
+    ctx.lineTo(x, y + 2.4);
+    ctx.closePath();
+    ctx.fill();
+  }
+
+  // ------------------------------------------------------------------ PEDAÇOS QUE CAEM
+
   public static drawDebris(
     ctx: CanvasRenderingContext2D,
     d: PhysicsDebris,
@@ -1470,45 +1137,106 @@ export class CharacterRenderer {
     ctx.translate(px, py);
     ctx.rotate(d.angle);
 
-    if (d.kind === 'arm') {
-      ctx.strokeStyle = '#4d7c0f';
+    if (d.kind === 'cone' || d.kind === 'bucket') {
+      // Capacete de obra (cone) ou de moto (bucket) voando
+      const variant = d.kind === 'cone' ? 'cone' : 'bucket';
+      const gear = getSprite(`${variant}--capacete`);
+      if (gear) {
+        const [gx, gy] = d.kind === 'cone' ? [71, 40] : [70, 58];
+        const k = 0.34;
+        ctx.drawImage(gear, -gx * k, -gy * k, 170 * k, 230 * k);
+      }
+    } else if (d.kind === 'galho') {
+      // Galho da cerca que quebrou
+      ctx.strokeStyle = '#2a2416';
       ctx.lineWidth = 6;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(-9, 2);
+      ctx.lineTo(9, -2);
+      ctx.stroke();
+      ctx.strokeStyle = '#7a5230';
+      ctx.lineWidth = 3.5;
+      ctx.stroke();
+      ctx.fillStyle = '#6cc84a';
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      ctx.ellipse(6, -5, 5, 2.6, -0.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    } else if (d.kind === 'canoa') {
+      // Tábua da canoa que afundou
+      ctx.fillStyle = '#b9824a';
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(-16, -4, 32, 8, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#e8553a';
+      ctx.fillRect(-14, -1, 28, 2.5);
+    } else if (d.kind === 'arm') {
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 8;
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(-10, 0);
       ctx.lineTo(10, 2);
       ctx.stroke();
-    } else if (d.kind === 'cone') {
-      ctx.fillStyle = '#fb923c';
-      ctx.strokeStyle = '#431407';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.moveTo(-10, 8);
-      ctx.lineTo(0, -12);
-      ctx.lineTo(10, 8);
-      ctx.closePath();
-      ctx.fill();
+      ctx.strokeStyle = '#a7bf8a';
+      ctx.lineWidth = 5;
       ctx.stroke();
-    } else if (d.kind === 'bucket') {
-      ctx.fillStyle = '#94a3b8';
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2;
-      ctx.fillRect(-9, -8, 18, 16);
-      ctx.strokeRect(-9, -8, 18, 16);
     } else if (d.kind === 'head') {
-      ctx.fillStyle = '#84cc16';
-      ctx.strokeStyle = '#1a2e05';
-      ctx.lineWidth = 2;
+      ctx.fillStyle = '#a7bf8a';
+      ctx.strokeStyle = '#2a2416';
+      ctx.lineWidth = 2.2;
       ctx.beginPath();
-      ctx.roundRect(-10, -9, 20, 18, 6);
+      ctx.roundRect(-10, -9, 20, 18, 7);
       ctx.fill();
       ctx.stroke();
-      ctx.fillStyle = '#fef08a';
+      ctx.fillStyle = '#f3f1d6';
       ctx.beginPath();
-      ctx.arc(-4, -2, 3, 0, Math.PI * 2);
+      ctx.arc(-4, -2, 3.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#1d1a14';
+      ctx.beginPath();
+      ctx.arc(-4.6, -1.6, 1.4, 0, Math.PI * 2);
       ctx.fill();
     }
 
     ctx.restore();
   }
 }
+
+// Escala do sprite de planta (pixels do SVG -> unidades do jogo)
+const PLANT_SPRITE_SCALE = 0.41;
+
+interface ZombieSpriteSpec {
+  w: number; // largura do SVG
+  h: number; // altura do SVG
+  ox: number; // x do centro do corpo no SVG
+  feet: number; // y dos pés no SVG
+  head: number; // y do topo da cabeça no SVG
+  k: number; // escala SVG -> unidades do jogo
+  halfW: number; // meia largura do bloco de gelo
+  pivot?: [number, number]; // ombro do braço da frente no SVG
+  sleeve: string; // cor do toco quando o braço cai
+}
+
+const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
+  basic: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  cone: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  bucket: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#2f2f3a' },
+  cyber_sprinter: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#243260' },
+  rubber_hazard: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#ffd23a' },
+  pyro_scavenger: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#ff8a1f' },
+  gargantuar: { w: 230, h: 280, ox: 124, feet: 262, head: 42, k: 0.36, halfW: 34, pivot: [84, 112], sleeve: '#8ba56a' },
+  zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 40, k: 0.3, halfW: 52, sleeve: '#d9452b' },
+  // Canoeiro: "feet" é a linha d'água do casco; o casco abaixo dela fica escondido pela água
+  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 2, k: 0.5, halfW: 30, pivot: [92, 112], sleeve: '#efe6cc' },
+  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#8a5a30' },
+  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 2, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e3d9bc' },
+  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' }
+};

@@ -1,0 +1,377 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cerca Viva · jogue grátis</title>
+<meta name="description" content="Plante, junte sol e misture elementos para segurar a horda de zumbis no seu quintal. Grátis, no navegador ou no Android.">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Cerca Viva">
+<meta property="og:title" content="Cerca Viva: defenda o seu quintal">
+<meta property="og:description" content="Plante, junte sol e misture elementos para segurar a horda de zumbis no seu quintal. Grátis, no navegador ou no Android.">
+<meta property="og:image" content="https://joaomagalhaes321.github.io/cerca-viva/convite/capa.jpg">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:url" content="https://joaomagalhaes321.github.io/cerca-viva/convite/">
+<meta property="og:locale" content="pt_BR">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="theme-color" content="#7ccbff">
+<link rel="icon" type="image/svg+xml" href="../marca/icone.svg">
+<link rel="apple-touch-icon" href="../marca/icone-180.png">
+<style>
+:root { padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+img { max-width: 100%; }
+[hidden] { display: none !important; }
+</style>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Lilita+One&family=Nunito:wght@600;700;800;900&display=swap">
+<style>
+/* Layout: página de convite em faixas (céu, gramado, rio, mata), como o próprio tabuleiro do jogo.
+   Visual único e fixo de dia, o mesmo do jogo: creme, contorno de tinta e sombra chapada. */
+:root {
+  --tinta: #2a2416;
+  --creme: #fff6e0;
+  --creme-2: #f5e7c4;
+  --sol: #ffd84a;
+  --folha: #4caf3a;
+  --folha-escura: #2f7d24;
+  --ceu: #7ccbff;
+  --ceu-claro: #cdeeff;
+  --rio: #3aaad8;
+  --mata: #1f4d24;
+  --texto-suave: #5b4f37;
+  --display: 'Lilita One', 'Arial Rounded MT Bold', 'Trebuchet MS', system-ui, sans-serif;
+  --corpo: 'Nunito', 'Segoe UI', system-ui, sans-serif;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--creme);
+  color: var(--tinta);
+  font-family: var(--corpo);
+  font-size: 17px;
+  line-height: 1.55;
+}
+a { color: var(--tinta); }
+a:focus-visible, button:focus-visible { outline: 3px solid var(--tinta); outline-offset: 3px; }
+.miolo {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+h1, h2, h3 { font-family: var(--display); font-weight: 400; line-height: 1.08; margin: 0; text-wrap: balance; letter-spacing: 0.3px; }
+h2 { font-size: clamp(30px, 5vw, 44px); }
+h3 { font-size: 22px; }
+p { margin: 0; }
+.rotulo { font-weight: 900; font-size: 13px; letter-spacing: 2.5px; text-transform: uppercase; color: var(--texto-suave); }
+
+/* ---------- Céu ---------- */
+.ceu {
+  background:
+    radial-gradient(ellipse 130% 60% at 50% 104%, var(--folha) 0 58%, transparent 59%),
+    linear-gradient(180deg, var(--ceu) 0%, var(--ceu-claro) 78%);
+  padding-block: 40px 96px;
+}
+.ceu .miolo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr); gap: 36px; align-items: center; }
+.marca svg { width: 100%; max-width: 460px; height: auto; display: block; filter: drop-shadow(0 6px 0 rgba(42, 36, 22, 0.2)); }
+.chamada { display: flex; flex-direction: column; gap: 18px; }
+.chamada p.lead { font-size: 20px; font-weight: 700; max-width: 30ch; }
+.botao {
+  display: inline-flex; align-items: center; gap: 12px; align-self: flex-start;
+  padding: 14px 30px; min-height: 52px;
+  font-family: var(--display); font-size: 26px; text-decoration: none; color: #fff;
+  background: var(--folha); border: 4px solid var(--tinta); border-radius: 18px;
+  box-shadow: 0 6px 0 var(--tinta);
+  -webkit-text-stroke: 1px var(--tinta); paint-order: stroke fill;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+.botao:hover { transform: translateY(-2px); box-shadow: 0 8px 0 var(--tinta); }
+.botao:active { transform: translateY(4px); box-shadow: 0 2px 0 var(--tinta); }
+.botao svg { flex: 0 0 auto; }
+.acoes { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
+.acoes .botao { align-self: auto; }
+.botao.secundario { background: var(--creme); color: var(--tinta); -webkit-text-stroke: 0; font-size: 21px; padding: 12px 22px; }
+.nota { font-size: 14px; font-weight: 700; color: var(--texto-suave); }
+.tela {
+  border: 4px solid var(--tinta); border-radius: 18px; overflow: hidden;
+  box-shadow: 0 8px 0 var(--tinta); background: var(--tinta);
+  transform: rotate(1.2deg);
+}
+.tela img { display: block; width: 100%; height: auto; }
+
+/* ---------- Evento sazonal (Noite da Cuca): só aparece de 1/out a 2/nov, mesma regra de src/halloween.ts ---------- */
+.evento { background: linear-gradient(180deg, #2a1640 0%, #3b1d52 100%); border-bottom: 4px solid var(--tinta); color: #fff6e0; padding-block: 18px; }
+.evento .miolo { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 14px 22px; align-items: center; }
+.evento-figuras { display: flex; align-items: flex-end; }
+.evento-figuras img { width: 64px; height: 72px; filter: drop-shadow(0 3px 0 rgba(0,0,0,0.35)); }
+.evento-figuras img + img { margin-left: -14px; }
+.evento-selo { display: inline-block; font-weight: 900; font-size: 12.5px; letter-spacing: 2px; text-transform: uppercase; background: #fb923c; color: var(--tinta); border: 2.5px solid var(--tinta); border-radius: 999px; padding: 3px 12px; animation: evento-pisca 1.6s ease-in-out infinite; }
+.evento h2 { font-size: clamp(26px, 4.2vw, 36px); color: #fdba74; -webkit-text-stroke: 1.5px var(--tinta); paint-order: stroke fill; text-shadow: 0 3px 0 var(--tinta); margin-top: 6px; }
+.evento p { font-weight: 700; font-size: 15.5px; color: #f5e7ff; max-width: 60ch; margin-top: 4px; }
+.evento .contagem { color: #fde68a; }
+.evento .botao { background: #fb923c; color: var(--tinta); -webkit-text-stroke: 0; font-size: 21px; padding: 12px 22px; }
+@keyframes evento-pisca { 0%, 100% { box-shadow: 0 0 0 0 rgba(251,146,60,0.0); } 50% { box-shadow: 0 0 14px 2px rgba(251,146,60,0.75); } }
+@media (prefers-reduced-motion: reduce) { .evento-selo { animation: none; } }
+@media (max-width: 720px) {
+  .evento .miolo { grid-template-columns: minmax(0, 1fr); text-align: left; }
+  .evento-figuras img { width: 52px; height: 58px; }
+  .evento .botao { justify-self: start; }
+}
+
+/* ---------- Gramado: como se joga ---------- */
+.gramado { background: var(--folha); padding-block: 8px 72px; color: var(--tinta); }
+.gramado .cabeca { display: flex; flex-direction: column; gap: 6px; margin-bottom: 26px; }
+.gramado .cabeca h2 { color: var(--creme); -webkit-text-stroke: 2px var(--tinta); paint-order: stroke fill; text-shadow: 0 4px 0 var(--tinta); }
+.gramado .cabeca .rotulo { color: #183d14; }
+.passos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.passo {
+  background: var(--creme); border: 3px solid var(--tinta); border-radius: 18px; box-shadow: 0 5px 0 var(--tinta);
+  padding: 18px 20px 20px; display: grid; grid-template-columns: 76px minmax(0, 1fr); gap: 4px 14px; align-items: start;
+}
+.passo img { grid-row: span 2; width: 76px; height: 86px; }
+.passo p { font-size: 15.5px; color: var(--texto-suave); font-weight: 600; }
+.combos { margin-top: 22px; display: flex; flex-wrap: wrap; gap: 10px; }
+.combo {
+  font-weight: 800; font-size: 14px; padding: 6px 14px; border-radius: 999px;
+  background: var(--creme); border: 2.5px solid var(--tinta);
+}
+
+/* ---------- Rio: os mundos ---------- */
+.rio {
+  background: var(--rio);
+  background-image: repeating-linear-gradient(180deg, transparent 0 22px, rgba(255, 255, 255, 0.12) 22px 24px);
+  border-top: 8px solid #e2c48a; border-bottom: 8px solid #e2c48a;
+  padding-block: 56px 64px;
+}
+.rio .cabeca { display: flex; flex-direction: column; gap: 6px; margin-bottom: 26px; }
+.rio .cabeca h2 { color: #fff; -webkit-text-stroke: 2px var(--tinta); paint-order: stroke fill; text-shadow: 0 4px 0 var(--tinta); }
+.rio .cabeca .rotulo { color: #0b3a52; }
+.mundos { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+.mundo { background: var(--creme); border: 3px solid var(--tinta); border-radius: 18px; box-shadow: 0 5px 0 var(--tinta); overflow: hidden; display: flex; flex-direction: column; }
+.mundo img { display: block; width: 100%; height: auto; border-bottom: 3px solid var(--tinta); }
+.mundo div { padding: 14px 16px 18px; display: flex; flex-direction: column; gap: 6px; }
+.mundo .fases { font-weight: 900; font-size: 13px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--texto-suave); }
+.mundo p { font-size: 15px; font-weight: 600; color: var(--texto-suave); }
+.chefe {
+  margin-top: 24px; display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr); gap: 0;
+  background: var(--creme); border: 3px solid var(--tinta); border-radius: 18px; box-shadow: 0 5px 0 var(--tinta); overflow: hidden;
+}
+.chefe img { display: block; width: 100%; height: 100%; object-fit: cover; border-right: 3px solid var(--tinta); }
+.chefe div { padding: 22px 24px; display: flex; flex-direction: column; gap: 10px; justify-content: center; }
+.chefe p { font-weight: 600; color: var(--texto-suave); }
+
+/* ---------- Creme: modos e elenco ---------- */
+.quintal { padding-block: 56px 40px; }
+.quintal .cabeca { display: flex; flex-direction: column; gap: 6px; margin-bottom: 22px; }
+.modos { list-style: none; margin: 0 0 54px; padding: 0; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 18px; }
+.modo { border: 3px solid var(--tinta); border-radius: 18px; padding: 20px; background: #fff; box-shadow: 0 5px 0 var(--tinta); display: flex; flex-direction: column; gap: 8px; }
+.modo .simbolo { width: 44px; height: 44px; border-radius: 12px; border: 3px solid var(--tinta); display: grid; place-items: center; }
+.modo p { font-size: 15.5px; font-weight: 600; color: var(--texto-suave); }
+.fichas { list-style: none; margin: 0 0 30px; padding: 0; display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 14px; }
+.ficha { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 8px 12px; border-radius: 16px; background: var(--creme-2); border: 2.5px solid var(--tinta); text-align: center; }
+.ficha img { width: 80px; height: 90px; object-fit: contain; }
+.ficha.zumbi { background: #e6e0f0; }
+.ficha.zumbi img { width: 74px; height: 100px; }
+.ficha-nome { font-family: var(--display); font-size: 16px; line-height: 1.15; }
+.ficha-tag { font-size: 12px; font-weight: 800; color: var(--texto-suave); text-transform: uppercase; letter-spacing: 1px; }
+
+/* ---------- Mata: rodapé ---------- */
+.mata { background: var(--mata); color: var(--creme); padding-block: 44px; }
+.mata .miolo { display: flex; flex-wrap: wrap; gap: 18px 32px; align-items: center; justify-content: space-between; }
+.mata h2 { color: var(--creme); font-size: clamp(26px, 4vw, 34px); }
+.mata p { color: #cfe8c4; font-weight: 700; }
+.mata .botao { align-self: center; }
+.mata .botao.secundario { border-color: var(--tinta); }
+
+@media (max-width: 820px) {
+  .ceu .miolo, .chefe { grid-template-columns: minmax(0, 1fr); }
+  .tela { transform: none; }
+  .passos, .mundos, .modos { grid-template-columns: minmax(0, 1fr); }
+  .chefe img { border-right: 0; border-bottom: 3px solid var(--tinta); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .botao { transition: none; }
+}
+</style>
+
+</head>
+<body>
+<aside class="evento" id="evento-halloween" aria-label="Evento de Halloween" hidden>
+  <div class="miolo">
+    <div class="evento-figuras" aria-hidden="true">
+      <img src="../sprites/dia/abobora_brasa.svg" alt="" width="64" height="72">
+      <img src="../sprites/dia/flor_fantasma.svg" alt="" width="64" height="72">
+    </div>
+    <div>
+      <span class="evento-selo">🎃 Evento disponível agora</span>
+      <h2>Noite da Cuca: o Halloween chegou ao quintal!</h2>
+      <p>Fase especial com múmias, zumbis fantasiados e a Cuca no fim. Jogue com a Abóbora-Brasa e a Flor-Fantasma, plantas que só existem no evento. <span class="contagem" id="evento-contagem">Só até 2 de novembro.</span> No jogo, toque em <b>🎃 Noite da Cuca</b> no menu.</p>
+    </div>
+    <a class="botao" href="../">🎃 Jogar o evento</a>
+  </div>
+</aside>
+<script>
+  // Mesmo período de src/halloween.ts: 1 de outubro a 2 de novembro, todo ano.
+  (function () {
+    var hoje = new Date(), mes = hoje.getMonth(), dia = hoje.getDate();
+    if (!(mes === 9 || (mes === 10 && dia <= 2))) return;
+    document.getElementById('evento-halloween').hidden = false;
+    var fim = new Date(hoje.getFullYear(), 10, 2, 23, 59, 59);
+    var dias = Math.max(0, Math.floor((fim - hoje) / 86400000));
+    document.getElementById('evento-contagem').textContent =
+      dias === 0 ? 'Último dia: só até hoje!' : 'Só até 2 de novembro: falta' + (dias === 1 ? ' 1 dia!' : 'm ' + dias + ' dias!');
+  })();
+</script>
+<header class="ceu">
+  <div class="miolo">
+    <div class="chamada">
+      <h1 class="marca"><svg role="img" aria-label="Cerca Viva" viewBox="8 54 598 232">
+<g stroke="#2a2416" stroke-width="14" fill="#2a2416">
+<circle cx="70" cy="214" r="52"/><circle cx="150" cy="196" r="58"/><circle cx="236" cy="206" r="54"/>
+<circle cx="318" cy="192" r="60"/><circle cx="404" cy="204" r="55"/><circle cx="486" cy="194" r="58"/>
+<circle cx="546" cy="218" r="44"/><rect x="22" y="208" width="560" height="64" rx="26"/></g>
+<g fill="#4caf3a">
+<circle cx="70" cy="214" r="52"/><circle cx="150" cy="196" r="58"/><circle cx="236" cy="206" r="54"/>
+<circle cx="318" cy="192" r="60"/><circle cx="404" cy="204" r="55"/><circle cx="486" cy="194" r="58"/>
+<circle cx="546" cy="218" r="44"/><rect x="22" y="208" width="560" height="64" rx="26"/></g>
+<g fill="#6cc84a"><circle cx="132" cy="176" r="24"/><circle cx="300" cy="170" r="26"/><circle cx="470" cy="174" r="24"/><circle cx="222" cy="190" r="16"/></g>
+<g fill="#2f7d24"><circle cx="110" cy="246" r="7"/><circle cx="268" cy="250" r="6"/><circle cx="430" cy="248" r="7"/><circle cx="520" cy="244" r="5"/></g>
+<ellipse cx="462" cy="222" rx="17" ry="21" fill="#ffffff" stroke="#2a2416" stroke-width="5"/>
+<ellipse cx="502" cy="222" rx="17" ry="21" fill="#ffffff" stroke="#2a2416" stroke-width="5"/>
+<circle cx="458" cy="226" r="8" fill="#2a2416"/><circle cx="498" cy="226" r="8" fill="#2a2416"/>
+<circle cx="461" cy="222" r="2.6" fill="#ffffff"/><circle cx="501" cy="222" r="2.6" fill="#ffffff"/>
+<g stroke="#2a2416" stroke-width="5" stroke-linejoin="round" stroke-linecap="round">
+<path d="M318 136 C 318 112, 322 96, 330 84" fill="none"/>
+<path d="M329 86 C 344 66, 372 64, 384 72 C 372 92, 348 98, 329 86 Z" fill="#8ee05a"/>
+<path d="M326 96 C 310 80, 288 80, 278 88 C 290 104, 310 106, 326 96 Z" fill="#6cc84a"/></g>
+<text x="300" y="168" text-anchor="middle" font-family="'Lilita One', sans-serif" font-size="118" fill="#fff6e0" stroke="#2a2416" stroke-width="16" stroke-linejoin="round" paint-order="stroke fill" letter-spacing="2">Cerca Viva</text>
+</svg></h1>
+      <p class="lead">Plante, junte sol e misture elementos para segurar a horda de zumbis no seu quintal.</p>
+      <div class="acoes">
+        <a class="botao" href="../">
+          <svg aria-hidden="true" width="20" height="22" viewBox="0 0 22 24"><path d="M3 2 L20 12 L3 22 Z" fill="#fff" stroke="#2a2416" stroke-width="3" stroke-linejoin="round"/></svg>
+          Jogar agora
+        </a>
+        <a class="botao secundario" href="https://github.com/JoaoMagalhaes321/cerca-viva/releases/download/android/cerca-viva.apk" target="_blank" rel="noopener">
+          <svg aria-hidden="true" width="20" height="22" viewBox="0 0 20 22"><path d="M10 2v12M4 9l6 6 6-6M3 20h14" fill="none" stroke="#2a2416" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          Baixar para Android
+        </a>
+      </div>
+      <p class="nota">De graça. Joga direto no navegador do celular ou do computador. Para ter o ícone na tela inicial, toque em 📲 Instalar no menu do jogo ou baixe o APK (o Android pede para permitir a instalação).</p>
+    </div>
+    <figure class="tela" style="margin:0">
+      <img src="img-06edad1541.webp" alt="Partida no Igarapé: dois rios cortam o gramado, aguapés flutuam e zumbis descem de canoa." width="1280" height="720">
+    </figure>
+  </div>
+</header>
+
+<section class="gramado" aria-labelledby="como">
+  <div class="miolo">
+    <div class="cabeca">
+      <span class="rotulo">Como se joga</span>
+      <h2 id="como">Três coisas e você já está jogando</h2>
+    </div>
+    <ol class="passos">
+      <li class="passo"><img src="img-9f67ff5524.svg" alt="" width="76" height="86"><h3>Junte sol</h3><p>O sol cai do céu e o Lírio Prisma produz mais. Toque para guardar: toda planta custa sol.</p></li>
+      <li class="passo"><img src="img-18dbe6c33d.svg" alt="" width="76" height="86"><h3>Plante na linha</h3><p>Cada planta defende a própria linha. Escolha o card lá em cima e toque numa casa do gramado.</p></li>
+      <li class="passo"><img src="img-a71cd9e3c5.svg" alt="" width="76" height="86"><h3>Misture elementos</h3><p>Água com raio vira choque em cadeia, gelo com fogo estilhaça. São 5 combos para descobrir.</p></li>
+    </ol>
+    <div class="combos" aria-label="Combos do jogo">
+      <span class="combo">💧 + ⚡ Eletrocussão</span>
+      <span class="combo">💧 + ❄️ Congelamento</span>
+      <span class="combo">❄️ + 🔥 Choque Térmico</span>
+      <span class="combo">☣️ + 🔥 Explosão Bioquímica</span>
+      <span class="combo">💨 + tudo Vendaval</span>
+    </div>
+  </div>
+</section>
+
+<section class="rio" aria-labelledby="mundos">
+  <div class="miolo">
+    <div class="cabeca">
+      <span class="rotulo">Modo Aventura · 20 fases</span>
+      <h2 id="mundos">Três mundos, cada um com sua regra</h2>
+    </div>
+    <ul class="mundos">
+      <li class="mundo"><img src="img-7425c01219.webp" alt="O Jardim de dia, com as cinco linhas de grama." width="1280" height="720" loading="lazy"><div><span class="fases">Mundo 1 · 10 fases</span><h3>Jardim</h3><p>Começa com uma linha e um Quiabo. Cada fase libera uma planta nova até a briga com o chefe.</p></div></li>
+      <li class="mundo"><img src="img-aae963252a.webp" alt="O Pântano à noite, com tempestade, poças elétricas e explosões de combo." width="1280" height="720" loading="lazy"><div><span class="fases">Mundo 2 · 5 fases</span><h3>Pântano Bioluminescente</h3><p>Névoa, lodo que atrasa e zumbis de borracha imunes a raio. Hora de usar ácido e fogo.</p></div></li>
+      <li class="mundo"><img src="img-06edad1541.webp" alt="O Igarapé: dois rios cortam o gramado e zumbis descem de canoa." width="1280" height="720" loading="lazy"><div><span class="fases">Mundo 3 · 5 fases</span><h3>Igarapé Amazônico</h3><p>Dois rios cortam o quintal. Só plantas aquáticas crescem na água, e os canoeiros descem a correnteza.</p></div></li>
+    </ul>
+    <div class="chefe">
+      <img src="img-0a4285e7d3.webp" alt="A Colheitadeira Z, chefe final, avançando pelo gramado enquanto um Choque Térmico explode nela." width="1280" height="720" loading="lazy">
+      <div>
+        <span class="rotulo">Chefe</span>
+        <h3>A Colheitadeira Z</h3>
+        <p>3.600 de vida, troca de linha, joga sucata no gramado e chama reforços. Guarde o Adubo Supremo para ela.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="quintal" aria-labelledby="modos">
+  <div class="miolo">
+    <div class="cabeca">
+      <span class="rotulo">Para jogar de novo</span>
+      <h2 id="modos">Terminou a Aventura? Tem mais</h2>
+    </div>
+    <ul class="modos">
+      <li class="modo"><span class="simbolo" style="background:#c8f5ec" aria-hidden="true"><svg width="26" height="18" viewBox="0 0 26 18"><path d="M7 9c0-3 2-6 5-3l2 3 2 3c3 3 6 0 6-3s-3-6-6-3l-2 3-2 3c-3 3-5 0-5-3z" fill="none" stroke="#2a2416" stroke-width="3" stroke-linecap="round"/></svg></span><h3>Modo Infinito</h3><p>As ondas não acabam e ficam mais fortes. Uma mutação a cada 3 ondas, o chefe a cada 10. O jogo guarda seu recorde.</p></li>
+      <li class="modo"><span class="simbolo" style="background:var(--sol)" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22"><rect x="2" y="4" width="18" height="16" rx="3" fill="#fff" stroke="#2a2416" stroke-width="2.5"/><path d="M2 9h18M7 2v4M15 2v4" stroke="#2a2416" stroke-width="2.5" stroke-linecap="round"/></svg></span><h3>Desafio do Dia</h3><p>8 ondas com 2 regras sorteadas pela data. Todo mundo pega o mesmo desafio no mesmo dia, então dá para comparar com os amigos.</p></li>
+      <li class="modo"><span class="simbolo" style="background:#ffd0b8" aria-hidden="true"><svg width="22" height="22" viewBox="0 0 22 22"><path d="M4 3h11a3 3 0 0 1 3 3v13H7a3 3 0 0 1-3-3z" fill="#fff" stroke="#2a2416" stroke-width="2.5" stroke-linejoin="round"/><path d="M8 8h6M8 12h6" stroke="#2a2416" stroke-width="2.5" stroke-linecap="round"/></svg></span><h3>Livro de Combos</h3><p>Os combos começam bloqueados, só com uma pista. Cada um que você descobre jogando fica registrado no Guia.</p></li>
+    </ul>
+
+    <div class="cabeca">
+      <span class="rotulo">Elenco</span>
+      <h2>11 plantas</h2>
+    </div>
+    <ul class="fichas">
+<li class="ficha"><img src="img-9f67ff5524.svg" alt="" width="80" height="90"><span class="ficha-nome">Lírio Prisma</span><span class="ficha-tag">sol</span></li>
+<li class="ficha"><img src="img-18dbe6c33d.svg" alt="" width="80" height="90"><span class="ficha-nome">Quiabo Atirador</span><span class="ficha-tag">natureza</span></li>
+<li class="ficha"><img src="img-7f2936f99c.svg" alt="" width="80" height="90"><span class="ficha-nome">Hidro-Brotos</span><span class="ficha-tag">água</span></li>
+<li class="ficha"><img src="img-a71cd9e3c5.svg" alt="" width="80" height="90"><span class="ficha-nome">Junco Tesla</span><span class="ficha-tag">elétrico</span></li>
+<li class="ficha"><img src="img-fd145c0c2f.svg" alt="" width="80" height="90"><span class="ficha-nome">Crio-Esporo</span><span class="ficha-tag">gelo</span></li>
+<li class="ficha"><img src="img-20dfbe5145.svg" alt="" width="80" height="90"><span class="ficha-nome">Draco-Pimenta</span><span class="ficha-tag">fogo</span></li>
+<li class="ficha"><img src="img-1c90622769.svg" alt="" width="80" height="90"><span class="ficha-nome">Flor Catavento</span><span class="ficha-tag">vento</span></li>
+<li class="ficha"><img src="img-670f800689.svg" alt="" width="80" height="90"><span class="ficha-nome">Nepentes Ácida</span><span class="ficha-tag">ácido</span></li>
+<li class="ficha"><img src="img-966c01021b.svg" alt="" width="80" height="90"><span class="ficha-nome">Ouriço-Mina</span><span class="ficha-tag">explosão</span></li>
+<li class="ficha"><img src="img-760769d238.svg" alt="" width="80" height="90"><span class="ficha-nome">Cacto-Muralha</span><span class="ficha-tag">defesa</span></li>
+<li class="ficha"><img src="img-24f7bead7e.svg" alt="" width="80" height="90"><span class="ficha-nome">Aguapé</span><span class="ficha-tag">só no rio</span></li>
+    </ul>
+    <div class="cabeca">
+      <h2>…contra a horda</h2>
+    </div>
+    <ul class="fichas">
+<li class="ficha zumbi"><img src="img-7128a56b3a.svg" alt="" width="74" height="100"><span class="ficha-nome">Zumbi Comum</span></li>
+<li class="ficha zumbi"><img src="img-ee677d6576.svg" alt="" width="74" height="100"><span class="ficha-nome">Zumbi Operário</span></li>
+<li class="ficha zumbi"><img src="img-fbb6361954.svg" alt="" width="74" height="100"><span class="ficha-nome">Zumbi Motoqueiro</span></li>
+<li class="ficha zumbi"><img src="img-e731c3fa8e.svg" alt="" width="74" height="100"><span class="ficha-nome">Zumbi Isolante</span></li>
+<li class="ficha zumbi"><img src="img-2c4f0cf069.svg" alt="" width="74" height="100"><span class="ficha-nome">Zumbi Canoeiro</span></li>
+<li class="ficha zumbi"><img src="img-bb2d2d2c23.svg" alt="" width="74" height="100"><span class="ficha-nome">Colosso do Ferro-Velho</span></li>
+    </ul>
+  </div>
+</section>
+
+<footer class="mata">
+  <div class="miolo">
+    <div style="display:flex;flex-direction:column;gap:6px;min-width:0">
+      <h2>Bora defender o quintal?</h2>
+      <p>Cerca Viva · um jogo de João Magalhães · trilha sonora original</p>
+    </div>
+    <div class="acoes">
+      <a class="botao" href="../">
+        <svg aria-hidden="true" width="20" height="22" viewBox="0 0 22 24"><path d="M3 2 L20 12 L3 22 Z" fill="#fff" stroke="#2a2416" stroke-width="3" stroke-linejoin="round"/></svg>
+        Jogar agora
+      </a>
+      <a class="botao secundario" href="https://github.com/JoaoMagalhaes321/cerca-viva/releases/download/android/cerca-viva.apk" target="_blank" rel="noopener">
+        <svg aria-hidden="true" width="20" height="22" viewBox="0 0 20 22"><path d="M10 2v12M4 9l6 6 6-6M3 20h14" fill="none" stroke="#2a2416" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Baixar para Android
+      </a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
