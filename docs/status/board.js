@@ -55,6 +55,65 @@ window.BOARD = {
   },
   "cards": [
     {
+      "id": "estilo-cartoon",
+      "fila": 1,
+      "title": "Estilo cartoon: zumbis cambaleantes e plantas mais expressivas (lote 1: Mundo 1)",
+      "domain": "jogo",
+      "column": "design",
+      "env": "none",
+      "updated": "2026-10-26",
+      "summary": "Pedido seu (26/10): desenhos que lembrem o clássico de plantas contra zumbis sem copiar. Combinado: só o jeito (traço grosso, cabeça grande, expressão exagerada, zumbi curvado com braço pendurado e roupa rasgada, plantas com olhos grandes), cada personagem com desenho próprio (D-20261026-4). Lote 1: plantas do Mundo 1 e zumbis básico, cone e balde, com captura para você aprovar antes do resto.",
+      "pending": [
+        "Redesenhar os SVGs do lote 1 (dia e noite)",
+        "Postura e balanço do zumbi em drawZombie",
+        "Captura lado a lado antes/depois no relatório"
+      ],
+      "links": [
+        {
+          "label": "sprites",
+          "path": "public/sprites/dia"
+        },
+        {
+          "label": "renderer.ts",
+          "path": "src/renderer.ts"
+        }
+      ]
+    },
+    {
+      "id": "efeitos-combos",
+      "title": "Reações dos zumbis aos elementos e aos combos",
+      "domain": "jogo",
+      "column": "qas",
+      "env": "branch",
+      "updated": "2026-10-26",
+      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação curta (eletrocussão com silhueta piscando, onda de impacto no choque térmico e na explosão bioquímica). O clarão ao levar dano, que nunca era desenhado, passou a aparecer. Só desenho, nada de dano ou tempo muda (D-20261026-3). Build ok, 142 testes; conferido no Chromium.",
+      "delivered": [
+        "Reações + 4 testes (3594ecd, 26/10)",
+        "Conferido no Chromium com os 5 estados e 2 reações ao mesmo tempo (26/10)"
+      ],
+      "pending": [
+        "Seu merge de claude/efeitos-combos na main",
+        "Desempenho no celular NÃO MEDIDO: se ficar lento com muitos zumbis coloridos, me diga"
+      ],
+      "links": [
+        {
+          "label": "reacoes.ts",
+          "path": "src/reacoes.ts",
+          "branch": "claude/efeitos-combos"
+        },
+        {
+          "label": "Relatório",
+          "path": "docs/status/relatorios/2026-10-26-efeitos-combos.md",
+          "branch": "claude/quadro"
+        },
+        {
+          "label": "Captura",
+          "path": "docs/status/relatorios/img/2026-10-26-efeitos-combos.png",
+          "branch": "claude/quadro"
+        }
+      ]
+    },
+    {
       "id": "convite-evento",
       "title": "Convite com a faixa do evento Noite da Cuca",
       "domain": "jogo",

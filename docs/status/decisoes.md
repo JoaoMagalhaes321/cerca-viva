@@ -3,6 +3,41 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261026-4 · Estilo "cartoon de tower defense": só o jeito, não as figuras
+- Card: estilo-cartoon · Branch: (ainda sem código) · Data: 2026-10-26
+- Regra de negócio? não (visual)
+- Muda decisão anterior? não
+- Escolha: pedido seu (26/10) para os desenhos apelarem à memória de quem gosta do jogo clássico de plantas contra
+  zumbis, sem copiar. Combinado nesta sessão: o agente adota o **jeito** (traço grosso, cabeça grande, expressão
+  exagerada, zumbi cambaleante com braço pendurado e roupa rasgada, plantas com olhos grandes), mas cada personagem
+  continua com o desenho próprio do Cerca Viva. O agente não reproduz personagens, nomes ou marcas do outro jogo.
+  Vai em lotes: Mundo 1 (plantas e zumbis básicos) primeiro, com captura para você aprovar antes do resto.
+- Outras opções:
+  - A) Só a animação (postura, balanço, piscar) sem mexer nos SVGs — mais barato / muda pouco a cara.
+  - B) Redesenhar tudo de uma vez — uniforme / grande demais para revisar.
+- Como trocar depois: os sprites ficam em `public/sprites/{dia,noite}/`; a animação em `src/renderer.ts`.
+- Fácil de reverter? sim (cada lote numa branch)
+
+### D-20261026-3 · Reações dos zumbis são só desenho; números em `src/reacoes.ts`
+- Card: efeitos-combos · Branch: claude/efeitos-combos · Data: 2026-10-26
+- Regra de negócio? não (visual: dano, tempos e alcance dos combos não mudam)
+- Muda decisão anterior? não
+- Escolha: cada estado elemental ganhou um desenho próprio por cima do zumbi (bloco de gelo com rachaduras e
+  pingentes; chamas com brasas; bolhas de veneno; pingos de molhado; flocos de resfriado) e cada combo uma reação
+  curta (eletrocussão: silhueta piscando claro/escuro e tremida; choque térmico e explosão bioquímica: clarão
+  colorido e onda de impacto; congelamento e vendaval: clarão e anel). O clarão branco ao levar dano, que existia no
+  código (`hitFlash`) mas nunca era desenhado, passou a aparecer. A silhueta é pintada num canvas de rascunho
+  (uma vez por zumbi colorido por quadro). Com "reduzir efeitos" ligado: sem onda, sem pisca, menos chamas e bolhas.
+- Por quê: antes cada estado era um círculo colorido em volta do zumbi, difícil de ler no celular. Reação visível
+  faz o combo valer a pena. NÃO MEDIDO: custo no celular com muitos zumbis coloridos (o rascunho é um canvas só,
+  reaproveitado).
+- Outras opções:
+  - A) Trocar de sprite por estado (zumbi congelado desenhado) — mais bonito / um SVG por zumbi por estado (dezenas).
+  - B) `ctx.filter` do canvas — mais simples / não funciona em todo celular.
+- Como trocar depois: durações, cores e tamanhos em `src/reacoes.ts`; desenho em `drawZombie`, `drawBlocoDeGelo`,
+  `drawChamas` e `pintarSilhueta` em `src/renderer.ts`.
+- Fácil de reverter? sim
+
 ### D-20261026-2 · Quem já venceu a 4-5 ganha o Mangue-Vermelho jogando a 4-5 de novo
 - Card: mundo4-recompensas · Branch: claude/mundo4-recompensas · Data: 2026-10-26
 - Regra de negócio? **sim** (regra do jogo: desbloqueio)
