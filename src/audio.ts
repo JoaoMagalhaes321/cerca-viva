@@ -4,6 +4,7 @@
 // do compasso seguinte quando o cenário muda, o clima escurece ou o chefe entra.
 
 import { FAIXAS, Faixa, FaixaLida, Instrumento, lerFaixa } from './musica';
+import { CAMADAS, Intensidade, alvosDasCamadas, camadaDaVoz } from './trilha-dinamica';
 
 /** Quanto tempo à frente as notas são agendadas (s). Evita tropeços quando a tela pesa. */
 const JANELA = 0.15;
@@ -53,6 +54,10 @@ class SoundManager {
   private passo = 0;
   private proximoTempo = 0;
   private tocando = false;
+  /** Um ganho por camada (trilha dinâmica), todos ligados à música. */
+  private camadas: GainNode[] = [];
+  /** Até qual camada soa agora (0 a 3); os chefes tocam sempre completos. */
+  private intensidade: Intensidade = 2;
 
   private ensureContext(): AudioContext | null {
     if (this.muted) return null;
@@ -93,6 +98,13 @@ class SoundManager {
       this.musica = ctx.createGain();
       this.musica.gain.value = VOLUME_MUSICA;
       this.musica.connect(ctx.destination);
+      const alvos = alvosDasCamadas(this.intensidadeEfetiva());
+      for (let c = 0; c < CAMADAS; c++) {
+        const g = ctx.createGain();
+        g.gain.value = alvos[c];
+        g.connect(this.musica);
+        this.camadas.push(g);
+      }
     }
     if (this.seqTimer !== null) return;
     this.seqTimer = window.setInterval(() => this.agendar(), 25);
@@ -146,6 +158,42 @@ class SoundManager {
     }
   }
 
+  private intensidadeEfetiva(): Intensidade {
+    return this.bossMode ? 3 : this.intensidade;
+  }
+
+  /** A partida diz o quanto está quente; as camadas entram e saem com uma rampa suave. */
+  public definirIntensidade(i: Intensidade): void {
+    this.intensidade = i;
+    this.aplicarCamadas();
+  }
+
+  public intensidadeAtual(): Intensidade {
+    return this.intensidadeEfetiva();
+  }
+
+  /** Última intensidade aplicada às camadas (-1 = nenhuma ainda). */
+  private aplicada = -1;
+
+  private aplicarCamadas(): void {
+    const ctx = this.ctx;
+    if (!ctx || this.camadas.length === 0) return;
+    const efetiva = this.intensidadeEfetiva();
+    if (efetiva === this.aplicada) return;
+    this.aplicada = efetiva;
+    const alvos = alvosDasCamadas(efetiva);
+    this.camadas.forEach((g, c) => {
+      // entra em ~1 s, sai em ~1,5 s
+      const agora = ctx.currentTime;
+      const atual = g.gain.value;
+      const tau = alvos[c] > atual ? 0.35 : 0.5;
+      // Ancora o valor de agora antes da rampa (senão alguns navegadores travam no meio do caminho)
+      g.gain.cancelScheduledValues(agora);
+      g.gain.setValueAtTime(atual, agora);
+      g.gain.setTargetAtTime(alvos[c], agora, tau);
+    });
+  }
+
   private anunciar(f: FaixaLida): void {
     if (this.onFaixa) this.onFaixa(f.faixa.titulo, f.faixa.id);
   }
@@ -157,8 +205,18 @@ class SoundManager {
   }
 
   private tocarPasso(ctx: AudioContext, f: FaixaLida, passo: number, t: number, dur: number): void {
+    // Os chefes ligam/desligam pelo bossMode: confere a cada passo se as camadas acompanham
+    this.aplicarCamadas();
+    const climax = this.intensidadeEfetiva() >= 3;
     for (const { voz, eventos } of f.vozes) {
       const ev = eventos[passo];
+      this.destinoEnvelope = this.camadas[camadaDaVoz(voz.instrumento)] ?? null;
+      // Clímax: chimbal nos contratempos vazios da bateria (camada 3)
+      if (voz.instrumento === 'bateria' && climax && passo % 2 === 1 && (!ev || !/h/i.test(ev.pecas))) {
+        this.destinoEnvelope = this.camadas[3] ?? null;
+        this.percussao(ctx, 'h', t, voz.volume);
+        this.destinoEnvelope = this.camadas[camadaDaVoz(voz.instrumento)] ?? null;
+      }
       if (!ev) continue;
       if (voz.instrumento === 'bateria') {
         for (const p of ev.pecas) this.percussao(ctx, p, t, voz.volume);
@@ -170,6 +228,7 @@ class SoundManager {
         });
       }
     }
+    this.destinoEnvelope = null;
   }
 
   // ---------- Instrumentos sintetizados ----------
@@ -252,7 +311,7 @@ class SoundManager {
         g.gain.exponentialRampToValueAtTime(vol, t + 0.5);
         g.gain.setValueAtTime(vol, t + Math.max(0.5, dur - 0.1));
         g.gain.exponentialRampToValueAtTime(0.0001, fim);
-        g.connect(this.musica!);
+        g.connect(this.destinoEnvelope ?? this.musica!);
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
         lp.frequency.value = 850;
@@ -282,7 +341,7 @@ class SoundManager {
         g.gain.exponentialRampToValueAtTime(vol, t + 0.05);
         g.gain.setValueAtTime(vol, Math.max(t + 0.05, fim - 0.1));
         g.gain.exponentialRampToValueAtTime(0.0001, fim);
-        g.connect(this.musica!);
+        g.connect(this.destinoEnvelope ?? this.musica!);
         const lp = ctx.createBiquadFilter();
         lp.type = 'lowpass';
         lp.frequency.value = 1800;
