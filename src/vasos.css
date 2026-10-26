@@ -7,6 +7,9 @@
   line-height: 1.4;
   margin: 4px 0 12px;
 }
+.vasos-acoes { display: flex; gap: 8px; flex-wrap: wrap; margin: 0 0 10px; }
+.vasos-acoes .secondary-btn { font-size: 0.78rem; padding: 6px 12px; }
+
 .vasos-lista {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
