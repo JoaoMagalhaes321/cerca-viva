@@ -50,6 +50,8 @@ export class Cenario {
     this.vento = 0;
     this.transicao = 0;
     this.proximoRaio = 4;
+    this.folhas = [];
+    this.morcegos = [];
   }
 
   /** Cores do céu e da grama de cada clima (as mesmas do cache do tabuleiro). */
@@ -242,6 +244,73 @@ export class Cenario {
         ctx.fill();
       }
       ctx.globalAlpha = 1;
+    }
+    ctx.restore();
+  }
+
+  private folhas: { row: number; x: number; v: number; a: number }[] = [];
+  private morcegos: { x: number; y: number; v: number; f: number }[] = [];
+
+  /** Toques de cada bioma: folhas boiando no rio, espuma na maré, morcegos na lua cheia. */
+  public drawBioma(ctx: CanvasRenderingContext2D, bioma: string, left: number, top: number, cw: number, ch: number, width: number, rios: number[], mares: number[], nivelMare: number, escuro: boolean): void {
+    const dt = 1 / 60;
+    ctx.save();
+    if (rios.length > 0) {
+      if (this.folhas.length < 10 && Math.random() < 0.03) {
+        this.folhas.push({ row: rios[Math.floor(Math.random() * rios.length)], x: 9.6, v: 0.25 + Math.random() * 0.2, a: Math.random() * 6 });
+      }
+      for (const f of this.folhas) {
+        f.x -= f.v * dt;
+        f.a += dt;
+        const fx = left + f.x * cw;
+        const fy = top + (f.row + 0.55) * ch + Math.sin(f.a * 2) * 2;
+        ctx.save();
+        ctx.translate(fx, fy);
+        ctx.rotate(Math.sin(f.a) * 0.4);
+        ctx.fillStyle = escuro ? '#2f6e3a' : '#7fcf4a';
+        ctx.strokeStyle = escuro ? '#0b2a1c' : '#2e7a1e';
+        ctx.lineWidth = 1.2;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 7, 3.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.restore();
+      }
+      this.folhas = this.folhas.filter((f) => f.x > -0.8);
+    }
+    if (mares.length > 0 && nivelMare > 0.05 && nivelMare < 0.95) {
+      // Espuma na beira da água subindo/descendo
+      ctx.strokeStyle = 'rgba(255,255,255,0.55)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([6, 5]);
+      ctx.lineDashOffset = -this.tempo * 20;
+      for (const r of mares) {
+        const yy = top + (r + 1) * ch - ch * (0.35 + 0.65 * nivelMare);
+        ctx.beginPath();
+        ctx.moveTo(left - 48, yy);
+        ctx.lineTo(width, yy);
+        ctx.stroke();
+      }
+      ctx.setLineDash([]);
+    }
+    if (bioma === 'assombrado') {
+      if (this.morcegos.length < 4 && Math.random() < 0.004) {
+        this.morcegos.push({ x: width + 20, y: 6 + Math.random() * Math.max(10, top - 14), v: 90 + Math.random() * 60, f: Math.random() * 6 });
+      }
+      ctx.fillStyle = '#0b0616';
+      for (const m of this.morcegos) {
+        m.x -= m.v * dt;
+        m.f += dt * 14;
+        const asa = Math.sin(m.f) * 5;
+        ctx.beginPath();
+        ctx.moveTo(m.x, m.y);
+        ctx.quadraticCurveTo(m.x - 6, m.y - 4 - asa, m.x - 12, m.y + 1);
+        ctx.quadraticCurveTo(m.x - 6, m.y + 2, m.x, m.y + 3);
+        ctx.quadraticCurveTo(m.x + 6, m.y + 2, m.x + 12, m.y + 1);
+        ctx.quadraticCurveTo(m.x + 6, m.y - 4 - asa, m.x, m.y);
+        ctx.fill();
+      }
+      this.morcegos = this.morcegos.filter((m) => m.x > -30);
     }
     ctx.restore();
   }
