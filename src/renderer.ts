@@ -5,7 +5,9 @@
 import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant, PULO_DURACAO } from './engine';
 import { CERCA, CercaViva } from './cerca';
 import { MUDA, estagioDaPlanta, prontaParaFlorescer } from './florescer';
-import { getSpriteClarao, getSprite, SpriteImage } from './sprites';
+import { getSprite, SpriteImage } from './sprites';
+import { REACAO, progressoDaReacao, silhuetaClara, tintaDoEstado } from './reacoes';
+import { acessibilidade } from './acessibilidade';
 
 // Brilho redondo (degradê radial) desenhado uma vez por cor e reaproveitado: criar o degradê
 // a cada quadro para cada planta e projétil custava caro no celular.
@@ -677,6 +679,26 @@ export class CharacterRenderer {
         this.drawWallDamage(ctx, p.hp / p.maxHp);
       }
 
+      // Nível da planta (sementes raras): folha dourada no nível 2, coroa de folhas no nível 3
+      const nivel = p.nivel ?? 1;
+      if (nivel >= 2) {
+        ctx.save();
+        ctx.fillStyle = '#ffd84a';
+        ctx.strokeStyle = '#8a5a10';
+        ctx.lineWidth = 1.4;
+        const n = nivel >= 3 ? 5 : 1;
+        for (let q = 0; q < n; q++) {
+          const a = nivel >= 3 ? -Math.PI * 0.9 + (q / 4) * Math.PI * 0.8 : -Math.PI / 2;
+          const lx = Math.cos(a) * 30;
+          const ly = -58 + Math.sin(a) * 14 + Math.sin(t * 1.5 + q) * 1.5;
+          ctx.beginPath();
+          ctx.ellipse(lx, ly, 6, 3, a + Math.PI / 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       if (estagio === 'florida') {
         // Coroa de flores por cima da planta florida
         const cor = p.def.color;
@@ -809,11 +831,11 @@ export class CharacterRenderer {
     );
     if (dano > 0) ctx.rotate(dano * 0.08);
 
-    const place = (img: SpriteImage): void => {
+    const place = (ctx: CanvasRenderingContext2D, img: SpriteImage): void => {
       ctx.drawImage(img, -spec.ox * k, -spec.feet * k, spec.w * k, spec.h * k);
     };
     // Gira uma camada em torno de um ponto do desenho (coordenadas do SVG)
-    const rotateAround = (px: number, py: number, angle: number): void => {
+    const rotateAround = (ctx: CanvasRenderingContext2D, px: number, py: number, angle: number): void => {
       const ax = (px - spec.ox) * k;
       const ay = (py - spec.feet) * k;
       ctx.translate(ax, ay);
@@ -821,119 +843,147 @@ export class CharacterRenderer {
       ctx.translate(-ax, -ay);
     };
 
-    ctx.save();
-    ctx.rotate(
-      canoeiro
-        ? Math.sin(walk * 0.9) * 0.025
-        : bodyTilt + (z.isEating || isZomboss ? 0 : Math.sin(walk) * 0.03)
-    );
+    const desenharCamadas = (ctx: CanvasRenderingContext2D): void => {
+      ctx.save();
+      ctx.rotate(
+        canoeiro
+          ? Math.sin(walk * 0.9) * 0.025
+          : bodyTilt + (z.isEating || isZomboss ? 0 : Math.sin(walk) * 0.03)
+      );
 
-    const body = getSprite(`${z.variant}--corpo`, isNight);
-    if (body) place(body);
+      const body = getSprite(`${z.variant}--corpo`, isNight);
+      if (body) place(ctx, body);
 
-    if (isZomboss) {
-      const reel = getSprite('zomboss_mech--molinete', isNight);
-      if (reel) {
-        ctx.save();
-        rotateAround(74, 168, -performance.now() * 0.006);
-        place(reel);
-        ctx.restore();
-      }
-    }
-
-    if (spec.pivot) {
-      const [px, py] = spec.pivot;
-      if (!z.lostArm) {
-        const doused = z.variant === 'pyro_scavenger' && z.torchDoused;
-        const arm = getSprite(`${z.variant}--${doused ? 'braco-apagado' : 'braco'}`, isNight);
-        if (arm) {
+      if (isZomboss) {
+        const reel = getSprite('zomboss_mech--molinete', isNight);
+        if (reel) {
           ctx.save();
-          // O canoeiro rema: o remo vai e volta bem mais que o balanço do braço de quem anda
-          rotateAround(px, py, canoeiro ? Math.sin(walk * 1.1) * 0.28 : armBob * 0.02);
-          place(arm);
-          if (z.variant === 'pyro_scavenger' && !doused) {
-            this.drawPilotFlame(ctx, (2 - spec.ox) * k, (118 - spec.feet) * k);
-          }
+          rotateAround(ctx, 74, 168, -performance.now() * 0.006);
+          place(ctx, reel);
           ctx.restore();
         }
-      } else {
-        // Toco do braço arrancado
-        ctx.fillStyle = spec.sleeve;
-        ctx.strokeStyle = '#2a2416';
-        ctx.lineWidth = 1.6;
+      }
+
+      if (spec.pivot) {
+        const [px, py] = spec.pivot;
+        if (!z.lostArm) {
+          const doused = z.variant === 'pyro_scavenger' && z.torchDoused;
+          const arm = getSprite(`${z.variant}--${doused ? 'braco-apagado' : 'braco'}`, isNight);
+          if (arm) {
+            ctx.save();
+            // O canoeiro rema: o remo vai e volta bem mais que o balanço do braço de quem anda
+            rotateAround(ctx, px, py, canoeiro ? Math.sin(walk * 1.1) * 0.28 : armBob * 0.02);
+            place(ctx, arm);
+            if (z.variant === 'pyro_scavenger' && !doused) {
+              this.drawPilotFlame(ctx, (2 - spec.ox) * k, (118 - spec.feet) * k);
+            }
+            ctx.restore();
+          }
+        } else {
+          // Toco do braço arrancado
+          ctx.fillStyle = spec.sleeve;
+          ctx.strokeStyle = '#2a2416';
+          ctx.lineWidth = 1.6;
+          ctx.beginPath();
+          ctx.arc((px - spec.ox) * k, (py - spec.feet) * k, 4.2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+      }
+
+      if ((z.variant === 'cone' || z.variant === 'bucket' || canoeiro) && !z.lostHeadgear) {
+        const gear = getSprite(`${z.variant}--capacete`, isNight);
+        if (gear) {
+          place(ctx, gear);
+          if (z.elite === 'ferro') {
+            // Capacete de ferro: rebites escuros por cima
+            ctx.fillStyle = '#334155';
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1.2;
+            for (const [rx, ry] of [[50, 30], [70, 24], [90, 32]] as [number, number][]) {
+              ctx.beginPath();
+              ctx.arc((rx - spec.ox) * k, (ry - spec.feet) * k, 2.2, 0, Math.PI * 2);
+              ctx.fill();
+              ctx.stroke();
+            }
+          }
+        }
+      }
+
+      ctx.restore();
+    };
+
+    // Eletrocussão: o zumbi treme e pisca em silhueta (clássico do desenho animado)
+    const agora = performance.now();
+    const reacao = z.reacao;
+    const eletro = reacao?.tipo === 'eletro' && !acessibilidade.reduzirEfeitos;
+    if (eletro) ctx.translate(Math.sin(agora * 0.09) * REACAO.tremida, 0);
+    desenharCamadas(ctx);
+
+    // Tinta por cima da silhueta: clarão ao levar dano, estado elemental, pisca da eletrocussão
+    const tinta = tintaDoEstado(z);
+    let silhueta: { cor: string; alfa: number } | null = tinta;
+    if (eletro) silhueta = silhuetaClara(agora) ? { cor: '#ffffff', alfa: 0.9 } : { cor: '#1e1b4b', alfa: 0.85 };
+    else if (reacao && progressoDaReacao(reacao) < 0.5) {
+      const cores = { choque: '#fb923c', bio: '#a3e635', gelo: '#e0f2fe', vendaval: '#99f6e4', eletro: '#ffffff' };
+      silhueta = { cor: cores[reacao.tipo], alfa: 0.75 * (1 - progressoDaReacao(reacao) * 2) };
+    } else if (z.hitFlash > 0) silhueta = { cor: '#ffffff', alfa: Math.min(0.8, z.hitFlash * 0.8) };
+    if (silhueta && silhueta.alfa > 0.02) this.pintarSilhueta(ctx, spec, desenharCamadas, silhueta.cor, silhueta.alfa);
+
+    // Efeitos elementais por cima do zumbi
+    const top = -(spec.feet - spec.head) * k;
+    const mid = top / 2;
+    const reduzido = acessibilidade.reduzirEfeitos;
+    if (z.frozenTimer > 0) {
+      this.drawBlocoDeGelo(ctx, spec.halfW, top, agora);
+    } else if (z.chilledTimer > 0 && !reduzido) {
+      // Resfriado: flocos de neve caindo em volta
+      ctx.fillStyle = 'rgba(224, 242, 254, 0.9)';
+      for (let n = 0; n < 4; n++) {
+        const fase = (agora * 0.0009 + n * 0.37) % 1;
+        const fx = Math.sin(n * 2.1 + agora * 0.002) * spec.halfW * 0.9;
+        const fy = top + (-top + 8) * fase;
         ctx.beginPath();
-        ctx.arc((px - spec.ox) * k, (py - spec.feet) * k, 4.2, 0, Math.PI * 2);
+        ctx.arc(fx, fy, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    if (z.wetTimer > 0 && z.frozenTimer <= 0 && !naAgua) {
+      // Molhado: pingos escorrendo do corpo
+      ctx.fillStyle = '#38bdf8';
+      ctx.strokeStyle = 'rgba(255,255,255,0.7)';
+      ctx.lineWidth = 1;
+      for (let n = 0; n < 3; n++) {
+        const fase = (agora * 0.0012 + n * 0.33) % 1;
+        const px = (n - 1) * spec.halfW * 0.7;
+        const py = mid + (-mid + 4) * fase;
+        ctx.beginPath();
+        ctx.moveTo(px, py - 4);
+        ctx.quadraticCurveTo(px + 2.6, py, px, py + 2.2);
+        ctx.quadraticCurveTo(px - 2.6, py, px, py - 4);
         ctx.fill();
         ctx.stroke();
       }
     }
 
-    if ((z.variant === 'cone' || z.variant === 'bucket' || canoeiro) && !z.lostHeadgear) {
-      const gear = getSprite(`${z.variant}--capacete`, isNight);
-      if (gear) {
-        place(gear);
-        if (z.elite === 'ferro') {
-          // Capacete de ferro: rebites escuros por cima
-          ctx.fillStyle = '#334155';
-          ctx.strokeStyle = '#0f172a';
-          ctx.lineWidth = 1.2;
-          for (const [rx, ry] of [[50, 30], [70, 24], [90, 32]] as [number, number][]) {
-            ctx.beginPath();
-            ctx.arc((rx - spec.ox) * k, (ry - spec.feet) * k, 2.2, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-          }
-        }
-      }
-    }
-
-    // Clarão branco quando leva dano (silhueta do corpo e do braço)
-    if (dano > 0.05) {
-      ctx.globalAlpha = Math.min(0.85, dano * 0.85);
-      const clarao = getSpriteClarao(`${z.variant}--corpo`, isNight);
-      if (clarao) place(clarao);
-      if (spec.pivot && !z.lostArm) {
-        const bracoClarao = getSpriteClarao(`${z.variant}--braco`, isNight);
-        if (bracoClarao) place(bracoClarao);
-      }
-      ctx.globalAlpha = 1;
-    }
-    ctx.restore();
-
-    // Efeitos elementais por cima do zumbi
-    const top = -(spec.feet - spec.head) * k;
-    const mid = top / 2;
-    if (z.frozenTimer > 0) {
-      ctx.fillStyle = 'rgba(103, 232, 249, 0.5)';
-      ctx.strokeStyle = '#cffafe';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.roundRect(-spec.halfW, top - 4, spec.halfW * 2, -top + 6, 8);
-      ctx.fill();
-      ctx.stroke();
-    } else if (z.wetTimer > 0 && !naAgua) {
-      ctx.strokeStyle = '#38bdf8';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(0, mid, -top * 0.42, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-
     if (z.poisonTimer > 0) {
-      ctx.strokeStyle = '#a3e635';
-      ctx.lineWidth = 2.2;
-      ctx.setLineDash([4, 3]);
-      ctx.beginPath();
-      ctx.arc(0, mid, -top * 0.46, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.setLineDash([]);
+      // Veneno: bolhas verdes subindo e gotas pingando
+      ctx.fillStyle = 'rgba(163, 230, 53, 0.85)';
+      ctx.strokeStyle = '#365314';
+      ctx.lineWidth = 1.2;
+      for (let n = 0; n < (reduzido ? 2 : 5); n++) {
+        const fase = (agora * 0.0008 + n * 0.21) % 1;
+        const px = Math.sin(n * 1.7 + fase * 6) * spec.halfW * 0.8;
+        const py = 2 + (top - 10) * fase;
+        ctx.beginPath();
+        ctx.arc(px, py, 2 + (n % 3), 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
 
     if (z.burnTimer > 0) {
-      ctx.fillStyle = 'rgba(249, 115, 22, 0.5)';
-      ctx.beginPath();
-      ctx.arc(0, mid, -top * 0.32 + Math.sin(performance.now() * 0.03) * 4, 0, Math.PI * 2);
-      ctx.fill();
+      this.drawChamas(ctx, spec.halfW, top, agora, reduzido);
     }
 
     if (z.capataz) {
@@ -981,6 +1031,135 @@ export class CharacterRenderer {
       const raio = spec.halfW * baseScale * (canoeiro && !nadando ? 2.1 : 1.15);
       this.drawRipple(ctx, zx, waterY, raio, z.walkPhase);
     }
+  }
+
+  private static silhuetaCanvas: HTMLCanvasElement | null = null;
+
+  /**
+   * Pinta a silhueta do zumbi numa cor (clarão de dano, tinta de gelo/veneno/fogo, pisca da
+   * eletrocussão): desenha as camadas num canvas de rascunho, colore só onde tem pixel e
+   * estampa por cima, na mesma transformação.
+   */
+  private static pintarSilhueta(
+    ctx: CanvasRenderingContext2D,
+    spec: ZombieSpriteSpec,
+    desenharCamadas: (c: CanvasRenderingContext2D) => void,
+    cor: string,
+    alfa: number
+  ): void {
+    const margem = 24;
+    const w = Math.ceil(spec.w * spec.k + margem * 2);
+    const h = Math.ceil(spec.h * spec.k + margem * 2);
+    if (!this.silhuetaCanvas) this.silhuetaCanvas = document.createElement('canvas');
+    const sc = this.silhuetaCanvas;
+    if (sc.width !== w || sc.height !== h) {
+      sc.width = w;
+      sc.height = h;
+    }
+    const c = sc.getContext('2d');
+    if (!c) return;
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.clearRect(0, 0, w, h);
+    // Origem do rascunho = origem do zumbi (pés, centro do corpo)
+    c.translate(spec.ox * spec.k + margem, spec.feet * spec.k + margem);
+    desenharCamadas(c);
+    c.setTransform(1, 0, 0, 1, 0, 0);
+    c.globalCompositeOperation = 'source-in';
+    c.fillStyle = cor;
+    c.fillRect(0, 0, w, h);
+    c.globalCompositeOperation = 'source-over';
+    ctx.save();
+    ctx.globalAlpha = alfa;
+    ctx.drawImage(sc, -spec.ox * spec.k - margem, -spec.feet * spec.k - margem);
+    ctx.restore();
+  }
+
+  /** Bloco de gelo com rachaduras e pingentes, do pé à cabeça do zumbi. */
+  private static drawBlocoDeGelo(ctx: CanvasRenderingContext2D, halfW: number, top: number, agora: number): void {
+    const w = halfW * 2 + 6;
+    const x = -halfW - 3;
+    const y = top - 6;
+    const h = -top + 8;
+    ctx.save();
+    ctx.fillStyle = 'rgba(165, 243, 252, 0.45)';
+    ctx.strokeStyle = '#e0f2fe';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 7);
+    ctx.fill();
+    ctx.stroke();
+    // Brilho na quina
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(x + 5, y + h * 0.15);
+    ctx.lineTo(x + 5, y + h * 0.45);
+    ctx.stroke();
+    // Rachaduras
+    ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+    ctx.lineWidth = 1.3;
+    ctx.beginPath();
+    ctx.moveTo(x + w * 0.62, y + 4);
+    ctx.lineTo(x + w * 0.52, y + h * 0.3);
+    ctx.lineTo(x + w * 0.66, y + h * 0.42);
+    ctx.lineTo(x + w * 0.5, y + h * 0.64);
+    ctx.moveTo(x + w * 0.52, y + h * 0.3);
+    ctx.lineTo(x + w * 0.3, y + h * 0.38);
+    ctx.stroke();
+    // Pingentes embaixo
+    ctx.fillStyle = 'rgba(224, 242, 254, 0.95)';
+    for (const [fx, fh] of [[0.2, 7], [0.45, 11], [0.72, 6]] as [number, number][]) {
+      const px = x + w * fx;
+      ctx.beginPath();
+      ctx.moveTo(px - 3, y + h);
+      ctx.lineTo(px, y + h + fh);
+      ctx.lineTo(px + 3, y + h);
+      ctx.fill();
+    }
+    // Cintilação
+    const t = (agora * 0.004) % (Math.PI * 2);
+    ctx.fillStyle = `rgba(255,255,255,${0.5 + Math.sin(t) * 0.4})`;
+    ctx.beginPath();
+    ctx.arc(x + w * 0.78, y + h * 0.2, 2.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Chamas lambendo o zumbi, com brasas subindo. */
+  private static drawChamas(ctx: CanvasRenderingContext2D, halfW: number, top: number, agora: number, reduzido: boolean): void {
+    ctx.save();
+    const linguas = reduzido ? 2 : 4;
+    for (let n = 0; n < linguas; n++) {
+      const fase = agora * 0.012 + n * 1.9;
+      const bx = (n / Math.max(1, linguas - 1) - 0.5) * halfW * 1.6;
+      const by = top * 0.25 + Math.sin(fase * 0.7) * 3;
+      const alt = -top * (0.35 + 0.12 * Math.sin(fase)) ;
+      const larg = halfW * 0.55;
+      const cores = ['rgba(239, 68, 68, 0.75)', 'rgba(249, 115, 22, 0.85)', 'rgba(253, 224, 71, 0.9)'];
+      for (let camada = 0; camada < 3; camada++) {
+        const e = 1 - camada * 0.3;
+        ctx.fillStyle = cores[camada];
+        ctx.beginPath();
+        ctx.moveTo(bx - larg * e, by);
+        ctx.quadraticCurveTo(bx - larg * e * 0.6, by - alt * e * 0.55, bx + Math.sin(fase * 1.3) * 3, by - alt * e);
+        ctx.quadraticCurveTo(bx + larg * e * 0.6, by - alt * e * 0.55, bx + larg * e, by);
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+    if (!reduzido) {
+      ctx.fillStyle = '#fde68a';
+      for (let n = 0; n < 4; n++) {
+        const f = (agora * 0.0015 + n * 0.25) % 1;
+        const px = Math.sin(n * 2.3 + agora * 0.003) * halfW;
+        const py = top * 0.3 + (top - 14) * f;
+        ctx.globalAlpha = 1 - f;
+        ctx.beginPath();
+        ctx.arc(px, py, 1.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.restore();
   }
 
   /** O Curupira correndo pela linha (aliado do folclore). */

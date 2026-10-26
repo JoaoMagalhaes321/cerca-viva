@@ -29,9 +29,11 @@ import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, pront
 import { Foto, Gravador } from './replay';
 import { CENAS, Vfx, criarCena, desenharVfx } from './vfx';
 import { Cenario, tocarTrovao } from './cenario';
+import { bonusDoNivel } from './sementes';
 import { chance as chanceIa, escolherLinha, linhaVizinhaMaisVazia, nivelPorOnda } from './inteligencia';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { MANGUE, MANGUE_ID, nasRaizes } from './mangue-vermelho';
+import { REACAO, Reacao, TipoReacao, novaReacao } from './reacoes';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
@@ -70,6 +72,8 @@ export interface PlantEntity {
   armed: boolean;
   /** Adormecida pela canção da Cuca: não ataca nem gera sol enquanto > 0. */
   dormindoTimer?: number;
+  /** Nível da planta (sementes raras): 1 a 3. */
+  nivel?: number;
 }
 
 export type ZombieVariant =
@@ -135,6 +139,18 @@ export interface ZombieEntity {
   capataz?: boolean;
   /** Quantos truques a Cuca já fez (define o próximo). */
   cucaTruques?: number;
+  /** Reação momentânea a um combo (eletrocussão, choque térmico…): só desenho, ver reacoes.ts. */
+  reacao?: Reacao;
+}
+
+/** Onda de impacto de um combo: um anel que cresce e some (só desenho). */
+export interface OndaDeImpacto {
+  x: number;
+  y: number;
+  raio: number;
+  life: number;
+  maxLife: number;
+  color: string;
 }
 
 export type EliteZumbi = 'ferro' | 'gigante' | 'dupla' | 'veloz';
@@ -303,6 +319,8 @@ export class GameEngine {
   public cenario = new Cenario();
   /** Nível de inteligência dos zumbis (0 a 5): comportamentos em inteligencia.ts. */
   public inteligencia = 0;
+  /** Nível de cada planta (sementes raras), fornecido por quem monta o jogo. */
+  public nivelDaPlanta: (id: string) => number = () => 1;
   /** Combos feitos por linha na onda anterior (a horda evita essa linha). */
   private combosPorLinha: number[] = [0, 0, 0, 0, 0];
   private combosDaOndaPorLinha: number[] = [0, 0, 0, 0, 0];
@@ -364,6 +382,7 @@ export class GameEngine {
   public floatingTexts: FloatingText[] = [];
   public falas: Fala[] = [];
   public arcs: LightningArc[] = [];
+  public ondas: OndaDeImpacto[] = [];
   public particles: Particle[] = [];
   public debris: PhysicsDebris[] = [];
   public curupiras: Curupira[] = [];
@@ -546,6 +565,7 @@ export class GameEngine {
 
   public initBoard(biome?: BiomeDefinition, deckIds?: string[], level?: LevelConfig): void {
     if (biome) this.currentBiome = biome;
+    sound.bioma = this.currentBiome.id; // a trilha escolhe o tema do mundo (e do chefe) pelo bioma
     this.currentLevel = level || null;
     this.waveDirector = null;
     this.weatherLocked = false;
@@ -645,6 +665,7 @@ export class GameEngine {
     this.floatingTexts = [];
     this.falas = [];
     this.arcs = [];
+    this.ondas = [];
     this.particles = [];
     this.debris = [];
     this.curupiras = [];
@@ -1370,13 +1391,16 @@ export class GameEngine {
 
     const armDuration = this.unlockedMutations.has('overclock_roots') ? 2.2 : 4.5;
 
+    const nivel = this.nivelDaPlanta(def.id);
+    const bonus = bonusDoNivel(nivel);
     this.plants.push({
       id: this.nextEntityId++,
       def,
       row,
       col,
-      hp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1)),
-      maxHp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1)),
+      nivel,
+      hp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1) * bonus.vida),
+      maxHp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1) * bonus.vida),
       attackTimer: def.attackInterval * 0.4,
       overdriveTimer: 0,
       animPhase: Math.random() * Math.PI * 2,
@@ -1594,7 +1618,7 @@ export class GameEngine {
             this.spawnFloatingText('💥 BUM!', p.col + 0.5, p.row, '#fef08a', 1.45);
             this.sacudir(7, 0.35, 'medio');
             const raioMina = p.caminho === 'mina_pesada' ? 2.0 : 1.25;
-            const danoMina = p.def.damage * (p.adubada ? ADUBADA.dano : 1) * (p.caminho === 'mina_pesada' ? 1.3 : 1);
+            const danoMina = p.def.damage * (p.adubada ? ADUBADA.dano : 1) * (p.caminho === 'mina_pesada' ? 1.3 : 1) * bonusDoNivel(p.nivel ?? 1).dano;
             for (const z of this.zombies) {
               if (z.row === p.row && Math.abs(z.x - (p.col + 0.5)) <= raioMina) {
                 this.applyElementalDamage(z, Math.round(danoMina), 'explosive');
@@ -1636,7 +1660,7 @@ export class GameEngine {
         if (p.attackTimer <= 0) {
           p.attackTimer = p.def.attackInterval;
           p.scaleKick = 0.25;
-          const extraSun = (this.unlockedMutations.has('solar_nova') ? 10 : 0) + (p.adubada ? ADUBADA.solExtra : 0);
+          const extraSun = (this.unlockedMutations.has('solar_nova') ? 10 : 0) + (p.adubada ? ADUBADA.solExtra : 0) + bonusDoNivel(p.nivel ?? 1).sol;
           const quantos = p.caminho === 'lirio_sol' ? 2 : 1;
           for (let k = 0; k < quantos; k++) {
             this.suns.push({
@@ -1665,7 +1689,7 @@ export class GameEngine {
         if (perto && p.attackTimer <= 0) {
           p.attackTimer = p.def.attackInterval;
           p.scaleKick = 0.35;
-          this.sustoDaFlor(p, alcance, p.caminho === 'assombracao' ? 3 : 2, Math.round(p.def.damage * (p.adubada ? ADUBADA.dano : 1)));
+          this.sustoDaFlor(p, alcance, p.caminho === 'assombracao' ? 3 : 2, Math.round(p.def.damage * (p.adubada ? ADUBADA.dano : 1) * bonusDoNivel(p.nivel ?? 1).dano));
         }
       } else if (p.def.attackInterval > 0) {
         const hasZombieAhead = this.zombies.some((z) => z.row === p.row && z.x > p.col);
@@ -1738,6 +1762,10 @@ export class GameEngine {
       if (z.chilledTimer > 0) z.chilledTimer = Math.max(0, z.chilledTimer - dt);
       if (z.frozenTimer > 0) z.frozenTimer = Math.max(0, z.frozenTimer - dt);
       if (z.stunTimer > 0) z.stunTimer = Math.max(0, z.stunTimer - dt);
+      if (z.reacao) {
+        z.reacao.timer -= dt;
+        if (z.reacao.timer <= 0) z.reacao = undefined;
+      }
 
       if (z.burnTimer > 0) {
         z.burnTimer = Math.max(0, z.burnTimer - dt);
@@ -2041,6 +2069,10 @@ export class GameEngine {
       this.arcs[i].life -= dt;
       if (this.arcs[i].life <= 0) this.arcs.splice(i, 1);
     }
+    for (let i = this.ondas.length - 1; i >= 0; i--) {
+      this.ondas[i].life -= dt;
+      if (this.ondas[i].life <= 0) this.ondas.splice(i, 1);
+    }
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const pt = this.particles[i];
@@ -2166,6 +2198,7 @@ export class GameEngine {
     else sound.playShoot(plant.def.element);
     let mult = plant.adubada ? ADUBADA.dano : 1;
     if (this.estagioDe(plant) === 'muda') mult *= MUDA.dano;
+    mult *= bonusDoNivel(plant.nivel ?? 1).dano;
     const c = plant.caminho;
     if (c === 'quiabo_pesado') mult *= 1.8;
     else if (c === 'abobora_bomba') mult *= 1.5;
@@ -2400,6 +2433,7 @@ export class GameEngine {
         target.chilledTimer > 0
       ) {
         this.registerCombo('elemental_gale', target.x, target.row);
+        this.reagir(target, 'vendaval');
         for (const other of this.zombies) {
           if (other.row === target.row && other.id !== target.id && Math.abs(other.x - target.x) <= 2.4) {
             if (target.burnTimer > 0) other.burnTimer = 5.0;
@@ -2416,6 +2450,7 @@ export class GameEngine {
       if (target.wetTimer > 0) {
         this.registerCombo('electro_chain', target.x, target.row);
         sound.playSynergyCombo('electro');
+        this.reagir(target, 'eletro');
         const bonusMult = this.unlockedMutations.has('superconductor') ? 1.45 : 1.0;
         finalDamage = Math.floor(baseDamage * 1.65 * bonusMult);
 
@@ -2455,6 +2490,7 @@ export class GameEngine {
               jumps++;
               other.hp -= Math.floor(baseDamage * 0.9 * bonusMult);
               other.hitFlash = 1.0;
+              other.reacao = novaReacao('eletro');
               if (this.unlockedMutations.has('superconductor')) {
                 other.stunTimer = 0.5;
               }
@@ -2480,6 +2516,7 @@ export class GameEngine {
       if (target.wetTimer > 0 && target.frozenTimer <= 0) {
         this.registerCombo('flash_freeze', target.x, target.row);
         sound.efeito('congelar', 0.2);
+        this.reagir(target, 'gelo');
         target.frozenTimer = 3.2;
         target.wetTimer = 0;
         finalDamage += 20;
@@ -2491,6 +2528,7 @@ export class GameEngine {
       if (target.frozenTimer > 0 || target.chilledTimer > 0) {
         this.registerCombo('thermal_shock', target.x, target.row);
         sound.playSynergyCombo('thermal');
+        this.reagir(target, 'choque');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.2 : 1.45;
         finalDamage = Math.floor(baseDamage * 2.1);
         target.frozenTimer = 0;
@@ -2506,12 +2544,14 @@ export class GameEngine {
             if (dist <= radius) {
               other.hp -= 55;
               other.hitFlash = 1.0;
+              other.reacao = novaReacao('choque');
             }
           }
         }
       } else if (target.poisonTimer > 0) {
         this.registerCombo('bio_blast', target.x, target.row);
         sound.playSynergyCombo('thermal');
+        this.reagir(target, 'bio');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.3 : 1.6;
         finalDamage = Math.floor(baseDamage * 2.3);
         target.poisonTimer = 0;
@@ -3347,6 +3387,16 @@ export class GameEngine {
     });
   }
 
+  /** Marca a reação visual do zumbi a um combo e solta a onda de impacto (ver reacoes.ts). */
+  private reagir(z: ZombieEntity, tipo: TipoReacao): void {
+    z.reacao = novaReacao(tipo);
+    // A cena do combo (vfx.ts) já desenha o anel; a onda própria só volta com REACAO.ondaComCena.
+    if (acessibilidade.reduzirEfeitos || !REACAO.ondaComCena) return;
+    const onda = REACAO.onda[tipo];
+    if (this.ondas.length >= 12) this.ondas.shift();
+    this.ondas.push({ x: z.x, y: z.row + 0.55, raio: onda.raio, life: onda.dura, maxLife: onda.dura, color: onda.cor });
+  }
+
   private registerCombo(synergyId: string, x = 4.5, y = 2): void {
     this.totalCombos++;
     this.gravador.combo(this.tempoDePartida);
@@ -3895,6 +3945,28 @@ export class GameEngine {
       ctx.stroke();
       ctx.globalAlpha = 1;
       ctx.lineWidth = 3.5;
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    // 8b. Ondas de impacto dos combos (anel que cresce e some)
+    for (const o of this.ondas) {
+      const t = 1 - o.life / o.maxLife;
+      const r = o.raio * this.cellW * (0.25 + 0.75 * t);
+      ctx.save();
+      ctx.translate(this.boardLeft + o.x * this.cellW, this.boardTop + o.y * this.cellH);
+      ctx.scale(1, 0.55);
+      ctx.globalAlpha = (1 - t) * 0.85;
+      ctx.strokeStyle = o.color;
+      ctx.lineWidth = 6 * (1 - t) + 1.5;
+      ctx.beginPath();
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = (1 - t) * 0.35;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(0, 0, r * 0.8, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }

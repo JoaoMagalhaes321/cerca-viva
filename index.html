@@ -120,6 +120,8 @@
 
         <!-- Contextual Synergy / Tutorial Banner -->
         <div id="toast-banner" class="toast-banner hidden"></div>
+        <!-- Nome da faixa que começou a tocar -->
+        <div id="trilha-aviso" class="trilha-aviso hidden" aria-live="polite"></div>
       </main>
 
       <!-- Main Menu Overlay -->
@@ -159,6 +161,7 @@
               <div class="btn-text">
                 <strong>INICIAR JOGO</strong>
                 <small id="menu-stage-info">Modo Aventura: Fase 1-1</small>
+                <small id="menu-sementes-info" class="menu-btn-info" title="Sementes raras: suba suas plantas de nível no Almanaque">🌰 0</small>
               </div>
             </button>
 
@@ -182,6 +185,13 @@
                 <span class="mode-text">
                   <strong>Expedição</strong>
                   <small id="menu-expedicao-info">Uma corrida com mapa de caminhos</small>
+                </span>
+              </button>
+              <button class="menu-sec-btn menu-mode-btn" id="menu-semanal-btn">
+                <span class="mode-icon">🏆</span>
+                <span class="mode-text">
+                  <strong>Desafio da Semana</strong>
+                  <small id="menu-semanal-info">Ranking com os amigos</small>
                 </span>
               </button>
               <button class="menu-sec-btn menu-mode-btn menu-halloween hidden" id="menu-halloween-btn">
@@ -267,7 +277,7 @@
 
           <div class="almanac-tabs">
             <button class="tab-btn active" data-tab="synergies">⚡ Reações Elementais (Combos)</button>
-            <button class="tab-btn" data-tab="plants">🌻 Plantas (11)</button>
+            <button class="tab-btn" data-tab="plants">🌻 Plantas · nível <span id="almanac-sementes"></span></button>
             <button class="tab-btn" data-tab="zombies">🧟 Zumbis & Chefe (9)</button>
           </div>
 
@@ -346,6 +356,7 @@
           <h2 id="result-title">Jardim Defendido!</h2>
           <p id="result-subtitle">Você dominou as sinergias elementais!</p>
           <div class="result-stats" id="result-stats"></div>
+          <div class="result-sementes" id="result-sementes"></div>
           <div class="result-replay hidden" id="result-replay">
             <span class="result-replay-titulo">🎬 Melhor momento: <b id="result-replay-motivo"></b></span>
             <canvas id="result-replay-canvas" width="480" height="270"></canvas>
