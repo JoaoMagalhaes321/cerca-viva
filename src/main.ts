@@ -25,6 +25,7 @@ import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
 import { lerNemesis, registrarDerrota, salvarNemesis } from './nemesis';
+import { MUNDO_MINIMO, MiniEventos, agendar, aleatorioDaFase } from './mini-eventos';
 import { Mascote, sapoLiberado } from './mascote';
 import { VasosUi } from './vasos-ui';
 import { LadoZumbiUi } from './lado-zumbi-ui';
@@ -348,6 +349,17 @@ function updateCooldownOverlays(): void {
   }
   waveProgressFillEl.style.width = `${engine.waveProgress}%`;
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
+  // Mini-evento em andamento
+  const eventoAviso = document.getElementById('evento-aviso');
+  const ev = engine.miniEventos?.ativo ?? null;
+  if (eventoAviso) {
+    eventoAviso.classList.toggle('hidden', !ev);
+    if (ev) {
+      eventoAviso.textContent = `${ev.icone} ${ev.nome} · ${Math.ceil(engine.miniEventos!.restante)} s`;
+      eventoAviso.classList.toggle('bom', ev.lado === 'bom');
+      eventoAviso.classList.toggle('ruim', ev.lado === 'ruim');
+    }
+  }
 }
 
 // Deck só com plantas já liberadas; se nenhuma do deck estiver liberada, usa as liberadas
@@ -767,6 +779,11 @@ function iniciarFase(level: LevelConfig): void {
   // Nêmesis: quem venceu você na última derrota da Aventura volta nesta fase
   const nemesis = level.evento ? null : lerNemesis();
   if (nemesis) engine.agendarNemesis(nemesis);
+  // Mini-eventos (do Mundo 2 em diante): horas fixas por fase, avisados 5 s antes
+  if (!level.evento && level.world >= MUNDO_MINIMO) {
+    const ultimo = level.spawns.reduce((m, sp) => Math.max(m, sp.timeOffsetSec), 0);
+    engine.miniEventos = new MiniEventos(agendar(Math.max(75, ultimo + 18), aleatorioDaFase(level.id)));
+  }
   // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns (no evento, fixo)
   engine.chanceElite = level.evento ? 0.15 : level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
   // Zumbis cada vez mais espertos: nível por fase (inteligencia.ts)
