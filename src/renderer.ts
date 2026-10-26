@@ -18,6 +18,22 @@ export class CharacterRenderer {
   public static efeitos = true;
   /** Rajada de vento do cenário (0 a 1): inclina as plantas. */
   public static vento = 0;
+  /** Casa decorável (decoracao.ts): cores e enfeites escolhidos pelo jogador. */
+  public static decoracao: { telhado: string; parede: string; enfeite: string; chapeu: string } = {
+    telhado: '#c2452b',
+    parede: '#f1e0b8',
+    enfeite: 'enfeite_nenhum',
+    chapeu: 'chapeu_nenhum'
+  };
+
+  /** Escurece uma cor #rrggbb para a noite. */
+  private static escurecer(hex: string, k = 0.45): string {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.round(((n >> 16) & 255) * k);
+    const g = Math.round(((n >> 8) & 255) * k);
+    const b = Math.round((n & 255) * k);
+    return `rgb(${r},${g},${b})`;
+  }
 
   /** Textura de brilho na cor pedida (alfa em hexa, ex.: '44'), pronta para drawImage. */
   public static brilho(cor: string, alfa = '66'): HTMLCanvasElement {
@@ -1549,6 +1565,8 @@ export class CharacterRenderer {
     ctx.ellipse(-10, -10, 12, 5, -0.5, 0, Math.PI * 2);
     ctx.fill();
 
+    if (CharacterRenderer.decoracao.chapeu !== 'chapeu_nenhum') CharacterRenderer.drawChapeuSapo(ctx, CharacterRenderer.decoracao.chapeu);
+
     // Zzz quando dorme
     if (dormindo) {
       const z = (t * 0.0012) % 1;
@@ -1565,8 +1583,9 @@ export class CharacterRenderer {
     const w = Math.max(40, Math.min(64, baseY * 1.3));
     const h = w * 0.62;
     const y = baseY - h - 2;
-    const parede = noite ? '#3b2f3f' : bioma === 'assombrado' ? '#6b5a7a' : '#f1e0b8';
-    const telhado = noite ? '#5a2a32' : bioma === 'assombrado' ? '#3a2a44' : '#c2452b';
+    const deco = CharacterRenderer.decoracao;
+    const parede = noite ? CharacterRenderer.escurecer(deco.parede, 0.4) : bioma === 'assombrado' ? CharacterRenderer.escurecer(deco.parede, 0.62) : deco.parede;
+    const telhado = noite ? CharacterRenderer.escurecer(deco.telhado, 0.5) : bioma === 'assombrado' ? CharacterRenderer.escurecer(deco.telhado, 0.6) : deco.telhado;
     const ink = noite ? '#04090c' : '#2a2416';
     ctx.save();
     ctx.lineWidth = 2;
@@ -1614,7 +1633,174 @@ export class CharacterRenderer {
       ctx.arc(x + w * 0.7, y + h * 0.63, w * 0.3, 0, Math.PI * 2);
       ctx.fill();
     }
+    // Telhado de palha: fiapos
+    if (deco.telhado === '#d9b44a') {
+      ctx.strokeStyle = noite ? 'rgba(0,0,0,0.35)' : 'rgba(120, 80, 20, 0.55)';
+      ctx.lineWidth = 1;
+      for (let i = 1; i < 7; i++) {
+        ctx.beginPath();
+        ctx.moveTo(x + w * 0.5 + (i - 3.5) * w * 0.02, y + h * 0.04);
+        ctx.lineTo(x - w * 0.1 + i * w * 0.17, y + h * 0.37);
+        ctx.stroke();
+      }
+    }
+    CharacterRenderer.drawEnfeite(ctx, deco.enfeite, x, y, w, h, noite, ink);
     ctx.restore();
+  }
+
+  /** O enfeite escolhido na tela Minha Casa, junto da casinha. */
+  private static drawEnfeite(ctx: CanvasRenderingContext2D, enfeite: string, x: number, y: number, w: number, h: number, noite: boolean, ink: string): void {
+    ctx.lineWidth = 1.5;
+    ctx.strokeStyle = ink;
+    if (enfeite === 'enfeite_bandeirinhas') {
+      // varal do beiral até a chaminé
+      const x0 = x - w * 0.05;
+      const y0 = y + h * 0.4;
+      const x1 = x + w * 0.78;
+      const y1 = y + h * 0.1;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.quadraticCurveTo((x0 + x1) / 2, y0 + h * 0.05, x1, y1);
+      ctx.stroke();
+      const cores = ['#ef4444', '#facc15', '#22c55e', '#3b82f6', '#a855f7', '#f97316'];
+      for (let i = 0; i < 6; i++) {
+        const t = (i + 0.5) / 6;
+        const bx = x0 + (x1 - x0) * t;
+        const by = y0 + (y1 - y0) * t + Math.sin(t * Math.PI) * h * 0.03;
+        ctx.fillStyle = noite ? CharacterRenderer.escurecer(cores[i] === '#facc15' ? '#facc15' : cores[i], 0.6) : cores[i];
+        ctx.beginPath();
+        ctx.moveTo(bx - w * 0.04, by);
+        ctx.lineTo(bx + w * 0.04, by);
+        ctx.lineTo(bx, by + h * 0.12);
+        ctx.closePath();
+        ctx.fill();
+      }
+    } else if (enfeite === 'enfeite_vaso') {
+      const vx = x + w * 0.92;
+      const vy = y + h;
+      ctx.fillStyle = noite ? '#5a3220' : '#c2703b';
+      ctx.beginPath();
+      ctx.moveTo(vx - w * 0.09, vy - h * 0.18);
+      ctx.lineTo(vx + w * 0.09, vy - h * 0.18);
+      ctx.lineTo(vx + w * 0.06, vy);
+      ctx.lineTo(vx - w * 0.06, vy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      for (const [dx, cor] of [[-0.05, '#f472b6'], [0, '#facc15'], [0.05, '#f472b6']] as const) {
+        ctx.fillStyle = noite ? '#4a3a55' : cor;
+        ctx.beginPath();
+        ctx.arc(vx + dx * w, vy - h * 0.27, w * 0.035, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = noite ? '#1f3a22' : '#3f8f3a';
+      ctx.fillRect(vx - w * 0.07, vy - h * 0.22, w * 0.14, h * 0.04);
+    } else if (enfeite === 'enfeite_correio') {
+      const cx = x - w * 0.12;
+      ctx.fillStyle = noite ? '#3a2a1a' : '#8a5a34';
+      ctx.fillRect(cx - 1.5, y + h * 0.55, 3, h * 0.45);
+      ctx.fillStyle = noite ? '#5a1a1a' : '#dc2626';
+      ctx.beginPath();
+      ctx.roundRect(cx - w * 0.08, y + h * 0.42, w * 0.16, h * 0.16, [5, 5, 1, 1]);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = noite ? '#7a6a20' : '#facc15';
+      ctx.fillRect(cx + w * 0.06, y + h * 0.36, 2, h * 0.08);
+    } else if (enfeite === 'enfeite_lamparina') {
+      const lx = x + w * 0.44;
+      const ly = y + h * 0.5;
+      ctx.beginPath();
+      ctx.moveTo(lx, y + h * 0.38);
+      ctx.lineTo(lx, ly - h * 0.06);
+      ctx.stroke();
+      if (noite || CharacterRenderer.efeitos) {
+        const g = ctx.createRadialGradient(lx, ly, 1, lx, ly, w * 0.35);
+        g.addColorStop(0, `rgba(255, 190, 90, ${noite ? 0.5 : 0.25})`);
+        g.addColorStop(1, 'rgba(255, 190, 90, 0)');
+        ctx.fillStyle = g;
+        ctx.beginPath();
+        ctx.arc(lx, ly, w * 0.35, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.fillStyle = '#ef4444';
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, w * 0.06, h * 0.09, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#fde68a';
+      ctx.beginPath();
+      ctx.ellipse(lx, ly, w * 0.025, h * 0.05, 0, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  /** Chapéu do sapo (coordenadas já na escala do sapo, cabeça em y≈-30). */
+  private static drawChapeuSapo(ctx: CanvasRenderingContext2D, chapeu: string): void {
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = '#1f2937';
+    if (chapeu === 'chapeu_palha') {
+      ctx.fillStyle = '#e8c45a';
+      ctx.beginPath();
+      ctx.ellipse(-1, -30, 30, 7, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(-1, -36, 15, 10, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(-15, -37, 28, 4);
+    } else if (chapeu === 'chapeu_cartola') {
+      ctx.fillStyle = '#111827';
+      ctx.beginPath();
+      ctx.ellipse(-1, -31, 22, 5, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.roundRect(-14, -58, 26, 28, 3);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#b91c1c';
+      ctx.fillRect(-14, -38, 26, 5);
+      ctx.fillStyle = 'rgba(255,255,255,0.18)';
+      ctx.fillRect(-10, -55, 4, 16);
+    } else if (chapeu === 'chapeu_coroa') {
+      const g = ctx.createLinearGradient(0, -52, 0, -30);
+      g.addColorStop(0, '#fff3a6');
+      g.addColorStop(1, '#d99a12');
+      ctx.fillStyle = g;
+      ctx.beginPath();
+      ctx.moveTo(-16, -30);
+      ctx.lineTo(-18, -48);
+      ctx.lineTo(-9, -39);
+      ctx.lineTo(-1, -52);
+      ctx.lineTo(7, -39);
+      ctx.lineTo(16, -48);
+      ctx.lineTo(14, -30);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+      for (const [jx, cor] of [[-9, '#ef4444'], [-1, '#3b82f6'], [7, '#22c55e']] as const) {
+        ctx.fillStyle = cor;
+        ctx.beginPath();
+        ctx.arc(jx, -34, 2.6, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    } else if (chapeu === 'chapeu_bone') {
+      ctx.fillStyle = '#2563eb';
+      ctx.beginPath();
+      ctx.ellipse(-1, -33, 18, 12, 0, Math.PI, 0);
+      ctx.fill();
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.ellipse(16, -33, 14, 4, 0.1, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.arc(-1, -45, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   /** Grama amassada / barro revirado por onde o zumbi passou. */
