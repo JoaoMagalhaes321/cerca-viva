@@ -48,6 +48,10 @@ import { CAPITULOS, Quadrinhos, capituloVisto } from './quadrinhos';
 import { carregarSementes, custoParaSubir, estrelas, nivelDa, recompensa, salvarSementes, subirNivel } from './sementes';
 import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
 import { AcessibilidadeUi } from './acessibilidade-ui';
+import { iniciarIdioma } from './idioma';
+
+// Idioma primeiro: em inglês a página é traduzida e tudo o que for criado depois também
+iniciarIdioma();
 
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const sunAmountEl = document.getElementById('sun-amount') as HTMLElement;
