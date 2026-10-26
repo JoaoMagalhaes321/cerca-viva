@@ -9,6 +9,7 @@ import { LevelConfig, PLANT_CATALOG, PlantDefinition, BIOME_CATALOG } from './ty
 import { ZUMBIS_DO_HERBARIO } from './herbario';
 import { biomaDoMundo } from './levels';
 import { infoDaRegra, regrasDaFase } from './regras-fase';
+import { comportamentosAtivos, nivelDeInteligencia } from './inteligencia';
 import './preparacao.css';
 
 const CHEFES: ZombieVariant[] = ['zomboss_mech', 'mapinguari', 'gargantuar', 'cuca'];
@@ -99,6 +100,7 @@ export class Preparacao {
             <div class="prep-regras"></div>
             <h3>🧟 Quem vem aí</h3>
             <div class="prep-zumbis-lista"></div>
+            <div class="prep-ia"></div>
             <p class="prep-dica"></p>
           </section>
           <section class="prep-sementes">
@@ -181,6 +183,12 @@ export class Preparacao {
       }
       lista.appendChild(el);
     }
+    // Inteligência dos zumbis nesta fase
+    const ia = comportamentosAtivos(nivelDeInteligencia(level.world, level.stage));
+    const caixaIa = this.q<HTMLElement>('.prep-ia');
+    caixaIa.innerHTML = ia.length === 0 ? '' : `<h4>🧠 Nesta fase eles já sabem… <small>(toque para ver como contornar)</small></h4><div class="prep-ia-chips">` + ia.map((c) => `<button type="button" class="prep-ia-chip" data-dica="${c.descricao} ${c.contra}" title="${c.descricao}">${c.icone} ${c.nome}</button>`).join('') + '</div>';
+    for (const chip of caixaIa.querySelectorAll<HTMLButtonElement>('.prep-ia-chip')) chip.addEventListener('click', () => this.o.toast(`🧠 ${chip.dataset.dica}`));
+    caixaIa.classList.toggle('hidden', ia.length === 0);
     const dica = this.q<HTMLElement>('.prep-dica');
     dica.textContent = this.dicaDaFase(level);
 
