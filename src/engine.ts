@@ -35,6 +35,7 @@ import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { Mascote, SituacaoSapo } from './mascote';
 import { MANGUE, MANGUE_ID, nasRaizes } from './mangue-vermelho';
 import { REACAO, Reacao, TipoReacao, novaReacao } from './reacoes';
+import { NEMESIS_DANO, Nemesis, momentoDaVolta, recompensaDoNemesis, vidaDoNemesis } from './nemesis';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
@@ -141,6 +142,8 @@ export interface ZombieEntity {
   puloCd?: number;
   /** Inteligência: Capataz — apressa os zumbis da linha dele. */
   capataz?: boolean;
+  /** Nêmesis: o zumbi que venceu você antes e voltou com nome e cicatriz. */
+  nemesis?: Nemesis;
   /** Boitatá: segundos que ainda fica apagado (vulnerável); 0 = em chamas (não se machuca). */
   apagadoTimer?: number;
   /** Boitatá: segundos até a próxima corrida de fogo. */
@@ -277,7 +280,8 @@ export const FALAS: Record<string, string[]> = {
   mina: ['BUM!', 'Pegadinha!'],
   mare: ['Água subindo!', 'Segura o fôlego!'],
   adubada: ['Que terra boa!', 'Hmm, cinza!'],
-  vitoria: ['Jardim salvo!', 'Até a próxima!']
+  vitoria: ['Jardim salvo!', 'Até a próxima!'],
+  nemesis: ['Lembra de mim?', 'De novo eu!', 'Vim buscar o resto.', 'Senti saudade do jardim.']
 };
 
 export interface LightningArc {
@@ -426,6 +430,12 @@ export class GameEngine {
   public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
   public skySunScale = 1;
+  /** O zumbi que comeu a última planta (ou entrou na casa): vira Nêmesis numa derrota. */
+  public algoz: { variant: string; name: string } | null = null;
+  /** Nêmesis desta fase (agendado em agendarNemesis) e se ele já foi derrotado. */
+  public nemesisDaFase: Nemesis | null = null;
+  public nemesisVingado = false;
+  public onNemesisDerrotado: ((n: Nemesis) => void) | null = null;
   /** O sapo-cururu (null enquanto não foi liberado). */
   public mascote: Mascote | null = null;
   /** Fases dos Vasos: sementes contadas (quantos vasos restam por planta). null fora delas. */
@@ -601,6 +611,9 @@ export class GameEngine {
     this.regrasAtivas = new Set();
     this.chanceElite = 0;
     this.skySunScale = 1;
+    this.algoz = null;
+    this.nemesisDaFase = null;
+    this.nemesisVingado = false;
     this.vasos = null;
     this.planejando = false;
     if (deckIds && deckIds.length > 0) {
@@ -2065,6 +2078,7 @@ export class GameEngine {
             const pIdx = this.plants.indexOf(targetPlant);
             if (pIdx !== -1) this.plants.splice(pIdx, 1);
             this.marcas.plantasPerdidas++;
+            this.algoz = { variant: z.variant, name: z.name };
           }
         } else {
           // Inteligência: pula a armadilha da casa da frente
@@ -2105,6 +2119,7 @@ export class GameEngine {
 
       // Cerca quebrada (ou linha sem cerca): o zumbi entra na casa
       if (z.x < CERCA.xDaCasa) {
+        if (!this.algoz) this.algoz = { variant: z.variant, name: z.name };
         this.gameOver = true;
         this.sapoDiz('derrota', true);
         this.onGameEnd(false);
@@ -2818,6 +2833,7 @@ export class GameEngine {
   private handleZombieDeath(z: ZombieEntity, index: number): void {
     this.zombies.splice(index, 1);
     this.zombiesKilled++;
+    if (z.nemesis) this.vingarNemesis(z);
     if (z.capataz) this.spawnFloatingText('📯 O CAPATAZ CAIU! Linha volta ao normal', z.x, z.row + 0.1, '#fde047', 1.1);
     this.onDescoberta?.('zumbis', z.variant);
     if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
@@ -2859,7 +2875,8 @@ export class GameEngine {
         this.waveElapsed >= this.spawnsQueue[0].timeOffsetSec
       ) {
         const nextSpawn = this.spawnsQueue.shift()!;
-        this.spawnZombieByType(nextSpawn.zombieType, nextSpawn.lane);
+        if (nextSpawn.zombieType === 'nemesis' && this.nemesisDaFase) this.spawnNemesis(this.nemesisDaFase, nextSpawn.lane);
+        else this.spawnZombieByType(nextSpawn.zombieType, nextSpawn.lane);
       }
 
       this.waveProgress = Math.min(100, (this.waveElapsed / this.totalLevelDuration) * 100);
@@ -2943,6 +2960,57 @@ export class GameEngine {
         this.onGameEnd(true);
       }
     }
+  }
+
+  /** Agenda a volta do Nêmesis nesta fase (chamado depois de initBoard, só na Aventura). */
+  public agendarNemesis(n: Nemesis): void {
+    if (this.spawnsQueue.length === 0) return;
+    this.nemesisDaFase = n;
+    const ultimo = this.spawnsQueue[this.spawnsQueue.length - 1].timeOffsetSec;
+    const quando = momentoDaVolta(ultimo);
+    this.spawnsQueue.push({ timeOffsetSec: quando, zombieType: 'nemesis' });
+    this.spawnsQueue.sort((a, b) => a.timeOffsetSec - b.timeOffsetSec);
+  }
+
+  /** O Nêmesis entra: mesmo tipo de antes, com nome, cicatriz, mais vida e mais fome. */
+  public spawnNemesis(n: Nemesis, targetLane?: number): void {
+    const antes = this.zombies.length;
+    this.spawnZombieByType(n.variant, targetLane);
+    const z = this.zombies[antes];
+    if (!z) return;
+    z.nemesis = n;
+    z.name = n.nome;
+    z.elite = undefined;
+    z.maxHp = Math.round(z.maxHp * vidaDoNemesis(n));
+    z.hp = z.maxHp;
+    z.damagePerSec *= NEMESIS_DANO;
+    this.lightningFlash = Math.max(this.lightningFlash, 0.25);
+    this.sacudir(5, 0.35, 'medio');
+    sound.efeito('rugido', 0.5);
+    this.spawnFloatingText(`😈 ${n.nome.toUpperCase()} VOLTOU!`, GRID_COLS - 0.6, z.row + 0.1, '#fca5a5', 1.3);
+    this.onToast(`😈 ${n.nome} voltou com ${Math.round(vidaDoNemesis(n) * 100)}% da vida para terminar o que começou. Derrote-o: vale o dobro!`);
+    this.falar('nemesis', z.x - 0.2, z.row - 0.1);
+  }
+
+  private vingarNemesis(z: ZombieEntity): void {
+    const n = z.nemesis!;
+    this.nemesisVingado = true;
+    const bonus = recompensaDoNemesis(n);
+    this.spawnFloatingText(`⚔️ VINGANÇA! +${bonus}☀️`, Math.max(0.6, z.x), z.row - 0.1, '#fde047', 1.4);
+    this.sacudir(4, 0.3, 'medio');
+    for (let i = 0; i < 2; i++) {
+      this.suns.push({
+        id: this.nextEntityId++,
+        x: Math.max(0.6, z.x) + (i - 0.5) * 0.5,
+        y: z.row + 0.3,
+        targetY: z.row + 0.6,
+        value: bonus / 2,
+        life: 12,
+        collected: false
+      });
+    }
+    this.gravador.chefeCaiu(this.tempoDePartida, n.nome);
+    this.onNemesisDerrotado?.(n);
   }
 
   public spawnZombieByType(type: string, targetLane?: number): void {

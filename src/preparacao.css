@@ -53,6 +53,22 @@
 .prep-zumbi strong { font-size: 0.58rem; line-height: 1.1; color: #fecaca; }
 .prep-zumbi small { font-size: 0.62rem; font-weight: 800; color: #fde68a; }
 .prep-zumbi.chefe { border: 1.5px solid rgba(250, 204, 21, 0.7); background: rgba(69, 26, 3, 0.7); }
+.prep-nemesis {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 8px 0 4px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  border: 2px solid rgba(239, 68, 68, 0.55);
+  background: linear-gradient(180deg, rgba(69, 10, 10, 0.9), rgba(30, 10, 10, 0.9));
+  color: #fecaca;
+}
+.prep-nemesis.hidden { display: none; }
+.prep-nemesis-icone { font-size: 1.6rem; line-height: 1; }
+.prep-nemesis strong { display: block; font-size: 0.82rem; color: #fca5a5; }
+.prep-nemesis small { display: block; font-size: 0.68rem; line-height: 1.3; color: #fecaca; }
+
 .prep-dica {
   margin: 8px 0 0;
   font-size: 0.68rem;
