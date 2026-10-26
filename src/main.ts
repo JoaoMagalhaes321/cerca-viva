@@ -32,6 +32,8 @@ import { LadoZumbiUi } from './lado-zumbi-ui';
 import { VasosEditorUi } from './vasos-editor-ui';
 import { DueloUi } from './duelo-ui';
 import { BossRushUi } from './boss-rush-ui';
+import { DificuldadeUi } from './dificuldade-ui';
+import { eliteAjustada, inteligenciaAjustada, marcarAventuraConcluida, sementesAjustadas } from './dificuldade';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
@@ -806,6 +808,20 @@ function iniciarFase(level: LevelConfig): void {
   engine.chanceElite = level.evento ? 0.15 : level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
   // Zumbis cada vez mais espertos: nível por fase (inteligencia.ts)
   engine.inteligencia = nivelDeInteligencia(level.world, level.stage);
+  // Dificuldade escolhida (só na Aventura; eventos ficam como estão)
+  if (!level.evento) {
+    const d = dificuldade.atual;
+    const a = dificuldade.ajustes();
+    engine.chanceElite = eliteAjustada(engine.chanceElite, d);
+    engine.inteligencia = inteligenciaAjustada(engine.inteligencia, d);
+    engine.multVidaZumbi = a.vidaZumbi;
+    engine.sun = Math.max(50, engine.sun + a.solInicial);
+    engine.skySunScale = Number.isFinite(a.intervaloSol) ? engine.skySunScale * a.intervaloSol : 1e6;
+    for (const c of engine.cercas) {
+      c.maxHp = Math.round(c.maxHp * a.vidaCerca);
+      c.hp = Math.min(c.maxHp, Math.round(c.hp * a.vidaCerca));
+    }
+  }
   // Jardim Zen: regou ontem ou hoje, começa com mais sol
   const bonusZen = jardimZen.bonusDeHoje();
   if (bonusZen > 0) {
@@ -1013,8 +1029,9 @@ function darSementes(won: boolean): number {
     ondas: modo === 'expedicao' ? engine.wave : engine.wave,
     chefeDerrotado: engine.tiposDerrotados.some((t) => t === 'zomboss_mech' || t === 'mapinguari' || t === 'cuca')
   });
-  // Nêmesis derrotado: a recompensa da fase vale o dobro
-  const total = engine.nemesisVingado ? ganhas * 2 : ganhas;
+  // Dificuldade (só Aventura) e Nêmesis derrotado (dobro)
+  const comDificuldade = modo === 'aventura' ? sementesAjustadas(ganhas, dificuldade.atual) : ganhas;
+  const total = engine.nemesisVingado ? comDificuldade * 2 : comDificuldade;
   sementes.total += total;
   salvarSementes(sementes);
   atualizarSementesNoMenu();
@@ -1074,10 +1091,16 @@ function openGameOverModal(won: boolean): void {
     deck: engine.activeDeckIds,
     marcas: engine.marcas,
     derrotadosNaPartida: engine.tiposDerrotados,
-    nemesisVingado: engine.nemesisVingado
+    nemesisVingado: engine.nemesisVingado,
+    pesadelo: !!currentLevel && !currentLevel.evento && dificuldade.atual === 'pesadelo'
   });
   if (won && currentLevel && !currentLevel.evento) {
     const tinhaSapo = engine.mascote !== null;
+    // Venceu a última fase da Aventura: abre o Pesadelo
+    if (!getNextLevel(currentLevel.id)) {
+      marcarAventuraConcluida();
+      window.setTimeout(() => showToast('💀 Você fechou a Aventura! A dificuldade Pesadelo está aberta no menu.'), 1600);
+    }
     const result = ProgressionManager.completeLevel(currentLevel.id);
     updateMenuStageInfo();
     sincronizarMascote();
@@ -1430,7 +1453,11 @@ const modos = new Modos({
 const jardimZen = new JardimZen(plantaDeRetrato, (msg) => showToast(msg));
 
 // Tela de preparação antes de cada fase
+// Dificuldade da Aventura (Fácil, Normal, Difícil, Pesadelo)
+const dificuldade = new DificuldadeUi((msg) => showToast(msg));
+
 const preparacao = new Preparacao({
+  seloDificuldade: () => dificuldade.selo(),
   maxDeck: MAX_DECK_SIZE,
   retrato: plantaDeRetrato,
   liberadas: () => plantasLiberadas(),

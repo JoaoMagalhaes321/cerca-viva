@@ -33,6 +33,8 @@ export const CONQUISTAS: Conquista[] = [
   { id: 'vasos_10', nome: 'Dedo verde', icone: '🪴', descricao: 'Resolva os 10 quebra-cabeças dos Vasos.' },
   { id: 'zumbi_5', nome: 'Lado de lá', icone: '🧠', descricao: 'Invada os 5 jardins no modo Eu sou o zumbi.' },
   { id: 'boss_rush', nome: 'Maratona de chefes', icone: '👑', descricao: 'Derrube os cinco chefes seguidos no Boss Rush.' },
+  { id: 'pesadelo', nome: 'Sem dormir', icone: '💀', descricao: 'Vença uma fase da Aventura no Pesadelo.' },
+  { id: 'pesadelo_chefe', nome: 'Pesadelo dos chefes', icone: '☠️', descricao: 'Derrube um chefe no Pesadelo.' },
   { id: 'cem_zumbis', nome: 'Cem na cerca', icone: '🧟', descricao: 'Derrote 100 zumbis no total.' },
   { id: 'herbario_completo', nome: 'Herbário completo', icone: '📗', descricao: 'Descubra tudo o que há no Herbário.' }
 ];
@@ -77,6 +79,8 @@ export interface FimDePartida {
   jardinsInvadidos?: number;
   /** Boss Rush completo (os cinco chefes). */
   rushCompleto?: boolean;
+  /** Fase da Aventura jogada no Pesadelo. */
+  pesadelo?: boolean;
 }
 
 export interface Contexto {
@@ -113,6 +117,8 @@ export function verificarConquistas(ganhas: string[], fim: FimDePartida | null, 
     ok('vasos_10', fim.modo === 'vasos' && (fim.vasosResolvidos ?? 0) >= 10);
     ok('zumbi_5', fim.modo === 'zumbi' && (fim.jardinsInvadidos ?? 0) >= 5);
     ok('boss_rush', fim.modo === 'rush' && !!fim.rushCompleto);
+    ok('pesadelo', aventura && fim.venceu && !!fim.pesadelo);
+    ok('pesadelo_chefe', aventura && !!fim.pesadelo && fim.derrotadosNaPartida.some((t) => ['zomboss_mech', 'mapinguari', 'boitata', 'lobisomem'].includes(t)));
     ok('noite_da_cuca', fim.venceu && fim.derrotadosNaPartida.includes('cuca'));
     ok('boitata_apagado', fim.derrotadosNaPartida.includes('boitata'));
     ok('lua_cheia', fim.derrotadosNaPartida.includes('lobisomem'));

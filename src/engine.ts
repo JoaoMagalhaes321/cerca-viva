@@ -149,6 +149,8 @@ export interface ZombieEntity {
   capataz?: boolean;
   /** Nêmesis: o zumbi que venceu você antes e voltou com nome e cicatriz. */
   nemesis?: Nemesis;
+  /** A vida já recebeu o ajuste da dificuldade. */
+  ajustado?: boolean;
   /** Saci: segundos até o próximo redemoinho. Iara: até o próximo canto. */
   truqueTimer?: number;
   /** Boto: já se molhou e virou boto (a cerca passa a segurar). */
@@ -450,6 +452,8 @@ export class GameEngine {
   public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
   public skySunScale = 1;
+  /** Dificuldade: multiplicador da vida de todo zumbi que entra (1 = normal). */
+  public multVidaZumbi = 1;
   /** Modo "Eu sou o zumbi": o toque na linha invoca zumbis e a casa invadida é vitória. */
   public ladoZumbi: { invocar(row: number): 'ok' | 'linha' | 'cerebros' | 'recarga'; invadiu(): void } | null = null;
   /** Duelo local: toques à direita de `dueloColuna` são da horda; o resto, do jardineiro. null = sem duelo. */
@@ -721,6 +725,7 @@ export class GameEngine {
     this.regrasAtivas = new Set();
     this.chanceElite = 0;
     this.skySunScale = 1;
+    this.multVidaZumbi = 1;
     this.ladoZumbi = null;
     this.dueloColuna = null;
     this.algoz = null;
@@ -1752,6 +1757,15 @@ export class GameEngine {
 
   public update(rawDt: number): void {
     if (this.paused || this.gameOver || this.planejando) return;
+    // Dificuldade: ajusta a vida de quem acabou de entrar (vale para todos os tipos de spawn, inclusive chefes)
+    if (this.multVidaZumbi !== 1) {
+      for (const z of this.zombies) {
+        if (z.ajustado) continue;
+        z.ajustado = true;
+        z.maxHp = Math.round(z.maxHp * this.multVidaZumbi);
+        z.hp = Math.round(z.hp * this.multVidaZumbi);
+      }
+    }
     let dt = Math.min(rawDt, 0.1) * this.gameSpeed;
     // Efeitos visuais e pausa de impacto correm no tempo real, não no tempo do jogo
     const real = Math.min(rawDt, 0.1);
