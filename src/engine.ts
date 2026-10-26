@@ -367,6 +367,8 @@ export class GameEngine {
   public debris: PhysicsDebris[] = [];
   public curupiras: Curupira[] = [];
   public pegadas: Pegada[] = [];
+  /** Rastro dos zumbis (grama amassada / barro), some em alguns segundos. */
+  public rastros: { row: number; x: number; life: number; lama: boolean }[] = [];
   /** A cerca viva de cada linha aberta (última defesa, no lugar do cortador de grama). */
   public cercas: CercaViva[] = [];
   /** Quando definido, substitui o diretor de ondas das fases (modo infinito e desafio do dia). */
@@ -646,6 +648,7 @@ export class GameEngine {
     this.debris = [];
     this.curupiras = [];
     this.pegadas = [];
+    this.rastros = [];
 
     this.cercas = [];
     for (const r of activeLanes) this.cercas.push(novaCerca(r));
@@ -772,6 +775,9 @@ export class GameEngine {
       bCtx.shadowBlur = 0;
     }
     bCtx.restore();
+
+    // Casinha do jardineiro no canto esquerdo, em cima do caminho de pedra
+    CharacterRenderer.drawCasinha(bCtx, this.boardLeft - 52, this.boardTop, isDark, this.currentBiome.id);
 
     // Caminho de pedra à esquerda, onde fica a cerca viva
     const pathX = this.boardLeft - 48;
@@ -1705,6 +1711,10 @@ export class GameEngine {
       this.pegadas[i].life -= dt;
       if (this.pegadas[i].life <= 0) this.pegadas.splice(i, 1);
     }
+    for (let i = this.rastros.length - 1; i >= 0; i--) {
+      this.rastros[i].life -= dt;
+      if (this.rastros[i].life <= 0) this.rastros.splice(i, 1);
+    }
 
     // Update Zombies
     for (let i = this.zombies.length - 1; i >= 0; i--) {
@@ -1926,8 +1936,14 @@ export class GameEngine {
             for (const o of this.zombies) if (o.bando === z.bando && o.speed < minSpeed) minSpeed = o.speed;
             ritmo *= minSpeed / z.speed;
           }
+          const antesX = z.x;
           z.x -= z.speed * ritmo * chillMult * mudSpeedMult * riverMult * freioDasRaizes(cerca, z.x) * dt;
           z.walkPhase += dt * (z.chilledTimer > 0 ? 3 : 6);
+          // Rastro na grama (ou no barro da maré baixa) a cada meia casa
+          if (!this.isRiverRow(z.row) && z.x < GRID_COLS && Math.floor(antesX * 2) !== Math.floor(z.x * 2) && !acessibilidade.reduzirEfeitos) {
+            if (this.rastros.length >= 60) this.rastros.shift();
+            this.rastros.push({ row: z.row, x: z.x, life: 5, lama: this.isMudRow(z.row) });
+          }
         }
       }
 
@@ -3685,6 +3701,9 @@ export class GameEngine {
     }
 
     // 3b. Pegadas do Curupira
+    for (const r of this.rastros) {
+      CharacterRenderer.drawRastro(ctx, this.boardLeft + r.x * this.cellW, this.boardTop + (r.row + 0.86) * this.cellH, this.cellW, Math.min(1, r.life / 2), r.lama);
+    }
     for (const pg of this.pegadas) {
       CharacterRenderer.drawPegada(ctx, this.boardLeft + pg.x * this.cellW, this.boardTop + (pg.row + 0.8) * this.cellH, this.cellH, Math.min(1, pg.life / 2));
     }
@@ -3887,6 +3906,7 @@ export class GameEngine {
 
     // 11. Weather Rain Drops & Lightning Flash Overlay
     this.cenario.drawVagalumes(ctx);
+    this.cenario.drawBioma(ctx, this.currentBiome.id, this.boardLeft, this.boardTop, this.cellW, this.cellH, width, this.currentBiome.riverRows ?? [], mares, this.mare.nivel, this.ehNoite());
     this.cenario.drawChuva(ctx, width, height, this.boardTop, this.ehNoite());
 
     if (this.lightningFlash > 0) {
