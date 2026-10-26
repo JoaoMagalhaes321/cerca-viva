@@ -679,6 +679,26 @@ export class CharacterRenderer {
         this.drawWallDamage(ctx, p.hp / p.maxHp);
       }
 
+      // Nível da planta (sementes raras): folha dourada no nível 2, coroa de folhas no nível 3
+      const nivel = p.nivel ?? 1;
+      if (nivel >= 2) {
+        ctx.save();
+        ctx.fillStyle = '#ffd84a';
+        ctx.strokeStyle = '#8a5a10';
+        ctx.lineWidth = 1.4;
+        const n = nivel >= 3 ? 5 : 1;
+        for (let q = 0; q < n; q++) {
+          const a = nivel >= 3 ? -Math.PI * 0.9 + (q / 4) * Math.PI * 0.8 : -Math.PI / 2;
+          const lx = Math.cos(a) * 30;
+          const ly = -58 + Math.sin(a) * 14 + Math.sin(t * 1.5 + q) * 1.5;
+          ctx.beginPath();
+          ctx.ellipse(lx, ly, 6, 3, a + Math.PI / 2, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.stroke();
+        }
+        ctx.restore();
+      }
+
       if (estagio === 'florida') {
         // Coroa de flores por cima da planta florida
         const cor = p.def.color;
