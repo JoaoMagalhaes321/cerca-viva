@@ -61,7 +61,7 @@ window.BOARD = {
       "column": "qas",
       "env": "branch",
       "updated": "2026-10-26",
-      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio por cima do zumbi (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação no próprio zumbi (eletrocussão com silhueta piscando, tremida). O clarão ao levar dano, que nunca era desenhado, passou a aparecer. Já traz a main com as cenas de combo do PR #47; a onda de impacto própria ficou desligada para não repetir o anel das cenas (D-20261026-5). Só desenho, nada de dano ou tempo muda. Em dia com a main de 26/10 (zumbis vivos, animações de vida, zumbis inteligentes e cenário vivo): o clarão ao levar dano fica só pela silhueta, sem o branco em dobro (D-20261026-7). Build ok, 148 testes; conferido no Chromium.",
+      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio por cima do zumbi (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação no próprio zumbi (eletrocussão com silhueta piscando, tremida). Já traz a main com as cenas de combo do PR #47; a onda de impacto própria ficou desligada para não repetir o anel das cenas (D-20261026-5). Só desenho, nada de dano ou tempo muda. Em dia com a main de 26/10 (zumbis vivos, animações de vida, zumbis inteligentes e cenário vivo): o clarão ao levar dano fica só pela silhueta, sem o branco em dobro (D-20261026-7). Build ok, 148 testes; conferido no Chromium.",
       "delivered": [
         "Reações + 4 testes (3594ecd, 26/10)",
         "Conferido no Chromium com os 5 estados e 2 reações ao mesmo tempo (26/10)",
