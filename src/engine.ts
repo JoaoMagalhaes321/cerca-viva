@@ -505,6 +505,9 @@ export class GameEngine {
   private onCombo?: (synergyId: string) => void;
   private onBloomPrompt?: (plant: PlantEntity) => void;
   private onDescoberta?: (categoria: 'plantas' | 'caminhos' | 'zumbis' | 'biomas', id: string) => void;
+  private onEstatistica?: (tipo: 'zumbi' | 'planta', id: string) => void;
+  /** Segundos de partida jogados desde que o jogo abriu (para o Perfil). */
+  public tempoJogadoTotal = 0;
 
   constructor(
     canvas: HTMLCanvasElement,
@@ -519,6 +522,8 @@ export class GameEngine {
       onBloomPrompt?: (plant: PlantEntity) => void;
       /** Para o Herbário: planta usada, caminho escolhido, zumbi derrotado, bioma visitado. */
       onDescoberta?: (categoria: 'plantas' | 'caminhos' | 'zumbis' | 'biomas', id: string) => void;
+      /** Para o Perfil: cada zumbi derrotado e cada planta plantada. */
+      onEstatistica?: (tipo: 'zumbi' | 'planta', id: string) => void;
     }
   ) {
     this.canvas = canvas;
@@ -534,6 +539,7 @@ export class GameEngine {
     this.onCombo = callbacks.onCombo;
     this.onBloomPrompt = callbacks.onBloomPrompt;
     this.onDescoberta = callbacks.onDescoberta;
+    this.onEstatistica = callbacks.onEstatistica;
 
     this.cenario.onTrovao = () => {
       tocarTrovao();
@@ -1658,6 +1664,7 @@ export class GameEngine {
     }
 
     this.onDescoberta?.('plantas', def.id);
+    this.onEstatistica?.('planta', def.id);
     if (this.plants.length === 0 && !def.instantanea) this.falar('primeira_planta', col + 0.5, row, 0.8);
     if (def.instantanea) {
       // Carta de efeito imediato: não ocupa a casa
@@ -2515,6 +2522,7 @@ export class GameEngine {
     } else this.updateWaveDirector(dt);
 
     this.tempoDePartida += dt;
+    this.tempoJogadoTotal += dt / Math.max(1, this.gameSpeed);
     this.atualizarMiniEventos(dt);
     this.gravador.tick(dt, this.tempoDePartida, () => this.tirarFoto());
   }
@@ -3165,6 +3173,7 @@ export class GameEngine {
     if (z.nemesis) this.vingarNemesis(z);
     if (z.capataz) this.spawnFloatingText('📯 O CAPATAZ CAIU! Linha volta ao normal', z.x, z.row + 0.1, '#fde047', 1.1);
     this.onDescoberta?.('zumbis', z.variant);
+    this.onEstatistica?.('zumbi', z.variant);
     if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
     if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca' || z.variant === 'boitata' || z.variant === 'lobisomem') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
     sound.efeito('zumbi_cai', 0.12);
