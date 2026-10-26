@@ -34,6 +34,7 @@ import { DueloUi } from './duelo-ui';
 import { BossRushUi } from './boss-rush-ui';
 import { DificuldadeUi } from './dificuldade-ui';
 import { CasaUi } from './casa-ui';
+import { PerfilUi } from './perfil-ui';
 import { eliteAjustada, inteligenciaAjustada, marcarAventuraConcluida, sementesAjustadas } from './dificuldade';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
@@ -175,15 +176,23 @@ const herbario = new HerbarioUi((msg) => showToast(msg));
 
 let engine!: GameEngine;
 
+const perfil = new PerfilUi((msg) => showToast(msg));
 engine = new GameEngine(canvas, {
-  onCombo: (id) => registrarCombo(id),
+  onCombo: (id) => {
+    registrarCombo(id);
+    perfil.combo(id);
+  },
+  onEstatistica: (tipo, id) => (tipo === 'zumbi' ? perfil.zumbi(id) : perfil.planta(id)),
   onUiUpdate: () => {
     if (engine) syncHud();
   },
   onMutationPrompt: (choices) => openMutationModal(choices),
   onBloomPrompt: (plant) => balaoFlorescer.abrir(plant),
   onDescoberta: (categoria, id) => herbario.registrar(categoria, id),
-  onGameEnd: (won) => openGameOverModal(won),
+  onGameEnd: (won) => {
+    perfil.fimDePartida(won);
+    openGameOverModal(won);
+  },
   onToast: (msg) => showToast(msg)
 });
 
@@ -1454,6 +1463,14 @@ const modos = new Modos({
 const jardimZen = new JardimZen(plantaDeRetrato, (msg) => showToast(msg));
 
 // Tela de preparação antes de cada fase
+// Perfil: o tempo jogado entra a cada poucos segundos (e é salvo)
+let tempoJaContado = 0;
+setInterval(() => {
+  perfil.tempo(engine.tempoJogadoTotal - tempoJaContado);
+  tempoJaContado = engine.tempoJogadoTotal;
+  perfil.salvar();
+}, 5000);
+
 // Minha Casa: cosméticos comprados com sementes raras
 new CasaUi({
   saldo: () => sementes.total,
