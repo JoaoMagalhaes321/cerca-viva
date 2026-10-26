@@ -8,6 +8,7 @@ import { sound } from './audio';
 import {
   CHEFE_A_CADA,
   DiretorOndas,
+  LINK_DO_JOGO,
   MODIFICADORES,
   MUTACAO_A_CADA,
   Desafio,
@@ -19,9 +20,10 @@ import {
   textoParaCompartilhar
 } from './modo-infinito';
 import type { FimDePartida } from './conquistas';
+import { chaveDaSemana, codigoDoResultado, desafioDaSemana, lerCodigo, lerRanking, numeroDaSemana, pontuacao, registrarNoRanking, salvarRanking, textoDaSemana } from './semanal';
 import './modos.css';
 
-export type TipoModo = 'infinito' | 'desafio';
+export type TipoModo = 'infinito' | 'desafio' | 'semanal';
 
 /** Fase que precisa ser vencida para liberar os modos (1-3, a primeira com as 5 linhas). */
 const FASE_QUE_LIBERA = 3;
@@ -30,6 +32,8 @@ const CHAVE = 'pvz_modos_v1';
 interface Registro {
   recordeInfinito: number;
   desafios: Record<string, { melhor: number; completo: boolean; tentativas?: number }>;
+  /** Melhor pontuação por semana (Desafio da Semana). */
+  semanas: Record<string, number>;
 }
 
 /** Manda o texto pela folha de compartilhar do celular ou copia para a área de transferência. */
@@ -57,10 +61,11 @@ function lerRegistro(): Registro {
     const r = JSON.parse(localStorage.getItem(CHAVE) || '{}');
     return {
       recordeInfinito: typeof r.recordeInfinito === 'number' ? r.recordeInfinito : 0,
-      desafios: r.desafios && typeof r.desafios === 'object' ? r.desafios : {}
+      desafios: r.desafios && typeof r.desafios === 'object' ? r.desafios : {},
+      semanas: r.semanas && typeof r.semanas === 'object' ? r.semanas : {}
     };
   } catch {
-    return { recordeInfinito: 0, desafios: {} };
+    return { recordeInfinito: 0, desafios: {}, semanas: {} };
   }
 }
 
@@ -98,6 +103,8 @@ export class Modos {
 
   private readonly btnInfinito = document.getElementById('menu-infinito-btn') as HTMLButtonElement | null;
   private readonly btnDesafio = document.getElementById('menu-desafio-btn') as HTMLButtonElement | null;
+  private readonly btnSemanal = document.getElementById('menu-semanal-btn') as HTMLButtonElement | null;
+  private readonly infoSemanal = document.getElementById('menu-semanal-info');
   private readonly infoInfinito = document.getElementById('menu-infinito-info');
   private readonly infoDesafio = document.getElementById('menu-desafio-info');
   private readonly modal: HTMLDivElement;
@@ -106,6 +113,7 @@ export class Modos {
     this.modal = this.criarModal();
     this.btnInfinito?.addEventListener('click', () => this.abrirRegras('infinito'));
     this.btnDesafio?.addEventListener('click', () => this.abrirRegras('desafio'));
+    this.btnSemanal?.addEventListener('click', () => this.abrirRegras('semanal'));
     this.atualizarMenu();
     // Sempre que o menu aparece, atualiza recorde, desafio do dia e cadeado
     const menu = document.getElementById('main-menu-screen');
@@ -116,13 +124,18 @@ export class Modos {
     }
   }
 
+  /** Qual modo está rodando (null fora dos modos). */
+  public modoAtual(): TipoModo | null {
+    return this.modo;
+  }
+
   public ativo(): boolean {
     return this.modo !== null;
   }
 
   /** Texto do selo do HUD (no lugar de "Fase 1-3"). */
   public rotulo(): string {
-    return this.modo === 'desafio' ? '📅 Desafio' : '♾️ Infinito';
+    return this.modo === 'desafio' ? '📅 Desafio' : this.modo === 'semanal' ? '🏆 Semana' : '♾️ Infinito';
   }
 
   /** Volta para o modo Aventura (ao iniciar uma fase ou ir para o menu). */
@@ -144,7 +157,18 @@ export class Modos {
     const feitoHoje = reg.desafios[hoje.data]?.completo;
     const seq = sequenciaDeDias(reg.desafios);
 
-    for (const b of [this.btnInfinito, this.btnDesafio]) b?.classList.toggle('bloqueado', !ok);
+    for (const b of [this.btnInfinito, this.btnDesafio, this.btnSemanal]) b?.classList.toggle('bloqueado', !ok);
+    if (this.infoSemanal) {
+      const chave = chaveDaSemana();
+      const melhor = reg.semanas[chave] ?? 0;
+      const rk = lerRanking(chave);
+      const pos = rk.entradas.findIndex((e) => e.eu) + 1;
+      this.infoSemanal.textContent = !ok
+        ? `🔒 Vença a Fase 1-${FASE_QUE_LIBERA}`
+        : melhor > 0
+          ? `Semana ${numeroDaSemana(chave)} · ${melhor} pts${pos > 0 && rk.entradas.length > 1 ? ` · ${pos}º de ${rk.entradas.length}` : ''}`
+          : `Semana ${numeroDaSemana(chave)} · ranking com os amigos`;
+    }
     this.btnDesafio?.classList.toggle('feito', !!feitoHoje);
 
     if (this.infoInfinito) {
@@ -211,6 +235,20 @@ export class Modos {
       );
       q<HTMLElement>('.modo-placar').innerHTML =
         reg.recordeInfinito > 0 ? `🏆 Seu recorde: <b>${reg.recordeInfinito} ondas</b>` : '🏆 Ainda sem recorde';
+    } else if (tipo === 'semanal') {
+      const chave = chaveDaSemana();
+      const d = desafioDaSemana(chave);
+      const bioma = BIOME_CATALOG.find((b) => b.id === d.biomaId);
+      q<HTMLElement>('.modo-badge').textContent = `🏆 DESAFIO DA SEMANA ${numeroDaSemana(chave)}`;
+      q<HTMLElement>('.modo-titulo').textContent = `${d.ondas} ondas, pontos e ranking com os amigos`;
+      if (bioma) regras.push(`${bioma.icon} Cenário: ${bioma.name.replace(/^\d+\.\s*/, '')}`);
+      for (const m of d.modificadores) {
+        regras.push(`${MODIFICADORES[m].icone} <b>${MODIFICADORES[m].nome}:</b> ${MODIFICADORES[m].descricao}`);
+      }
+      regras.push('🎯 Pontos: 100 por onda, 15 por combo, 2 por zumbi, +300 se vencer. Pode tentar quantas vezes quiser; vale a melhor.',
+        '📤 No fim você ganha um <b>código</b>: mande no grupo. Cole o código dos amigos aqui para montar o ranking. Domingo tem outro.');
+      q<HTMLElement>('.modo-placar').innerHTML = this.htmlDoRanking(chave, reg);
+      this.ligarRanking(chave);
     } else {
       const d = desafioDoDia(chaveDoDia());
       const bioma = BIOME_CATALOG.find((b) => b.id === d.biomaId);
@@ -247,7 +285,7 @@ export class Modos {
     const e = this.o.engine;
     this.modo = tipo;
     this.recordeAntes = lerRegistro().recordeInfinito;
-    this.desafio = tipo === 'desafio' ? desafioDoDia(chaveDoDia()) : null;
+    this.desafio = tipo === 'desafio' ? desafioDoDia(chaveDoDia()) : tipo === 'semanal' ? desafioDaSemana(chaveDaSemana()) : null;
     const mods = this.desafio?.modificadores ?? [];
 
     const bioma =
@@ -283,7 +321,7 @@ export class Modos {
     this.o.prepararPartida();
     this.o.toast(
       this.desafio
-        ? `📅 Desafio do Dia: ${mods.map((m) => MODIFICADORES[m].icone + ' ' + MODIFICADORES[m].nome).join(' + ')}`
+        ? `${tipo === 'semanal' ? '🏆 Desafio da Semana' : '📅 Desafio do Dia'}: ${mods.map((m) => MODIFICADORES[m].icone + ' ' + MODIFICADORES[m].nome).join(' + ')}`
         : '♾️ Modo Infinito: prepare a defesa, a primeira onda já vem!'
     );
   }
@@ -292,6 +330,13 @@ export class Modos {
     const reg = lerRegistro();
     if (this.modo === 'infinito') {
       reg.recordeInfinito = Math.max(reg.recordeInfinito, ondasVencidas);
+    } else if (this.modo === 'semanal' && this.desafio) {
+      if (fimDePartida) {
+        const e = this.o.engine;
+        const pontos = pontuacao({ ondasVencidas, venceu: completo, combos: e.totalCombos, zumbis: e.zombiesKilled });
+        reg.semanas[this.desafio.data] = Math.max(reg.semanas[this.desafio.data] ?? 0, pontos);
+        salvarRanking(registrarNoRanking(lerRanking(this.desafio.data), 'Você', pontos, true));
+      }
     } else if (this.desafio) {
       const atual = reg.desafios[this.desafio.data] ?? { melhor: 0, completo: false, tentativas: 0 };
       reg.desafios[this.desafio.data] = {
@@ -311,7 +356,7 @@ export class Modos {
     const reg = lerRegistro();
     this.o.conquistas?.({
       venceu: won,
-      modo: this.modo === 'infinito' ? 'infinito' : 'desafio',
+      modo: this.modo === 'infinito' ? 'infinito' : this.modo === 'semanal' ? 'infinito' : 'desafio',
       deck: e.activeDeckIds,
       marcas: e.marcas,
       derrotadosNaPartida: e.tiposDerrotados,
@@ -331,6 +376,12 @@ export class Modos {
       icone.textContent = recordeNovo ? '🏆' : '♾️';
       titulo.textContent = vencidas > 0 ? `Você sobreviveu a ${ondasTxt(vencidas)}!` : 'Os zumbis venceram na 1ª onda!';
       sub.textContent = recordeNovo ? '🎉 Novo recorde!' : `Seu recorde: ${ondasTxt(reg.recordeInfinito)}.`;
+    } else if (this.modo === 'semanal' && this.desafio) {
+      const pontos = pontuacao({ ondasVencidas: vencidas, venceu: won, combos: e.totalCombos, zumbis: e.zombiesKilled });
+      const melhor = reg.semanas[this.desafio.data] ?? pontos;
+      icone.textContent = won ? '🏆' : '🎯';
+      titulo.textContent = `${pontos} pontos na semana ${numeroDaSemana(this.desafio.data)}!`;
+      sub.innerHTML = `${pontos >= melhor ? '🎉 Sua melhor da semana.' : `Sua melhor: ${melhor} pts.`} Código: <b class="codigo-semana">${codigoDoResultado(this.desafio.data, pontos)}</b>`;
     } else if (this.desafio) {
       const seq = sequenciaDeDias(reg.desafios);
       icone.textContent = won ? '🏆' : '🧠';
@@ -351,6 +402,36 @@ export class Modos {
     this.atualizarMenu();
   }
 
+  private htmlDoRanking(chave: string, reg: Registro): string {
+    const rk = lerRanking(chave);
+    const melhor = reg.semanas[chave] ?? 0;
+    const linhas = rk.entradas.length === 0
+      ? '<li class="ranking-vazio">Ninguém ainda. Jogue e mande seu código no grupo!</li>'
+      : rk.entradas.map((e, i) => `<li class="${e.eu ? 'eu' : ''}"><span>${i + 1}º</span><b>${e.nome}</b><span>${e.pontos} pts</span></li>`).join('');
+    return `<div class="ranking-semana"><div class="ranking-topo">🏅 Ranking da semana${melhor > 0 ? ` · sua melhor: <b>${melhor} pts</b>` : ''}</div><ol>${linhas}</ol>
+      <form class="ranking-form"><input type="text" name="nome" placeholder="Nome do amigo" maxlength="16" required><input type="text" name="codigo" placeholder="Código (CV-S..-.....-....)" required><button type="submit" class="secondary-btn">Adicionar</button></form></div>`;
+  }
+
+  private ligarRanking(chave: string): void {
+    const form = this.modal.querySelector<HTMLFormElement>('.ranking-form');
+    if (!form) return;
+    form.addEventListener('submit', (ev) => {
+      ev.preventDefault();
+      const nome = (form.elements.namedItem('nome') as HTMLInputElement).value;
+      const codigo = (form.elements.namedItem('codigo') as HTMLInputElement).value;
+      const lido = lerCodigo(codigo, chave);
+      if (!lido) {
+        this.o.toast('Código inválido ou de outra semana. Confere se copiou inteiro (CV-S43-01420-XXXX).');
+        return;
+      }
+      salvarRanking(registrarNoRanking(lerRanking(chave), nome, lido.pontos));
+      this.o.toast(`🏅 ${nome.trim() || 'Amigo'} entrou no ranking com ${lido.pontos} pts.`);
+      (this.modal.querySelector('.modo-placar') as HTMLElement).innerHTML = this.htmlDoRanking(chave, lerRegistro());
+      this.ligarRanking(chave);
+      this.atualizarMenu();
+    });
+  }
+
   /** Botão "Compartilhar" no resultado do Desafio do Dia (some nos outros modos). */
   private montarBotaoCompartilhar(won: boolean, vencidas: number, reg: Registro): void {
     const rodape = document.querySelector('#game-over-modal .modal-footer-row');
@@ -358,13 +439,15 @@ export class Modos {
     document.getElementById('compartilhar-desafio-btn')?.remove();
     if (!this.desafio) return;
 
-    const texto = textoParaCompartilhar({
-      desafio: this.desafio,
-      ondasVencidas: vencidas,
-      venceu: won,
-      sequencia: sequenciaDeDias(reg.desafios),
-      combos: this.o.engine.totalCombos
-    });
+    const texto = this.modo === 'semanal'
+      ? textoDaSemana(this.desafio.data, this.desafio, { ondasVencidas: vencidas, venceu: won, combos: this.o.engine.totalCombos, zumbis: this.o.engine.zombiesKilled }, LINK_DO_JOGO)
+      : textoParaCompartilhar({
+          desafio: this.desafio,
+          ondasVencidas: vencidas,
+          venceu: won,
+          sequencia: sequenciaDeDias(reg.desafios),
+          combos: this.o.engine.totalCombos
+        });
 
     const btn = document.createElement('button');
     btn.className = 'primary-btn';

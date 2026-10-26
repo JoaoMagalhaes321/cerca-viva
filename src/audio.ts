@@ -1,12 +1,34 @@
 // Som do jogo: efeitos sintetizados na hora (Web Audio) e a trilha sonora original.
-// A trilha (src/musica.ts) tem três temas próprios: dia, noite e chefe. O tema muda sozinho
-// no começo do compasso seguinte quando o clima escurece ou quando o chefe entra.
+// A trilha (src/musica.ts) tem um tema por mundo (quintal, pântano, igarapé, mangue, serra,
+// Noite da Cuca), o tema da noite no quintal e um tema por chefe. O tema muda sozinho no começo
+// do compasso seguinte quando o cenário muda, o clima escurece ou o chefe entra.
 
 import { FAIXAS, Faixa, FaixaLida, Instrumento, lerFaixa } from './musica';
 
 /** Quanto tempo à frente as notas são agendadas (s). Evita tropeços quando a tela pesa. */
 const JANELA = 0.15;
 const VOLUME_MUSICA = 0.9;
+
+/** Tema de cada bioma fora do quintal. O quintal (e seus climas) usa dia/noite. */
+const TEMA_DO_BIOMA: Record<string, Faixa['id'] | undefined> = {
+  bioluminescent_swamp: 'pantano',
+  igarape: 'igarape',
+  mangue: 'mangue',
+  serra: 'serra',
+  assombrado: 'assombrado'
+};
+
+/** Cada chefe tem o seu tema; nos outros cenários toca a Colheitadeira Z. */
+export function temaDoChefe(bioma: string): Faixa['id'] {
+  if (bioma === 'igarape') return 'chefe_mata'; // Mapinguari
+  if (bioma === 'assombrado') return 'chefe_cuca'; // Cuca
+  if (bioma === 'serra') return 'chefe_vento'; // Boitatá
+  return 'chefe';
+}
+
+export function temaDoBioma(bioma: string, noite: boolean): Faixa['id'] {
+  return TEMA_DO_BIOMA[bioma] ?? (noite ? 'noite' : 'dia');
+}
 
 class SoundManager {
   private ctx: AudioContext | null = null;
@@ -16,6 +38,10 @@ class SoundManager {
   public bossMode = false;
   /** Cena noturna (tempestade ou névoa): toca o tema da noite. */
   public night = false;
+  /** Bioma em campo (id de BiomeDefinition): escolhe o tema do mundo e o tema do chefe. */
+  public bioma = 'front_yard';
+  /** Chamado quando uma faixa começa (troca de tema ou início), com o título dela. */
+  public onFaixa: ((titulo: string, id: Faixa['id']) => void) | null = null;
 
   private seqTimer: number | null = null;
   private musica: GainNode | null = null;
@@ -52,7 +78,9 @@ class SoundManager {
   }
 
   private temaDesejado(): Faixa['id'] {
-    if (this.bossMode) return 'chefe';
+    if (this.bossMode) return temaDoChefe(this.bioma);
+    const mundo = TEMA_DO_BIOMA[this.bioma];
+    if (mundo) return mundo;
     return this.night ? 'noite' : 'dia';
   }
 
@@ -90,6 +118,7 @@ class SoundManager {
       this.atual = this.faixa(this.temaDesejado());
       this.passo = 0;
       this.proximoTempo = ctx.currentTime + 0.06;
+      this.anunciar(this.atual);
     }
     // Se ficou muito para trás (aba em segundo plano), pula para agora em vez de despejar notas
     if (this.proximoTempo < ctx.currentTime - 0.3) this.proximoTempo = ctx.currentTime + 0.02;
@@ -103,6 +132,7 @@ class SoundManager {
         if (desejado !== f.faixa.id) {
           this.atual = this.faixa(desejado);
           this.passo = 0;
+          this.anunciar(this.atual);
         }
       }
       const faixa = this.atual!;
@@ -112,6 +142,16 @@ class SoundManager {
       this.passo = (this.passo + 1) % faixa.totalPassos;
       this.proximoTempo += dur;
     }
+  }
+
+  private anunciar(f: FaixaLida): void {
+    if (this.onFaixa) this.onFaixa(f.faixa.titulo, f.faixa.id);
+  }
+
+  /** Título do tema que tocaria agora (para o HUD e para testes). */
+  public temaAtual(): { id: Faixa['id']; titulo: string } {
+    const f = FAIXAS[this.temaDesejado()];
+    return { id: f.id, titulo: f.titulo };
   }
 
   private tocarPasso(ctx: AudioContext, f: FaixaLida, passo: number, t: number, dur: number): void {
@@ -230,6 +270,32 @@ class SoundManager {
         lp.frequency.exponentialRampToValueAtTime(700, fim);
         lp.connect(g);
         this.osc(ctx, 'sawtooth', freq, t, fim, lp);
+        break;
+      }
+      case 'flauta': {
+        // Flauta de bambu: ataque macio, sopro leve e vibrato lento
+        const fim = t + Math.min(dur, 1.4) + 0.08;
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(vol, t + 0.05);
+        g.gain.setValueAtTime(vol, Math.max(t + 0.05, fim - 0.1));
+        g.gain.exponentialRampToValueAtTime(0.0001, fim);
+        g.connect(this.musica!);
+        const lp = ctx.createBiquadFilter();
+        lp.type = 'lowpass';
+        lp.frequency.value = 1800;
+        lp.connect(g);
+        const o = this.osc(ctx, 'triangle', freq, t, fim, lp);
+        const lfo = ctx.createOscillator();
+        const prof = ctx.createGain();
+        lfo.frequency.value = 4.5;
+        prof.gain.setValueAtTime(0, t);
+        prof.gain.linearRampToValueAtTime(freq * 0.008, t + 0.35);
+        lfo.connect(prof);
+        prof.connect(o.frequency);
+        lfo.start(t);
+        lfo.stop(fim);
+        this.ruidoFiltrado(ctx, t, 0.08, vol * 0.25, 'bandpass', freq * 2);
         break;
       }
       case 'lider': {

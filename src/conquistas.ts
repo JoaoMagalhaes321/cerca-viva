@@ -20,6 +20,7 @@ export const CONQUISTAS: Conquista[] = [
   { id: 'sem_perder_planta', nome: 'Jardineiro cuidadoso', icone: '🧤', descricao: 'Vença uma fase sem perder nenhuma planta.' },
   { id: 'jardim_florido', nome: 'Jardim florido', icone: '🌼', descricao: 'Floresça as 11 plantas da Aventura (qualquer caminho).' },
   { id: 'noite_da_cuca', nome: 'A Cuca foi dormir', icone: '🎃', descricao: 'Derrote a Cuca na Noite da Cuca (evento de outubro).' },
+  { id: 'boitata_apagado', nome: 'Fogo apagado', icone: '🐍', descricao: 'Derrote o Boitatá na Serra do Vento.' },
   { id: 'cinco_adubadas', nome: 'Terra boa', icone: '🌫️', descricao: 'Tenha 5 plantas adubadas ao mesmo tempo.' },
   { id: 'curupira_cheio', nome: 'Pegadas em todos', icone: '👣', descricao: 'Confunda 4 zumbis de uma vez com o Curupira.' },
   { id: 'mapinguari_fogo', nome: 'Pelo em chamas', icone: '🔥', descricao: 'Derrote o Mapinguari com um deck só de Lírio, Draco-Pimenta e Cacto-Muralha.' },
@@ -27,6 +28,7 @@ export const CONQUISTAS: Conquista[] = [
   { id: 'infinito_20', nome: 'Noite longa', icone: '♾️', descricao: 'Sobreviva a 20 ondas no Modo Infinito.' },
   { id: 'desafio_7', nome: 'Semana cheia', icone: '🔥', descricao: 'Vença o Desafio do Dia 7 dias seguidos.' },
   { id: 'expedicao', nome: 'Expedicionário', icone: '🧭', descricao: 'Conclua uma Expedição.' },
+  { id: 'vasos_10', nome: 'Dedo verde', icone: '🪴', descricao: 'Resolva os 10 quebra-cabeças dos Vasos.' },
   { id: 'cem_zumbis', nome: 'Cem na cerca', icone: '🧟', descricao: 'Derrote 100 zumbis no total.' },
   { id: 'herbario_completo', nome: 'Herbário completo', icone: '📗', descricao: 'Descubra tudo o que há no Herbário.' }
 ];
@@ -53,7 +55,7 @@ export function salvarConquistas(ids: string[], armazenamento: Pick<Storage, 'se
 /** O que a checagem olha no fim de uma partida. */
 export interface FimDePartida {
   venceu: boolean;
-  modo: 'aventura' | 'infinito' | 'desafio' | 'expedicao' | 'evento';
+  modo: 'aventura' | 'infinito' | 'desafio' | 'expedicao' | 'evento' | 'vasos';
   /** Mundo da fase (Aventura). */
   mundo?: number;
   deck: string[];
@@ -63,6 +65,8 @@ export interface FimDePartida {
   ondasVencidas?: number;
   diasSeguidos?: number;
   expedicaoConcluida?: boolean;
+  /** Quebra-cabeças dos Vasos resolvidos até agora. */
+  vasosResolvidos?: number;
 }
 
 export interface Contexto {
@@ -82,7 +86,7 @@ export function verificarConquistas(ganhas: string[], fim: FimDePartida | null, 
     const m = fim.marcas;
     const aventura = fim.modo === 'aventura';
     ok('primeira_vitoria', aventura && fim.venceu);
-    ok('cerca_intacta', fim.venceu && m.cercasQuebradas === 0 && fim.modo !== 'desafio');
+    ok('cerca_intacta', fim.venceu && m.cercasQuebradas === 0 && fim.modo !== 'desafio' && fim.modo !== 'vasos');
     ok('cinco_combos', m.maxCombosNaOnda >= 5);
     ok('sem_perder_planta', fim.venceu && m.plantasPerdidas === 0 && (fim.modo === 'aventura' || fim.modo === 'expedicao'));
     ok('cinco_adubadas', m.maxAdubadas >= 5);
@@ -95,7 +99,9 @@ export function verificarConquistas(ganhas: string[], fim: FimDePartida | null, 
     ok('infinito_20', fim.modo === 'infinito' && (fim.ondasVencidas ?? 0) >= 20);
     ok('desafio_7', fim.modo === 'desafio' && (fim.diasSeguidos ?? 0) >= 7);
     ok('expedicao', fim.modo === 'expedicao' && !!fim.expedicaoConcluida);
+    ok('vasos_10', fim.modo === 'vasos' && (fim.vasosResolvidos ?? 0) >= 10);
     ok('noite_da_cuca', fim.venceu && fim.derrotadosNaPartida.includes('cuca'));
+    ok('boitata_apagado', fim.derrotadosNaPartida.includes('boitata'));
   }
 
   const h = ctx.herbario;
