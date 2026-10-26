@@ -4,7 +4,7 @@ import { SYNERGY_RECIPES } from '../src/types';
 
 // O motor avisa cada combo pelo id da receita; o Livro de Combos só funciona se os ids baterem.
 const engineSrc = readFileSync(new URL('../src/engine.ts', import.meta.url), 'utf8');
-const reported = [...engineSrc.matchAll(/registerCombo\('([a-z_]+)'\)/g)].map((m) => m[1]);
+const reported = [...engineSrc.matchAll(/registerCombo\('([a-z_]+)'/g)].map((m) => m[1]);
 
 describe('Livro de combos x motor', () => {
   it('todo combo que o motor avisa existe no livro', () => {

@@ -27,6 +27,7 @@ import {
 } from './cerca';
 import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { Foto, Gravador } from './replay';
+import { CENAS, Vfx, criarCena, desenharVfx } from './vfx';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { REACAO, Reacao, TipoReacao, novaReacao } from './reacoes';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
@@ -290,6 +291,16 @@ export class GameEngine {
   public tiposDerrotados: string[] = [];
   /** Grava o melhor momento da partida (replay na tela de resultado). */
   public gravador = new Gravador();
+  /** Efeitos visuais dos combos em andamento. */
+  public vfx: Vfx[] = [];
+  /** Pausa de impacto: o jogo congela por um instante no combo. */
+  private pausaDeImpacto = 0;
+  /** Soquinho de zoom no ponto do combo (0 a 1, decai). */
+  private soco = 0;
+  private socoX = 4.5;
+  private socoY = 2.5;
+  private comboSeq = 0;
+  private comboSeqTimer = 0;
   private tempoDePartida = 0;
   public marcas = { cercasQuebradas: 0, plantasPerdidas: 0, plantasAfogadas: 0, combosNaOnda: 0, maxCombosNaOnda: 0, maxConfusos: 0, maxAdubadas: 0 };
   public gameSpeed = 1;
@@ -530,6 +541,10 @@ export class GameEngine {
     this.tiposDerrotados = [];
     this.gravador.limpar();
     this.tempoDePartida = 0;
+    this.vfx = [];
+    this.pausaDeImpacto = 0;
+    this.soco = 0;
+    this.comboSeq = 0;
     this.overdriveCharges = 2;
     this.gameOver = false;
     this.paused = false;
@@ -1285,7 +1300,7 @@ export class GameEngine {
       tile.hazard = 'none';
       tile.hazardTimer = 0;
       this.marcas.maxAdubadas = Math.max(this.marcas.maxAdubadas, this.plants.filter((p) => p.adubada).length + 1);
-      this.registerCombo('cinzas_ferteis');
+      this.registerCombo('cinzas_ferteis', col + 0.5, row);
       this.spawnFloatingText('🌱 ADUBADA!', col + 0.5, row + 0.1, '#bef264', 1.2);
       this.falar('adubada', col + 0.5, row, 0.6);
       this.spawnParticles(col + 0.5, row + 0.7, '#a3a3a3', 10);
@@ -1358,7 +1373,22 @@ export class GameEngine {
 
   public update(rawDt: number): void {
     if (this.paused || this.gameOver) return;
-    const dt = Math.min(rawDt, 0.1) * this.gameSpeed;
+    let dt = Math.min(rawDt, 0.1) * this.gameSpeed;
+    // Efeitos visuais e pausa de impacto correm no tempo real, não no tempo do jogo
+    const real = Math.min(rawDt, 0.1);
+    for (let i = this.vfx.length - 1; i >= 0; i--) {
+      this.vfx[i].t += real;
+      if (this.vfx[i].t >= this.vfx[i].dur) this.vfx.splice(i, 1);
+    }
+    if (this.soco > 0) this.soco = Math.max(0, this.soco - real * 4);
+    if (this.comboSeqTimer > 0) {
+      this.comboSeqTimer -= real;
+      if (this.comboSeqTimer <= 0) this.comboSeq = 0;
+    }
+    if (this.pausaDeImpacto > 0) {
+      this.pausaDeImpacto -= real;
+      dt = 0;
+    }
 
     for (const key of Object.keys(this.seedCooldowns)) {
       if (this.seedCooldowns[key] > 0) {
@@ -2225,9 +2255,8 @@ export class GameEngine {
         target.wetTimer > 0 ||
         target.chilledTimer > 0
       ) {
-        this.registerCombo('elemental_gale');
+        this.registerCombo('elemental_gale', target.x, target.row);
         this.reagir(target, 'vendaval');
-        this.spawnFloatingText('💨 VENDAVAL ELEMENTAL!', target.x, target.row + 0.15, '#2dd4bf', 1.3);
         for (const other of this.zombies) {
           if (other.row === target.row && other.id !== target.id && Math.abs(other.x - target.x) <= 2.4) {
             if (target.burnTimer > 0) other.burnTimer = 5.0;
@@ -2242,7 +2271,7 @@ export class GameEngine {
     // 4. SYNERGY: WATER + ELECTRIC = CHAIN LIGHTNING
     if (element === 'electric') {
       if (target.wetTimer > 0) {
-        this.registerCombo('electro_chain');
+        this.registerCombo('electro_chain', target.x, target.row);
         sound.playSynergyCombo('electro');
         this.reagir(target, 'eletro');
         const bonusMult = this.unlockedMutations.has('superconductor') ? 1.45 : 1.0;
@@ -2271,7 +2300,6 @@ export class GameEngine {
           }
         }
 
-        this.spawnFloatingText('⚡ ELETROCUSSÃO!', target.x, target.row + 0.15, '#c084fc', 1.3);
 
         const maxJumps = this.unlockedMutations.has('superconductor') ? 5 : 3;
         let jumps = 0;
@@ -2309,20 +2337,19 @@ export class GameEngine {
     if (element === 'ice') {
       target.chilledTimer = 7.0;
       if (target.wetTimer > 0 && target.frozenTimer <= 0) {
-        this.registerCombo('flash_freeze');
+        this.registerCombo('flash_freeze', target.x, target.row);
         sound.efeito('congelar', 0.2);
         this.reagir(target, 'gelo');
         target.frozenTimer = 3.2;
         target.wetTimer = 0;
         finalDamage += 20;
-        this.spawnFloatingText('❄️ CONGELAMENTO!', target.x, target.row + 0.2, '#67e8f9', 1.3);
       }
     }
 
     // 6. SYNERGY: FIRE + ICE (Thermal Shock) OR FIRE + TOXIN (Bio-Combustion Explosion!)
     if (element === 'fire') {
       if (target.frozenTimer > 0 || target.chilledTimer > 0) {
-        this.registerCombo('thermal_shock');
+        this.registerCombo('thermal_shock', target.x, target.row);
         sound.playSynergyCombo('thermal');
         this.reagir(target, 'choque');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.2 : 1.45;
@@ -2332,7 +2359,6 @@ export class GameEngine {
 
         this.spawnParticles(target.x, target.row + 0.5, '#f97316', 22);
         this.spawnParticles(target.x, target.row + 0.5, '#67e8f9', 16);
-        this.spawnFloatingText('💥 CHOQUE TÉRMICO!', target.x, target.row + 0.1, '#fb923c', 1.45);
         this.sacudir(5, 0.25, 'leve');
 
         for (const other of this.zombies) {
@@ -2346,7 +2372,7 @@ export class GameEngine {
           }
         }
       } else if (target.poisonTimer > 0) {
-        this.registerCombo('bio_blast');
+        this.registerCombo('bio_blast', target.x, target.row);
         sound.playSynergyCombo('thermal');
         this.reagir(target, 'bio');
         const radius = this.unlockedMutations.has('thermal_mastery') ? 2.3 : 1.6;
@@ -2356,7 +2382,6 @@ export class GameEngine {
 
         this.spawnParticles(target.x, target.row + 0.5, '#a3e635', 24);
         this.spawnParticles(target.x, target.row + 0.5, '#f97316', 18);
-        this.spawnFloatingText('☣️ EXPLOSÃO BIOQUÍMICA!', target.x, target.row + 0.1, '#a3e635', 1.45);
         this.sacudir(5, 0.25, 'leve');
 
         for (const other of this.zombies) {
@@ -3151,18 +3176,35 @@ export class GameEngine {
   /** Marca a reação visual do zumbi a um combo e solta a onda de impacto (ver reacoes.ts). */
   private reagir(z: ZombieEntity, tipo: TipoReacao): void {
     z.reacao = novaReacao(tipo);
-    if (acessibilidade.reduzirEfeitos) return;
+    // A cena do combo (vfx.ts) já desenha o anel; a onda própria só volta com REACAO.ondaComCena.
+    if (acessibilidade.reduzirEfeitos || !REACAO.ondaComCena) return;
     const onda = REACAO.onda[tipo];
     if (this.ondas.length >= 12) this.ondas.shift();
     this.ondas.push({ x: z.x, y: z.row + 0.55, raio: onda.raio, life: onda.dura, maxLife: onda.dura, color: onda.cor });
   }
 
-  private registerCombo(synergyId: string): void {
+  private registerCombo(synergyId: string, x = 4.5, y = 2): void {
     this.totalCombos++;
     this.gravador.combo(this.tempoDePartida);
     this.marcas.combosNaOnda++;
     this.marcas.maxCombosNaOnda = Math.max(this.marcas.maxCombosNaOnda, this.marcas.combosNaOnda);
     this.onCombo?.(synergyId);
+    // Cena do combo: efeitos, faixa com contador de sequência, pausa de impacto e soquinho
+    this.comboSeq++;
+    this.comboSeqTimer = 2.2;
+    const reduzido = acessibilidade.reduzirEfeitos;
+    const faixaAntiga = this.vfx.findIndex((v) => v.tipo === 'faixa');
+    if (faixaAntiga >= 0) this.vfx.splice(faixaAntiga, 1);
+    this.vfx.push(...criarCena(synergyId, x, y, this.comboSeq, reduzido));
+    if (this.vfx.length > 40) this.vfx.splice(0, this.vfx.length - 40);
+    const cena = CENAS[synergyId];
+    if (cena && !reduzido && !movimentoReduzido) {
+      if (cena.pausa > 0) this.pausaDeImpacto = Math.max(this.pausaDeImpacto, cena.pausa);
+      if (cena.tremor > 0) this.sacudir(cena.tremor, 0.22, cena.tremor >= 6 ? 'medio' : 'leve');
+      this.soco = Math.max(this.soco, cena.tremor >= 5 ? 1 : 0.6);
+      this.socoX = x;
+      this.socoY = y;
+    }
   }
 
   /** Um personagem fala: balão curto perto dele (no máximo 3 na tela, sem repetir no mesmo lugar). */
@@ -3283,12 +3325,23 @@ export class GameEngine {
 
     const agora = performance.now();
     this.medirDesempenho(agora);
-    const tremendo = agora < this.shakeUntil;
+    const tremendo = agora < this.shakeUntil || this.soco > 0;
     if (tremendo) {
-      const total = Math.max(1, this.shakeUntil - this.shakeStart);
-      const forca = this.shakeAmp * ((this.shakeUntil - agora) / total);
       ctx.save();
-      ctx.translate((Math.random() * 2 - 1) * forca, (Math.random() * 2 - 1) * forca);
+      if (agora < this.shakeUntil) {
+        const total = Math.max(1, this.shakeUntil - this.shakeStart);
+        const forca = this.shakeAmp * ((this.shakeUntil - agora) / total);
+        ctx.translate((Math.random() * 2 - 1) * forca, (Math.random() * 2 - 1) * forca);
+      }
+      if (this.soco > 0) {
+        // Soquinho de câmera: a tela dá uma leve aproximada no ponto do combo e volta
+        const z = 1 + 0.035 * this.soco * this.soco;
+        const zx = this.boardLeft + this.socoX * this.cellW;
+        const zy = this.boardTop + (this.socoY + 0.5) * this.cellH;
+        ctx.translate(zx, zy);
+        ctx.scale(z, z);
+        ctx.translate(-zx, -zy);
+      }
     }
 
     if (this.boardCacheDirty) {
@@ -3713,6 +3766,12 @@ export class GameEngine {
       ctx.restore();
     }
 
+    // 9b. Cenas dos combos (anéis, estilhaços, raios, tornado, cinzas)
+    if (this.vfx.length > 0) {
+      const tela = { left: this.boardLeft, top: this.boardTop, cw: this.cellW, ch: this.cellH, width };
+      for (const v of this.vfx) if (v.tipo !== 'faixa') desenharVfx(ctx, v, tela);
+    }
+
     // 10. Draw Collectible Sun Orbs
     for (const s of this.suns) {
       const sx = this.boardLeft + s.x * this.cellW;
@@ -3759,6 +3818,12 @@ export class GameEngine {
       ctx.fillStyle = ft.color;
       ctx.fillText(ft.text, fx, fy);
       ctx.restore();
+    }
+
+    // 12a. Faixa do combo, por cima dos textos
+    if (this.vfx.length > 0) {
+      const tela = { left: this.boardLeft, top: this.boardTop, cw: this.cellW, ch: this.cellH, width };
+      for (const v of this.vfx) if (v.tipo === 'faixa') desenharVfx(ctx, v, tela);
     }
 
     // 12b. Balões de fala (por cima dos textos)

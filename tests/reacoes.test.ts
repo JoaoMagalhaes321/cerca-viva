@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { CENAS } from '../src/vfx';
 import { REACAO, novaReacao, progressoDaReacao, silhuetaClara, tintaDoEstado } from '../src/reacoes';
 
 const semEstado = { frozenTimer: 0, chilledTimer: 0, poisonTimer: 0, burnTimer: 0, wetTimer: 0 };
@@ -35,5 +36,12 @@ describe('Reações visuais dos zumbis', () => {
     expect(tintaDoEstado({ ...semEstado, wetTimer: 1, burnTimer: 1 })?.cor).toBe('#f97316');
     expect(tintaDoEstado({ ...semEstado, burnTimer: 1, poisonTimer: 1 })?.cor).toBe('#84cc16');
     expect(tintaDoEstado({ ...semEstado, poisonTimer: 1, frozenTimer: 1 })?.cor).toBe('#7dd3fc');
+  });
+
+  it('onda própria desligada só enquanto todo combo tem cena desenhada (D-20261026-5)', () => {
+    const comboDaReacao = { eletro: 'electro_chain', choque: 'thermal_shock', bio: 'bio_blast', gelo: 'flash_freeze', vendaval: 'elemental_gale' } as const;
+    if (!REACAO.ondaComCena) {
+      for (const id of Object.values(comboDaReacao)) expect(CENAS[id], id).toBeDefined();
+    }
   });
 });

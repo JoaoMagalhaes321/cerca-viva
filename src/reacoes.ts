@@ -22,6 +22,12 @@ export const REACAO = {
   tremida: 3,
   /** Segundos do clarão branco ao levar dano (hitFlash começa em 1 e cai 4 por segundo). */
   clarao: 0.25,
+  /**
+   * Desenhar também a onda de impacto própria do zumbi? Desligada desde que as cenas de combo
+   * (vfx.ts, PR #47) passaram a desenhar anel, raio e explosão: as duas juntas ficavam repetidas
+   * (D-20261026-5). Troque para true para ter as duas.
+   */
+  ondaComCena: false as boolean,
   /** Onda de impacto: raio final em casas e duração em segundos, por combo. */
   onda: {
     choque: { raio: 1.45, dura: 0.45, cor: '#fb923c' },
