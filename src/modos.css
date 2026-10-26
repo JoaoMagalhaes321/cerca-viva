@@ -123,3 +123,15 @@
 .menu-halloween .mode-icon { animation: abobora-pisca 2.4s ease-in-out infinite; }
 @keyframes abobora-pisca { 0%, 100% { filter: drop-shadow(0 0 2px #fb923c); } 50% { filter: drop-shadow(0 0 9px #fbbf24); } }
 .menu-halloween.hidden { display: none !important; }
+
+/* Desafio da Semana: ranking local */
+.ranking-semana { text-align: left; }
+.ranking-topo { font-size: 0.8rem; color: #fde68a; margin-bottom: 4px; }
+.ranking-semana ol { list-style: none; margin: 0 0 6px; padding: 0; max-height: 120px; overflow-y: auto; }
+.ranking-semana li { display: grid; grid-template-columns: 28px 1fr auto; gap: 6px; font-size: 0.76rem; padding: 2px 6px; border-radius: 6px; }
+.ranking-semana li.eu { background: rgba(250, 204, 21, 0.15); }
+.ranking-semana li.ranking-vazio { display: block; color: #94a3b8; }
+.ranking-form { display: flex; gap: 4px; flex-wrap: wrap; }
+.ranking-form input { flex: 1; min-width: 90px; font: inherit; font-size: 0.74rem; padding: 4px 6px; border-radius: 8px; border: 1px solid rgba(148, 163, 184, 0.4); background: rgba(15, 23, 42, 0.7); color: #f8fafc; }
+.ranking-form button { font-size: 0.72rem; padding: 4px 10px; }
+.codigo-semana { font-family: ui-monospace, monospace; color: #fde68a; letter-spacing: 0.5px; user-select: all; }
