@@ -11,3 +11,6 @@ patches/*.zip
 .DS_Store
 Thumbs.db
 __pycache__/
+# Chave de upload da Play Store: PRIVADA, nunca no repositório (vai como secret do GitHub)
+*.jks
+*.aab

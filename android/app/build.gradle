@@ -8,8 +8,9 @@ android {
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         // No GitHub Actions o número da build vira a versão, para cada APK novo instalar por cima do anterior
-        versionCode((System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger())
-        versionName "1.0.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}"
+        // Para a Play Store o workflow play-store.yml passa CV_VERSION_CODE (cada envio precisa ser maior)
+        versionCode((System.getenv("CV_VERSION_CODE") ?: System.getenv("GITHUB_RUN_NUMBER") ?: "1").toInteger())
+        versionName(System.getenv("CV_VERSION_NAME") ?: "1.0.${System.getenv("GITHUB_RUN_NUMBER") ?: "0"}")
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -29,8 +30,23 @@ android {
             keyPassword 'android'
         }
     }
+    // Assinatura da Play Store: a chave é PRIVADA e nunca entra no repositório.
+    // O workflow play-store.yml cria o arquivo a partir dos secrets do GitHub e passa estas variáveis.
+    // No PC: defina as mesmas variáveis de ambiente antes de rodar ./gradlew bundleRelease.
+    def chaveRelease = System.getenv("CV_KEYSTORE_FILE")
+    if (chaveRelease) {
+        signingConfigs {
+            release {
+                storeFile file(chaveRelease)
+                storePassword System.getenv("CV_KEYSTORE_PASSWORD")
+                keyAlias System.getenv("CV_KEY_ALIAS")
+                keyPassword System.getenv("CV_KEY_PASSWORD")
+            }
+        }
+    }
     buildTypes {
         release {
+            if (chaveRelease) signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

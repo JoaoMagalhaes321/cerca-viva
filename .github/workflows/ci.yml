@@ -68,8 +68,8 @@ jobs:
           npm run build
           npx cap sync android
 
-      - name: Compilar o APK (sem publicar)
+      - name: Compilar o APK e o pacote da Play Store (sem assinar nem publicar)
         working-directory: ./android
         run: |
           chmod +x gradlew
-          ./gradlew assembleDebug
+          ./gradlew assembleDebug bundleRelease
