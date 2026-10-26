@@ -5,7 +5,7 @@
 import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engine';
 import { CERCA, CercaViva } from './cerca';
 import { MUDA, estagioDaPlanta, prontaParaFlorescer } from './florescer';
-import { getSprite, SpriteImage } from './sprites';
+import { getSpriteClarao, getSprite, SpriteImage } from './sprites';
 
 // Brilho redondo (degradê radial) desenhado uma vez por cor e reaproveitado: criar o degradê
 // a cada quadro para cada planta e projétil custava caro no celular.
@@ -607,8 +607,11 @@ export class CharacterRenderer {
       );
     }
 
-    ctx.translate(cx, cy + cellH * 0.18);
-    ctx.scale(s, s * breathe);
+    // Vida: pulinho de vez em quando e esmagar-e-esticar ao atirar (recua e alarga, depois volta)
+    const pulo = Math.pow(Math.max(0, Math.sin(t * 0.55 + p.id)), 16);
+    const kick = p.scaleKick;
+    ctx.translate(cx, cy + cellH * 0.18 - pulo * cellH * 0.06);
+    ctx.scale(s * (1 + kick * 0.28 - pulo * 0.05), s * breathe * (1 - kick * 0.22 + pulo * 0.08));
 
     const img = getSprite(p.def.id, isNight);
     if (img) {
@@ -733,11 +736,13 @@ export class CharacterRenderer {
     const armBob = z.isEating
       ? Math.sin(performance.now() * 0.025) * 9
       : Math.cos(walk * 1.2) * 4;
-    const bodyTilt = z.isEating
+    // Mastigando: a cabeça/corpo dá cabeçadas curtas no ritmo da mordida
+    const mastiga = z.isEating ? Math.max(0, Math.sin(performance.now() * 0.02)) * 0.06 : 0;
+    const bodyTilt = (z.isEating
       ? -0.1
       : z.variant === 'cyber_sprinter'
         ? -0.05
-        : -0.03;
+        : -0.03) - mastiga;
     const spec = ZOMBIE_SPRITES[z.variant] ?? ZOMBIE_SPRITES.basic;
     const k = spec.k;
 
@@ -756,7 +761,14 @@ export class CharacterRenderer {
           ? 0
           : Math.abs(Math.sin(walk)) * -4.5;
     ctx.translate(zx, zy + cellH * 0.24 + lift + afunda);
-    ctx.scale(baseScale * (z.confusoTimer > 0 ? -1 : 1), baseScale);
+    // Vida: esmaga no passo (ombros caem, corpo alarga) e recua ao levar dano
+    const passo = z.isEating || isZomboss || canoeiro ? 0 : Math.abs(Math.sin(walk));
+    const dano = z.hitFlash;
+    ctx.scale(
+      baseScale * (z.confusoTimer > 0 ? -1 : 1) * (1 + passo * 0.03 + dano * 0.06),
+      baseScale * (1 - passo * 0.045 - dano * 0.08)
+    );
+    if (dano > 0) ctx.rotate(dano * 0.08);
 
     const place = (img: SpriteImage): void => {
       ctx.drawImage(img, -spec.ox * k, -spec.feet * k, spec.w * k, spec.h * k);
@@ -836,6 +848,17 @@ export class CharacterRenderer {
       }
     }
 
+    // Clarão branco quando leva dano (silhueta do corpo e do braço)
+    if (dano > 0.05) {
+      ctx.globalAlpha = Math.min(0.85, dano * 0.85);
+      const clarao = getSpriteClarao(`${z.variant}--corpo`, isNight);
+      if (clarao) place(clarao);
+      if (spec.pivot && !z.lostArm) {
+        const bracoClarao = getSpriteClarao(`${z.variant}--braco`, isNight);
+        if (bracoClarao) place(bracoClarao);
+      }
+      ctx.globalAlpha = 1;
+    }
     ctx.restore();
 
     // Efeitos elementais por cima do zumbi
