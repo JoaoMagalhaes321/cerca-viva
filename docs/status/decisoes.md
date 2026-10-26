@@ -3,6 +3,36 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261026-6 · Card estilo-cartoon sai da fila: o seu "estilo vivo" cobriu o pedido
+- Card: estilo-cartoon (removido), plantas-vivas, zumbis-vivos · Branch: — · Data: 2026-10-26
+- Regra de negócio? não (visual)
+- Muda decisão anterior? sim, muda a D-20261026-4 (sua, de 26/10: lotes por mundo em estilo cartoon de traço grosso)
+- Escolha: numa sessão sua você redesenhou as 15 plantas (PR #48, já na main) e os 13 zumbis (branch
+  claude/zumbis-vivos) num acabamento pintado, tudo de uma vez. O agente não vai redesenhar por cima: tirou o card
+  estilo-cartoon da fila e criou os cards plantas-vivas (na main) e zumbis-vivos (esperando seu merge).
+- Por quê: dois redesenhos competindo nos mesmos SVGs só gerariam conflito e retrabalho; o seu é o mais recente.
+- Outras opções:
+  - A) Manter o card só para a postura cambaleante do zumbi em drawZombie — complementa o desenho novo / mexe no
+    mesmo trecho que a zumbis-vivos ainda não mergeada mudou.
+  - B) Seguir o lote 1 em traço grosso — fiel à D-20261026-4 / desfaz o seu trabalho.
+- Como trocar depois: comente no quadro "volta o estilo-cartoon" (ou "só a postura", opção A) e ele volta para a fila.
+- Fácil de reverter? sim (o card está no histórico de claude/quadro)
+
+### D-20261026-5 · Reações dos zumbis convivem com as cenas de combo; a onda própria fica desligada
+- Card: efeitos-combos · Branch: claude/efeitos-combos (559720c) · Data: 2026-10-26
+- Regra de negócio? não (visual)
+- Muda decisão anterior? sim, ajusta a D-20261026-3 (do agente) para conviver com o seu PR #47 (combos-visuais)
+- Escolha: ao trazer a main, ficou o que é seu (cenas de combo em vfx.ts, faixa com contador, sem os textos
+  flutuantes de combo) e, da efeitos-combos, o que acontece no próprio zumbi (bloco de gelo, chamas, bolhas, silhueta
+  piscando, clarão ao levar dano). A onda de impacto que a efeitos-combos desenhava no combo foi desligada pela
+  constante `REACAO.ondaComCena = false`, porque as suas cenas já desenham anel e explosão no mesmo ponto.
+  Um teste falha se algum combo com reação ficar sem cena (aí a onda deveria voltar).
+- Outras opções:
+  - A) Manter as duas (onda + cena) — mais forte / efeito em dobro e mais desenho por quadro no celular.
+  - B) Tirar também as reações por zumbi — mais leve / perde a leitura de estado, que era o pedido do card.
+- Como trocar depois: `ondaComCena` em `src/reacoes.ts`.
+- Fácil de reverter? sim
+
 ### D-20261026-4 · Estilo "cartoon de tower defense": só o jeito, não as figuras
 - Card: estilo-cartoon · Branch: (ainda sem código) · Data: 2026-10-26
 - Regra de negócio? não (visual)

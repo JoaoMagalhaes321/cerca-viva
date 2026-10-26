@@ -55,44 +55,20 @@ window.BOARD = {
   },
   "cards": [
     {
-      "id": "estilo-cartoon",
-      "fila": 1,
-      "title": "Estilo cartoon: zumbis cambaleantes e plantas mais expressivas (lote 1: Mundo 1)",
-      "domain": "jogo",
-      "column": "design",
-      "env": "none",
-      "updated": "2026-10-26",
-      "summary": "Pedido seu (26/10): desenhos que lembrem o clássico de plantas contra zumbis sem copiar. Combinado: só o jeito (traço grosso, cabeça grande, expressão exagerada, zumbi curvado com braço pendurado e roupa rasgada, plantas com olhos grandes), cada personagem com desenho próprio (D-20261026-4). Lote 1: plantas do Mundo 1 e zumbis básico, cone e balde, com captura para você aprovar antes do resto.",
-      "pending": [
-        "Redesenhar os SVGs do lote 1 (dia e noite)",
-        "Postura e balanço do zumbi em drawZombie",
-        "Captura lado a lado antes/depois no relatório"
-      ],
-      "links": [
-        {
-          "label": "sprites",
-          "path": "public/sprites/dia"
-        },
-        {
-          "label": "renderer.ts",
-          "path": "src/renderer.ts"
-        }
-      ]
-    },
-    {
       "id": "efeitos-combos",
       "title": "Reações dos zumbis aos elementos e aos combos",
       "domain": "jogo",
       "column": "qas",
       "env": "branch",
       "updated": "2026-10-26",
-      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação curta (eletrocussão com silhueta piscando, onda de impacto no choque térmico e na explosão bioquímica). O clarão ao levar dano, que nunca era desenhado, passou a aparecer. Só desenho, nada de dano ou tempo muda (D-20261026-3). Build ok, 142 testes; conferido no Chromium.",
+      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio por cima do zumbi (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação no próprio zumbi (eletrocussão com silhueta piscando, tremida). O clarão ao levar dano, que nunca era desenhado, passou a aparecer. Já traz a main com as cenas de combo do PR #47; a onda de impacto própria ficou desligada para não repetir o anel das cenas (D-20261026-5). Só desenho, nada de dano ou tempo muda. Build ok, 143 testes.",
       "delivered": [
         "Reações + 4 testes (3594ecd, 26/10)",
-        "Conferido no Chromium com os 5 estados e 2 reações ao mesmo tempo (26/10)"
+        "Conferido no Chromium com os 5 estados e 2 reações ao mesmo tempo (26/10)",
+        "Main trazida (cenas de combo, PR #47), conflito em engine.ts resolvido e onda repetida desligada + 1 teste (559720c, 26/10)"
       ],
       "pending": [
-        "Seu merge de claude/efeitos-combos na main",
+        "Seu merge de claude/efeitos-combos na main, de preferência por último: ela conflita com claude/zumbis-vivos (src/renderer.ts) e com claude/mundo4-recompensas (src/engine.ts). Depois que essas entrarem, a próxima rodada traz a main de novo e resolve",
         "Desempenho no celular NÃO MEDIDO: se ficar lento com muitos zumbis coloridos, me diga"
       ],
       "links": [
@@ -110,6 +86,50 @@ window.BOARD = {
           "label": "Captura",
           "path": "docs/status/relatorios/img/2026-10-26-efeitos-combos.png",
           "branch": "claude/quadro"
+        }
+      ]
+    },
+    {
+      "id": "combos-visuais",
+      "title": "Combos mais visuais: cenas, faixa com contador e pausa de impacto",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (25/10). Na main: cada combo vira uma cena no tabuleiro (bola de fogo e anel no choque térmico, raio ramificado na eletrocussão, cacos no congelamento, tornado no vendaval, brotos nas cinzas férteis), faixa com o nome e ×N da sequência, pausa de 40–80 ms e leve zoom. Com \"reduzir efeitos\" sobra a faixa e um anel discreto.",
+      "delivered": [
+        "Cenas de combo (8475c6f, 25/10)",
+        "Mergeado na main por você (PR #47, 7156b4b, 25/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "vfx.ts",
+          "path": "src/vfx.ts"
+        }
+      ]
+    },
+    {
+      "id": "plantas-vivas",
+      "title": "Plantas no estilo vivo: 15 sprites redesenhados",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (25/10). Na main: as 15 plantas com acabamento pintado (gradientes, reflexos, olhos vidrados, folhas com nervura), dia e noite, geradas por scripts/gen_vivo_plantas.py. A versão da noite escurece tudo menos o que emite luz.",
+      "delivered": [
+        "Redesenho das 15 plantas (372acc2, 25/10)",
+        "Mergeado na main por você (PR #48, caed811, 25/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "gerador",
+          "path": "scripts/gen_vivo_plantas.py"
+        },
+        {
+          "label": "sprites",
+          "path": "public/sprites/dia/peashooter.svg"
         }
       ]
     },
@@ -239,6 +259,35 @@ window.BOARD = {
       "delivered": [
         "Mangue-Vermelho + 6 testes (4022fe0, 26/10)",
         "Conferido no Chromium: planta na maré da 4-5 e segura o Siri (\"PRESO NAS RAÍZES\") (26/10)"
+      ]
+    },
+    {
+      "id": "zumbis-vivos",
+      "title": "Zumbis no estilo vivo: 13 personagens redesenhados",
+      "domain": "jogo",
+      "column": "qas",
+      "env": "branch",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (25/10, 23h). Na branch claude/zumbis-vivos, ainda fora da main: os 13 zumbis redesenhados no mesmo acabamento das plantas (gradientes, olhos esbugalhados, cérebro exposto, roupa rasgada), dia e noite, com a tabela de medidas do renderer ajustada. Substitui o card estilo-cartoon que estava na fila (D-20261026-6).",
+      "delivered": [
+        "Redesenho dos 13 zumbis (cc7a3e1, 25/10)",
+        "Sem conflito com a main atual (conferido pelo agente em 26/10)"
+      ],
+      "pending": [
+        "Seu merge de claude/zumbis-vivos na main (o agente não roda o build dessa branch: não é dele)",
+        "Conflita com claude/efeitos-combos em src/renderer.ts: mergeie esta antes, o agente resolve na efeitos-combos"
+      ],
+      "links": [
+        {
+          "label": "renderer.ts",
+          "path": "src/renderer.ts",
+          "branch": "claude/zumbis-vivos"
+        },
+        {
+          "label": "sprites",
+          "path": "public/sprites/dia/basic--corpo.svg",
+          "branch": "claude/zumbis-vivos"
+        }
       ]
     },
     {
