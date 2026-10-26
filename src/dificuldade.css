@@ -1,0 +1,16 @@
+/* Escolha da dificuldade */
+.dif-card { max-width: 520px; }
+.dif-intro { font-size: 0.76rem; color: #cbd5e1; margin: 4px 0 10px; }
+.dif-lista { display: flex; flex-direction: column; gap: 8px; }
+.dif-opcao {
+  display: grid; grid-template-columns: 40px 1fr; align-items: center; gap: 10px; text-align: left;
+  padding: 10px 12px; border-radius: 12px; cursor: pointer; font: inherit; color: #f1f5f9;
+  border: 2px solid rgba(148, 163, 184, 0.35); background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+}
+.dif-opcao:not([disabled]):hover { border-color: #a3e635; }
+.dif-opcao.ativa { border-color: #facc15; box-shadow: 0 0 0 2px rgba(250, 204, 21, 0.3); }
+.dif-opcao.fechada { opacity: 0.5; cursor: not-allowed; }
+.dif-pesadelo:not(.fechada) { background: linear-gradient(180deg, rgba(69, 10, 10, 0.95), rgba(15, 10, 20, 0.95)); border-color: rgba(239, 68, 68, 0.6); }
+.dif-ico { font-size: 1.6rem; text-align: center; }
+.dif-corpo strong { display: block; font-size: 0.9rem; }
+.dif-corpo small { display: block; font-size: 0.7rem; color: #94a3b8; line-height: 1.3; }

@@ -25,6 +25,8 @@ export interface OpcoesPreparacao {
   dicaBloqueada: (plantId: string) => string;
   toast: (msg: string) => void;
   abrirAlmanaque: () => void;
+  /** Selo da dificuldade escolhida (ex.: "🔥 Difícil"), vazio no Normal. */
+  seloDificuldade?: () => string;
 }
 
 /** Zumbis da fase agrupados por tipo, na ordem em que aparecem. */
@@ -142,7 +144,7 @@ export class Preparacao {
     const bioma = BIOME_CATALOG.find((b) => b.id === biomaDoMundo(level.world));
     this.q<HTMLElement>('.prep-badge').textContent = level.evento
       ? `🎃 EVENTO · ${bioma?.name ?? ''}`
-      : `⚔️ PREPARAÇÃO · FASE ${level.world}-${level.stage} · ${bioma?.icon ?? ''} ${bioma?.name.replace(/^\d+\.\s*/, '') ?? ''}`;
+      : `⚔️ PREPARAÇÃO · FASE ${level.world}-${level.stage} · ${bioma?.icon ?? ''} ${bioma?.name.replace(/^\d+\.\s*/, '') ?? ''}${this.o.seloDificuldade?.() ? ` · ${this.o.seloDificuldade()}` : ''}`;
     this.q<HTMLElement>('.prep-titulo').textContent = level.name.replace(/^Fase \d+-\d+:\s*/, '');
 
     // Regras especiais da fase
