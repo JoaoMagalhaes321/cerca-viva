@@ -24,6 +24,7 @@ import { aplicarModoDev, modoDevDaPagina } from './modo-dev';
 import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
+import { VasosUi } from './vasos-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
@@ -236,13 +237,17 @@ let ultimasMutacoes: string | null = null;
 function syncHud(): void {
   // O tema do HUD muda com o clima (noite e névoa escurecem a faixa do topo)
   document.body.dataset.weather = engine.weather;
-  sunAmountEl.textContent = String(engine.sun);
+  sunAmountEl.textContent = engine.vasos ? `${engine.vasosRestantes()} 🪴` : String(engine.sun);
+  const sunRotulo = sunAmountEl.nextElementSibling as HTMLElement | null;
+  if (sunRotulo) sunRotulo.textContent = engine.vasos ? 'VASOS' : 'SOL';
   waveLabelEl.textContent =
     engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
   if (modos.ativo()) {
     stageBadgeEl.textContent = modos.rotulo();
   } else if (expedicao.ativo()) {
     stageBadgeEl.textContent = expedicao.rotulo();
+  } else if (vasos.ativo()) {
+    stageBadgeEl.textContent = vasos.rotulo();
   } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
@@ -274,8 +279,17 @@ function syncHud(): void {
     const isSelected =
       engine.selectedPlantId === id && !engine.shovelActive && !engine.activePower;
     card.classList.toggle('selected', isSelected);
-    card.classList.toggle('disabled', engine.sun < def.cost);
+    if (engine.vasos) {
+      // Fase dos Vasos: a carta mostra quantos vasos restam, e apaga quando acabam
+      const restam = engine.vasos[id] ?? 0;
+      card.classList.toggle('disabled', restam <= 0);
+      const custo = card.querySelector('.seed-cost');
+      if (custo && custo.textContent !== `×${restam}`) custo.textContent = `×${restam}`;
+    } else {
+      card.classList.toggle('disabled', engine.sun < def.cost);
+    }
   });
+  if (engine.vasos) vasos.sincronizar();
 
   shovelBtn.classList.toggle('active', engine.shovelActive);
 
@@ -693,6 +707,7 @@ function updateMenuStageInfo(): void {
 function startLevel(level: LevelConfig): void {
   modos.sair();
   expedicao.sair();
+  vasos.sair();
   currentLevel = level;
   if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
@@ -928,7 +943,7 @@ function darSementes(won: boolean): number {
 
 function openGameOverModal(won: boolean): void {
   // Fechou um mundo pela primeira vez: o capítulo em quadrinhos vem antes do resultado
-  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
+  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
     engine.paused = true;
     quadrinhos.mostrar(`mundo${currentLevel.world}`, () => openGameOverModal(won));
     return;
@@ -944,6 +959,10 @@ function openGameOverModal(won: boolean): void {
   }
   if (expedicao.ativo()) {
     expedicao.mostrarResultado(won);
+    return;
+  }
+  if (vasos.ativo()) {
+    vasos.mostrarResultado(won);
     return;
   }
   if (won && engine.plants.length > 0) {
@@ -1040,7 +1059,8 @@ startBattleBtn.addEventListener('click', () => {
   else if (expedicao.ativo()) {
     showMainMenu();
     expedicao.abrir();
-  } else startLevel(currentLevel);
+  } else if (vasos.ativo()) vasos.reiniciar();
+  else startLevel(currentLevel);
 });
 
 openAlmanacFromDeckBtn.addEventListener('click', () => {
@@ -1151,7 +1171,8 @@ restartBtn.addEventListener('click', () => {
   else if (expedicao.ativo()) {
     showMainMenu();
     expedicao.abrir();
-  } else startLevel(currentLevel);
+  } else if (vasos.ativo()) vasos.reiniciar();
+  else startLevel(currentLevel);
 });
 
 // Main Menu Controls
@@ -1255,6 +1276,7 @@ menuSoundBtn.addEventListener('click', () => {
 menuHomeBtn.addEventListener('click', () => {
   modos.sair();
   expedicao.sair();
+  vasos.sair();
   showMainMenu();
 });
 
@@ -1268,6 +1290,7 @@ const modos = new Modos({
   },
   prepararPartida: () => {
     expedicao.sair();
+    vasos.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1310,6 +1333,7 @@ const expedicao = new ExpedicaoUi({
   },
   prepararPartida: () => {
     modos.sair();
+    vasos.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1317,6 +1341,21 @@ const expedicao = new ExpedicaoUi({
   mostrarMenu: () => showMainMenu(),
   toast: (msg) => showToast(msg),
   registrarNoHerbario: (concluida, nos) => herbario.registrarExpedicao(concluida, nos),
+  conquistas: (fim) => herbario.checarConquistas(fim)
+});
+
+// Fases-quebra-cabeça "Vasos" (tabuleiro fixo, vasos contados)
+const vasos = new VasosUi({
+  engine,
+  prepararPartida: () => {
+    modos.sair();
+    expedicao.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  mostrarMenu: () => showMainMenu(),
+  toast: (msg) => showToast(msg),
   conquistas: (fim) => herbario.checarConquistas(fim)
 });
 

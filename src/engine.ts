@@ -72,6 +72,8 @@ export interface PlantEntity {
   armed: boolean;
   /** Adormecida pela canção da Cuca: não ataca nem gera sol enquanto > 0. */
   dormindoTimer?: number;
+  /** Fase dos Vasos: já veio no tabuleiro; a pá não tira. */
+  fixa?: boolean;
   /** Nível da planta (sementes raras): 1 a 3. */
   nivel?: number;
 }
@@ -423,6 +425,10 @@ export class GameEngine {
   public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
   public skySunScale = 1;
+  /** Fases dos Vasos: sementes contadas (quantos vasos restam por planta). null fora delas. */
+  public vasos: Record<string, number> | null = null;
+  /** Fase dos Vasos em planejamento: dá para plantar, mas o tempo não corre. */
+  public planejando = false;
 
   public seedCooldowns: Record<string, number> = {};
   public unlockedMutations: Set<string> = new Set();
@@ -592,6 +598,8 @@ export class GameEngine {
     this.regrasAtivas = new Set();
     this.chanceElite = 0;
     this.skySunScale = 1;
+    this.vasos = null;
+    this.planejando = false;
     if (deckIds && deckIds.length > 0) {
       this.activeDeckIds = [...deckIds];
       this.selectedPlantId = this.activeDeckIds[0];
@@ -1342,14 +1350,57 @@ export class GameEngine {
     const idx = this.plants.findIndex((p) => p.row === row && p.col === col);
     if (idx !== -1) {
       const removed = this.plants[idx];
-      const refund = Math.floor(removed.def.cost * 0.5);
-      this.sun += refund;
+      if (removed.fixa) {
+        this.onToast('🪨 Essa planta é da fase: não sai do lugar.');
+        return;
+      }
       this.plants.splice(idx, 1);
       this.shovelActive = false;
       sound.playPlantPlace();
-      this.spawnFloatingText(`+${refund}☀️`, col + 0.5, row + 0.4, '#fef08a', 1.0);
+      if (this.vasos) {
+        // Nos Vasos, arrancar devolve o vaso (dá para replanejar)
+        this.vasos[removed.def.id] = (this.vasos[removed.def.id] ?? 0) + 1;
+        this.spawnFloatingText('+1 🪴', col + 0.5, row + 0.4, '#bef264', 1.0);
+      } else {
+        const refund = Math.floor(removed.def.cost * 0.5);
+        this.sun += refund;
+        this.spawnFloatingText(`+${refund}☀️`, col + 0.5, row + 0.4, '#fef08a', 1.0);
+      }
       this.onUiUpdate();
     }
+  }
+
+  /** Fase dos Vasos: planta que já vem no tabuleiro (não custa vaso e a pá não tira). */
+  public colocarPlantaFixa(plantId: string, row: number, col: number): void {
+    const def = PLANT_CATALOG.find((p) => p.id === plantId);
+    if (!def || def.instantanea) return;
+    if (this.plants.some((p) => p.row === row && p.col === col)) return;
+    this.plants.push({
+      id: this.nextEntityId++,
+      def,
+      row,
+      col,
+      hp: def.maxHp,
+      maxHp: def.maxHp,
+      attackTimer: def.attackInterval * 0.4,
+      overdriveTimer: 0,
+      animPhase: Math.random() * Math.PI * 2,
+      scaleKick: 0,
+      armored: false,
+      adubada: false,
+      idade: 0,
+      caminho: null,
+      caminhoTimer: 0,
+      armTimer: 0,
+      armed: true,
+      fixa: true
+    });
+  }
+
+  /** Quantos vasos ainda não foram plantados (0 fora das fases dos Vasos). */
+  public vasosRestantes(): number {
+    if (!this.vasos) return 0;
+    return Object.values(this.vasos).reduce((s, n) => s + Math.max(0, n), 0);
   }
 
   private tryPlacePlant(plantId: string, row: number, col: number): void {
@@ -1377,27 +1428,39 @@ export class GameEngine {
       return;
     }
 
-    if (this.sun < def.cost) {
-      this.onToast(`Sol insuficiente! Precisa de ${def.cost}☀️`);
-      return;
-    }
+    if (this.vasos) {
+      // Fase dos Vasos: cada semente é um vaso contado; sem sol e sem recarga
+      if ((this.vasos[def.id] ?? 0) <= 0) {
+        this.onToast(`🪴 Os vasos de ${def.name} acabaram.`);
+        return;
+      }
+    } else {
+      if (this.sun < def.cost) {
+        this.onToast(`Sol insuficiente! Precisa de ${def.cost}☀️`);
+        return;
+      }
 
-    if ((this.seedCooldowns[def.id] || 0) > 0) {
-      return;
+      if ((this.seedCooldowns[def.id] || 0) > 0) {
+        return;
+      }
     }
 
     this.onDescoberta?.('plantas', def.id);
     if (this.plants.length === 0 && !def.instantanea) this.falar('primeira_planta', col + 0.5, row, 0.8);
     if (def.instantanea) {
       // Carta de efeito imediato: não ocupa a casa
-      this.sun -= def.cost;
-      this.seedCooldowns[def.id] = def.cooldown;
+      if (this.vasos) this.vasos[def.id]--;
+      else {
+        this.sun -= def.cost;
+        this.seedCooldowns[def.id] = def.cooldown;
+      }
       if (def.id === 'curupira') this.invocarCurupira(row, col);
       this.onUiUpdate();
       return;
     }
 
-    this.sun -= def.cost;
+    if (this.vasos) this.vasos[def.id]--;
+    else this.sun -= def.cost;
     const tile = this.tiles[row][col];
     const adubada = plantarConsomeCinza(tile.hazard);
     if (adubada) {
@@ -1410,7 +1473,7 @@ export class GameEngine {
       this.spawnParticles(col + 0.5, row + 0.7, '#a3a3a3', 10);
     }
     const cdMultiplier = this.unlockedMutations.has('overclock_roots') ? 0.7 : 1.0;
-    this.seedCooldowns[def.id] = def.cooldown * cdMultiplier;
+    if (!this.vasos) this.seedCooldowns[def.id] = def.cooldown * cdMultiplier;
 
     const armDuration = this.unlockedMutations.has('overclock_roots') ? 2.2 : 4.5;
 
@@ -1481,7 +1544,7 @@ export class GameEngine {
   }
 
   public update(rawDt: number): void {
-    if (this.paused || this.gameOver) return;
+    if (this.paused || this.gameOver || this.planejando) return;
     let dt = Math.min(rawDt, 0.1) * this.gameSpeed;
     // Efeitos visuais e pausa de impacto correm no tempo real, não no tempo do jogo
     const real = Math.min(rawDt, 0.1);
@@ -3460,6 +3523,7 @@ export class GameEngine {
   }
 
   private triggerMutationModal(): void {
+    if (this.vasos) return; // nos Vasos não há evolução: o quebra-cabeça é só o que está no tabuleiro
     const available = MUTATION_CATALOG.filter((m) => !this.unlockedMutations.has(m.id));
     if (available.length === 0) return;
     this.paused = true;
