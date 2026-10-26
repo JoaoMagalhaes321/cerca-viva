@@ -21,6 +21,7 @@ export const CONQUISTAS: Conquista[] = [
   { id: 'jardim_florido', nome: 'Jardim florido', icone: '🌼', descricao: 'Floresça as 11 plantas da Aventura (qualquer caminho).' },
   { id: 'noite_da_cuca', nome: 'A Cuca foi dormir', icone: '🎃', descricao: 'Derrote a Cuca na Noite da Cuca (evento de outubro).' },
   { id: 'boitata_apagado', nome: 'Fogo apagado', icone: '🐍', descricao: 'Derrote o Boitatá na Serra do Vento.' },
+  { id: 'lua_cheia', nome: 'Bala de prata', icone: '🐺', descricao: 'Derrote o Lobisomem na Cidade à Noite.' },
   { id: 'cinco_adubadas', nome: 'Terra boa', icone: '🌫️', descricao: 'Tenha 5 plantas adubadas ao mesmo tempo.' },
   { id: 'curupira_cheio', nome: 'Pegadas em todos', icone: '👣', descricao: 'Confunda 4 zumbis de uma vez com o Curupira.' },
   { id: 'mapinguari_fogo', nome: 'Pelo em chamas', icone: '🔥', descricao: 'Derrote o Mapinguari com um deck só de Lírio, Draco-Pimenta e Cacto-Muralha.' },
@@ -110,6 +111,7 @@ export function verificarConquistas(ganhas: string[], fim: FimDePartida | null, 
     ok('zumbi_5', fim.modo === 'zumbi' && (fim.jardinsInvadidos ?? 0) >= 5);
     ok('noite_da_cuca', fim.venceu && fim.derrotadosNaPartida.includes('cuca'));
     ok('boitata_apagado', fim.derrotadosNaPartida.includes('boitata'));
+    ok('lua_cheia', fim.derrotadosNaPartida.includes('lobisomem'));
   }
 
   const h = ctx.herbario;

@@ -20,7 +20,7 @@ export interface Figura {
 }
 
 export interface Painel {
-  fundo: 'dia' | 'tarde' | 'noite' | 'pantano' | 'rio' | 'mangue' | 'serra' | 'assombrado';
+  fundo: 'dia' | 'tarde' | 'noite' | 'pantano' | 'rio' | 'mangue' | 'serra' | 'assombrado' | 'cidade';
   figuras: Figura[];
   legenda: string;
   fala?: { texto: string; x: number; y: number };
@@ -84,7 +84,16 @@ export const CAPITULOS: Capitulo[] = [
     paineis: [
       { fundo: 'serra', figuras: [{ tipo: 'planta', id: 'aquashooter', x: 0.3, y: 0.82, escala: 1.1 }, { tipo: 'zumbi', id: 'boitata', x: 0.7, y: 0.9, escala: 0.8 }], legenda: 'Molhado, o Boitatá parou de correr. E falou, baixinho.', fala: { texto: 'Eu era o guardião da serra. Ela me incendiou.', x: 0.5, y: 0.2 } },
       { fundo: 'noite', figuras: [{ tipo: 'zumbi', id: 'cuca', x: 0.65, y: 0.88, escala: 0.9 }], legenda: 'Lá do alto, a Cuca riu. Ainda não era a hora dela.', fala: { texto: 'Até outubro, jardineiro.', x: 0.35, y: 0.2 } },
-      { fundo: 'dia', figuras: [{ tipo: 'planta', id: 'sunflower', x: 0.25, y: 0.8 }, { tipo: 'planta', id: 'peashooter', x: 0.45, y: 0.82 }, { tipo: 'planta', id: 'curupira', x: 0.68, y: 0.82 }], legenda: 'O jardim voltou a florescer. Mas a cerca viva continua de pé. Por via das dúvidas.' }
+      { fundo: 'cidade', figuras: [{ tipo: 'zumbi', id: 'lobisomem', x: 0.65, y: 0.9, escala: 0.8 }], legenda: 'Serra abaixo, as luzes da cidade. E, debaixo da lua cheia, um uivo que não era de cachorro.' }
+    ]
+  },
+  {
+    id: 'mundo6',
+    titulo: 'Capítulo 6 · Lua cheia',
+    paineis: [
+      { fundo: 'cidade', figuras: [{ tipo: 'planta', id: 'lampiao_flor', x: 0.3, y: 0.82, escala: 1.05 }, { tipo: 'zumbi', id: 'lobisomem', x: 0.7, y: 0.9, escala: 0.8 }], legenda: 'Só os postes e o Lampião-Flor iluminavam o quintal. No escuro, a matilha corria.' },
+      { fundo: 'cidade', figuras: [{ tipo: 'zumbi', id: 'lobisomem', x: 0.6, y: 0.9, escala: 0.8 }], legenda: 'Quando as nuvens cobriram a lua, a fera virou um rapaz pálido. E pediu ajuda.', fala: { texto: 'Ela me mordeu na serra. Eu não queria…', x: 0.35, y: 0.2 } },
+      { fundo: 'dia', figuras: [{ tipo: 'planta', id: 'mandacaru', x: 0.28, y: 0.8 }, { tipo: 'planta', id: 'sunflower', x: 0.5, y: 0.8 }, { tipo: 'planta', id: 'curupira', x: 0.72, y: 0.82 }], legenda: 'O jardim voltou a florescer, agora com um Mandacaru de guarda. A cerca viva continua de pé. Por via das dúvidas.' }
     ]
   }
 ];
@@ -127,7 +136,8 @@ const FUNDOS: Record<Painel['fundo'], { ceu: [string, string]; chao: string; esc
   rio: { ceu: ['#8fd3ff', '#e0f5ff'], chao: '#3aaad8', escuro: false },
   mangue: { ceu: ['#ffb36b', '#ffe3b0'], chao: '#8a5a34', escuro: false },
   serra: { ceu: ['#9fc4ff', '#e6f0ff'], chao: '#7fb86a', escuro: false },
-  assombrado: { ceu: ['#0b0616', '#2a1a44'], chao: '#1a2a1a', escuro: true }
+  assombrado: { ceu: ['#0b0616', '#2a1a44'], chao: '#1a2a1a', escuro: true },
+  cidade: { ceu: ['#070a1a', '#1c2446'], chao: '#2a3a2a', escuro: true }
 };
 
 export function desenharPainel(canvas: HTMLCanvasElement, p: Painel): void {
@@ -146,6 +156,25 @@ export function desenharPainel(canvas: HTMLCanvasElement, p: Painel): void {
   ctx.beginPath();
   ctx.arc(W * 0.85, H * 0.2, H * 0.09, 0, Math.PI * 2);
   ctx.fill();
+  if (p.fundo === 'cidade') {
+    // Prédios com janelas acesas e a lua cheia
+    ctx.fillStyle = '#ffe9a8';
+    ctx.beginPath();
+    ctx.arc(W * 0.8, H * 0.22, H * 0.09, 0, Math.PI * 2);
+    ctx.fill();
+    let x = 0;
+    let i = 0;
+    while (x < W) {
+      const w = W * (0.08 + ((i * 7) % 5) / 60);
+      const h = H * (0.25 + ((i * 11) % 7) / 20);
+      ctx.fillStyle = '#0b0f1f';
+      ctx.fillRect(x, H * 0.7 - h, w, h);
+      ctx.fillStyle = 'rgba(255, 220, 130, 0.8)';
+      for (let jy = H * 0.7 - h + 8; jy < H * 0.7 - 8; jy += 12) for (let jx = x + 5; jx < x + w - 6; jx += 10) if (((jx * 3 + jy * 5 + i) % 7) < 3) ctx.fillRect(jx, jy, 5, 6);
+      x += w + 6;
+      i++;
+    }
+  }
   if (p.fundo === 'serra') {
     ctx.fillStyle = '#94a3b8';
     ctx.beginPath();
