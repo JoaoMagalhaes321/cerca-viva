@@ -623,6 +623,28 @@ html, body {
   opacity: 0;
 }
 
+/* Aviso de trilha: "♪ Luzes do Brejo" no canto, some sozinho */
+.trilha-aviso {
+  position: absolute;
+  right: 10px;
+  bottom: 84px;
+  background: rgba(15, 23, 42, 0.82);
+  color: #e2e8f0;
+  border: 1px solid rgba(148, 163, 184, 0.5);
+  padding: 4px 10px;
+  border-radius: 8px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  z-index: 120;
+  pointer-events: none;
+  transition: opacity 0.6s, transform 0.6s;
+}
+.trilha-aviso.hidden {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
 /* MODALS */
 .modal-overlay {
   position: fixed;

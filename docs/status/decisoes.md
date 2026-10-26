@@ -3,6 +3,35 @@
 Toda escolha que não é óbvia entra aqui, da mais nova para a mais antiga: as do João e as do agente.
 Para trocar uma, comente no quadro ("troca a D-… pela opção B") ou peça numa sessão.
 
+### D-20261026-8 · Raízes do Mangue somam com o ritmo de bando e do Capataz
+- Card: mundo4-recompensas · Branch: claude/mundo4-recompensas (aceeb07) · Data: 2026-10-26
+- Regra de negócio? sim (regra do jogo: velocidade dos zumbis)
+- Muda decisão anterior? não
+- Escolha: ao trazer a main com os seus zumbis inteligentes, a lentidão das raízes (`MANGUE.lentidaoRaizes`,
+  40% mais lento) entrou como mais um multiplicador junto do ritmo novo (Capataz ×1,3; bando no passo do mais
+  lento). Um zumbi apressado pelo Capataz preso nas raízes anda a 1,3 × 0,6 ≈ 0,78 da velocidade normal.
+- Por quê: é como os outros freios já funcionam (frio, lama, rio, cerca), todos multiplicam; não cria exceção.
+- Outras opções:
+  - A) Raízes anulam o Capataz (fica só 0,6) — o Mangue vira contra direto do Capataz / regra especial a mais.
+  - B) Capataz anula as raízes — Capataz mais forte / o Mangue perde valor no Mundo 4, onde ele é a recompensa.
+- Como trocar depois: a linha `mangueMult` no movimento dos zumbis em `src/engine.ts`.
+- Fácil de reverter? sim
+
+### D-20261026-7 · Clarão ao levar dano: só pela silhueta, sem o branco em dobro
+- Card: efeitos-combos · Branch: claude/efeitos-combos (404a221) · Data: 2026-10-26
+- Regra de negócio? não (visual)
+- Muda decisão anterior? sim, muda o jeito do seu PR #50 (animacao-vida, 25/10) desenhar o clarão
+- Escolha: a main (seu PR #50) pinta o clarão branco com `getSpriteClarao`; a efeitos-combos pinta o mesmo clarão
+  (e a cor dos estados) pela silhueta das camadas (`pintarSilhueta`). Ficou só a silhueta, para o branco não sair
+  duas vezes por cima. O resto do PR #50 continua: esmagar no passo, recuo e inclinação ao levar dano.
+  `getSpriteClarao` segue em `src/sprites.ts`, só não é chamado no zumbi.
+- Por quê: a silhueta cobre também o braço, o capacete e a cor do estado (gelo, fogo, veneno) num desenho só.
+- Outras opções:
+  - A) Manter os dois — clarão mais forte / branco estourado e o dobro de desenho por zumbi atingido.
+  - B) Ficar com o `getSpriteClarao` e tirar o clarão da silhueta — volta ao seu desenho / perde a tinta dos estados.
+- Como trocar depois: em `drawZombie` (`src/renderer.ts`), o trecho `else if (z.hitFlash > 0) silhueta = …`.
+- Fácil de reverter? sim
+
 ### D-20261026-6 · Card estilo-cartoon sai da fila: o seu "estilo vivo" cobriu o pedido
 - Card: estilo-cartoon (removido), plantas-vivas, zumbis-vivos · Branch: — · Data: 2026-10-26
 - Regra de negócio? não (visual)
