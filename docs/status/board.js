@@ -61,14 +61,15 @@ window.BOARD = {
       "column": "qas",
       "env": "branch",
       "updated": "2026-10-26",
-      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio por cima do zumbi (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação no próprio zumbi (eletrocussão com silhueta piscando, tremida). O clarão ao levar dano, que nunca era desenhado, passou a aparecer. Já traz a main com as cenas de combo do PR #47; a onda de impacto própria ficou desligada para não repetir o anel das cenas (D-20261026-5). Só desenho, nada de dano ou tempo muda. Build ok, 143 testes.",
+      "summary": "Pedido seu (26/10). Pronto para revisar: cada estado tem desenho próprio por cima do zumbi (bloco de gelo com rachaduras, chamas com brasas, bolhas de veneno, pingos, flocos) e cada combo uma reação no próprio zumbi (eletrocussão com silhueta piscando, tremida). O clarão ao levar dano, que nunca era desenhado, passou a aparecer. Já traz a main com as cenas de combo do PR #47; a onda de impacto própria ficou desligada para não repetir o anel das cenas (D-20261026-5). Só desenho, nada de dano ou tempo muda. Em dia com a main de 26/10 (zumbis vivos, animações de vida, zumbis inteligentes e cenário vivo): o clarão ao levar dano fica só pela silhueta, sem o branco em dobro (D-20261026-7). Build ok, 148 testes; conferido no Chromium.",
       "delivered": [
         "Reações + 4 testes (3594ecd, 26/10)",
         "Conferido no Chromium com os 5 estados e 2 reações ao mesmo tempo (26/10)",
-        "Main trazida (cenas de combo, PR #47), conflito em engine.ts resolvido e onda repetida desligada + 1 teste (559720c, 26/10)"
+        "Main trazida (cenas de combo, PR #47), conflito em engine.ts resolvido e onda repetida desligada + 1 teste (559720c, 26/10)",
+        "Main de 26/10 trazida, conflito em renderer.ts resolvido (404a221, 26/10)"
       ],
       "pending": [
-        "Seu merge de claude/efeitos-combos na main, de preferência por último: ela conflita com claude/zumbis-vivos (src/renderer.ts) e com claude/mundo4-recompensas (src/engine.ts). Depois que essas entrarem, a próxima rodada traz a main de novo e resolve",
+        "Seu merge de claude/efeitos-combos na main, depois da mundo4-recompensas: as duas conflitam entre si em src/engine.ts. Sem conflito com a main de hoje; depois do primeiro merge, a próxima rodada traz a main de novo",
         "Desempenho no celular NÃO MEDIDO: se ficar lento com muitos zumbis coloridos, me diga"
       ],
       "links": [
@@ -86,6 +87,107 @@ window.BOARD = {
           "label": "Captura",
           "path": "docs/status/relatorios/img/2026-10-26-efeitos-combos.png",
           "branch": "claude/quadro"
+        },
+        {
+          "label": "Relatório (main de 26/10)",
+          "path": "docs/status/relatorios/2026-10-26-sincroniza-main.md",
+          "branch": "claude/quadro"
+        }
+      ]
+    },
+    {
+      "id": "zumbis-inteligentes",
+      "title": "Zumbis inteligentes: 7 comportamentos com dificuldade gradual",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: nível de inteligência 0 a 5 por fase (Mundo 1 começa em zero) e por onda nos modos sem fim. Zumbis desviam de cactos, esquivam de tiros, Corredores caçam o Lírio, andam em bando, pulam armadilhas, o Capataz apressa a linha e a horda escolhe a linha menos defendida. A preparação mostra o que a fase já sabe, com o contra.",
+      "delivered": [
+        "Zumbis inteligentes (3230380, 26/10)",
+        "Mergeado na main por você (PR #52, c0293a6, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "inteligencia.ts",
+          "path": "src/inteligencia.ts"
+        },
+        {
+          "label": "PR #52",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/52"
+        }
+      ]
+    },
+    {
+      "id": "cenario-gramado",
+      "title": "Cenário vivo (2): gramado, sombras, rastros e casinha",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (26/10). Na main: casas do gramado com luz, tufos, florzinhas e pedrinhas; sombra embaixo das plantas; rastro de grama amassada atrás dos zumbis; casinha do jardineiro com janela acesa à noite; toques por bioma (folhas no igarapé, espuma na maré, morcegos no jardim assombrado).",
+      "delivered": [
+        "Cenário vivo (2) (1c6c43b, 26/10)",
+        "Mergeado na main por você (PR #53, cc41c8a, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "cenario.ts",
+          "path": "src/cenario.ts"
+        },
+        {
+          "label": "PR #53",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/53"
+        }
+      ]
+    },
+    {
+      "id": "cenario-tempestade",
+      "title": "Cenário vivo: céu, chuva forte, relâmpago e vento",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (25/10). Na main: sol e nuvens de dia, lua, estrelas e vaga-lumes à noite, neblina no igarapé e no pântano, chuva inclinada, relâmpago com clarão e apagão (vira brilho suave com 'reduzir efeitos'), rajadas de vento que inclinam as plantas e troca de clima suave, avisada antes.",
+      "delivered": [
+        "Cenário vivo (572e443, 25/10)",
+        "Mergeado na main por você (PR #51, 85f4180, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "cenario.ts",
+          "path": "src/cenario.ts"
+        },
+        {
+          "label": "PR #51",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/51"
+        }
+      ]
+    },
+    {
+      "id": "animacao-vida",
+      "title": "Animações de vida nas plantas e nos zumbis",
+      "domain": "jogo",
+      "column": "prod",
+      "env": "main",
+      "updated": "2026-10-26",
+      "summary": "Feito por você numa sessão sua (25/10). Na main: pulinho e esmagar-e-esticar nas plantas ao atirar, passo com molejo, mastigada e recuo com clarão branco nos zumbis ao levar dano.",
+      "delivered": [
+        "Animações de vida nas plantas e nos zumbis (4680b6d, 25/10)",
+        "Mergeado na main por você (PR #50, f2c9f8c, 26/10)"
+      ],
+      "pending": [],
+      "links": [
+        {
+          "label": "renderer.ts",
+          "path": "src/renderer.ts"
+        },
+        {
+          "label": "PR #50",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/50"
         }
       ]
     },
@@ -229,9 +331,9 @@ window.BOARD = {
       "column": "qas",
       "env": "branch",
       "updated": "2026-10-26",
-      "summary": "Pronto para revisar. Planta nova Mangue-Vermelho 🌳, liberada ao vencer a Fase 4-5: cresce na terra e na água (não afoga na maré), as raízes deixam os zumbis à frente 40% mais lentos e o Zumbi Siri preso nelas não troca de linha. Superpoder Raízes da Maré; floração Raizal ou Mangue Ostreiro (D-20261026-1, regra do jogo). Quem já venceu a 4-5 ganha jogando a 4-5 de novo (D-20261026-2). Build ok, 144 testes passando; conferido no Chromium.",
+      "summary": "Pronto para revisar. Planta nova Mangue-Vermelho 🌳, liberada ao vencer a Fase 4-5: cresce na terra e na água (não afoga na maré), as raízes deixam os zumbis à frente 40% mais lentos e o Zumbi Siri preso nelas não troca de linha. Superpoder Raízes da Maré; floração Raizal ou Mangue Ostreiro (D-20261026-1, regra do jogo). Quem já venceu a 4-5 ganha jogando a 4-5 de novo (D-20261026-2). Em dia com a main de 26/10: as raízes também freiam zumbi de bando e o apressado pelo Capataz (D-20261026-8). Build ok, 149 testes passando.",
       "pending": [
-        "Seu merge de claude/mundo4-recompensas na main",
+        "Seu merge de claude/mundo4-recompensas na main, de preferência antes da efeitos-combos (sem conflito com a main de hoje)",
         "Balanceamento em partida longa NÃO MEDIDO: se achar forte/fraco, troque os números em src/mangue-vermelho.ts ou comente no card"
       ],
       "links": [
@@ -254,39 +356,44 @@ window.BOARD = {
           "label": "Captura (sprites)",
           "path": "docs/status/relatorios/img/2026-10-26-mangue-sprites.png",
           "branch": "claude/quadro"
+        },
+        {
+          "label": "Relatório (main de 26/10)",
+          "path": "docs/status/relatorios/2026-10-26-sincroniza-main.md",
+          "branch": "claude/quadro"
         }
       ],
       "delivered": [
         "Mangue-Vermelho + 6 testes (4022fe0, 26/10)",
-        "Conferido no Chromium: planta na maré da 4-5 e segura o Siri (\"PRESO NAS RAÍZES\") (26/10)"
+        "Conferido no Chromium: planta na maré da 4-5 e segura o Siri (\"PRESO NAS RAÍZES\") (26/10)",
+        "Main de 26/10 trazida, conflito em engine.ts resolvido (aceeb07, 26/10)"
       ]
     },
     {
       "id": "zumbis-vivos",
       "title": "Zumbis no estilo vivo: 13 personagens redesenhados",
       "domain": "jogo",
-      "column": "qas",
-      "env": "branch",
+      "column": "prod",
+      "env": "main",
       "updated": "2026-10-26",
-      "summary": "Feito por você numa sessão sua (25/10, 23h). Na branch claude/zumbis-vivos, ainda fora da main: os 13 zumbis redesenhados no mesmo acabamento das plantas (gradientes, olhos esbugalhados, cérebro exposto, roupa rasgada), dia e noite, com a tabela de medidas do renderer ajustada. Substitui o card estilo-cartoon que estava na fila (D-20261026-6).",
+      "summary": "Feito por você numa sessão sua (25/10). Na main: os 13 zumbis redesenhados no mesmo acabamento das plantas (gradientes, olhos esbugalhados, cérebro exposto, roupa rasgada), dia e noite, com a tabela de medidas do renderer ajustada. Substituiu o card estilo-cartoon (D-20261026-6).",
       "delivered": [
         "Redesenho dos 13 zumbis (cc7a3e1, 25/10)",
-        "Sem conflito com a main atual (conferido pelo agente em 26/10)"
+        "Mergeado na main por você (PR #49, 4ddcf53, 26/10)"
       ],
-      "pending": [
-        "Seu merge de claude/zumbis-vivos na main (o agente não roda o build dessa branch: não é dele)",
-        "Conflita com claude/efeitos-combos em src/renderer.ts: mergeie esta antes, o agente resolve na efeitos-combos"
-      ],
+      "pending": [],
       "links": [
         {
           "label": "renderer.ts",
-          "path": "src/renderer.ts",
-          "branch": "claude/zumbis-vivos"
+          "path": "src/renderer.ts"
         },
         {
           "label": "sprites",
-          "path": "public/sprites/dia/basic--corpo.svg",
-          "branch": "claude/zumbis-vivos"
+          "path": "public/sprites/dia/basic--corpo.svg"
+        },
+        {
+          "label": "PR #49",
+          "url": "https://github.com/JoaoMagalhaes321/pvz-evolution/pull/49"
         }
       ]
     },
