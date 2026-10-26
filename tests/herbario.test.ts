@@ -24,7 +24,7 @@ describe('Herbário', () => {
     expect(caminhos).toHaveLength(Object.values(CAMINHOS).flat().length);
     expect(caminhos.find((c) => c.id === 'vulcao')?.descoberto).toBe(true);
     expect(caminhos.find((c) => c.id === 'vulcao')?.detalhe).toBe('Draco-Pimenta');
-    expect(itensDoHerbario(h, 'zumbis')).toHaveLength(15);
+    expect(itensDoHerbario(h, 'zumbis')).toHaveLength(18);
     expect(itensDoHerbario(h, 'biomas')).toHaveLength(9);
     expect(itensDoHerbario(h, 'combos', ['electro_chain']).filter((c) => c.descoberto)).toHaveLength(1);
   });

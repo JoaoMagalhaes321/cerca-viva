@@ -215,6 +215,9 @@ export class Preparacao {
     if (tipos.has('gargantuar')) dicas.push('Colossos aguentam muito: combine elementos e Cacto-Muralha.');
     if (tipos.has('cuca')) dicas.unshift('A Cuca canta e as plantas dormem; quando ela cochila, só o Feixe Orbital (75☀️) acorda e machuca.');
     if (tipos.has('mumia')) dicas.push('Múmias não sentem gelo: fogo queima as faixas em dobro.');
+    if (tipos.has('saci')) dicas.unshift('O Saci some num redemoinho, troca de linha e rouba uma carta por 10 s. Vento (Flor Catavento) leva o gorro dele e acaba o truque.');
+    if (tipos.has('iara')) dicas.unshift('A Iara canta do rio e as plantas de água perto dela param por 4 s. Bata nela de longe, da terra.');
+    if (tipos.has('boto')) dicas.unshift('O Boto vem de chapéu e passa pela cerca sem morder. Molhe (Hidro-Brotos, Aguapé, chuva) para revelar: aí a cerca segura.');
     if (tipos.has('boitata')) dicas.unshift('O Boitatá só se machuca apagado: molhe com Hidro-Brotos, Aguapé ou Tempestade e aí bata.');
     if (level.world === 5) dicas.push('Serra: atiradores no alto (linhas 1 e 2) batem mais forte; o vale (4 e 5) precisa de muralha.');
     if (tipos.has('lobisomem')) dicas.unshift('O Lobisomem leva meio dano como fera; quando as nuvens escondem a lua ele vira gente e leva o dobro — guarde o Supremo para essa hora.');
