@@ -2,12 +2,13 @@ import { LevelConfig, ZombieSpawnEvent } from './types';
 
 // Helper to generate timed waves for levels
 function createSpawns(
-  definitions: { time: number; type: string; lane?: number }[]
+  definitions: { time: number; type: string; lane?: number; bueiro?: boolean }[]
 ): ZombieSpawnEvent[] {
   return definitions.map((d) => ({
     timeOffsetSec: d.time,
     zombieType: d.type,
-    lane: d.lane
+    lane: d.lane,
+    ...(d.bueiro ? { bueiro: true } : {})
   }));
 }
 
@@ -824,12 +825,134 @@ export const LEVEL_CATALOG: LevelConfig[] = [
       { time: 114, type: 'cone', lane: 1 },
       { time: 118, type: 'cyber_sprinter', lane: 3 }
     ])
+  },
+
+  // ===================== MUNDO 6: CIDADE À NOITE =====================
+  // Escuro fora dos postes (zumbis mais rápidos), bueiros no meio do gramado e o Lobisomem no fim.
+  {
+    id: 31,
+    world: 6,
+    stage: 1,
+    name: 'Fase 6-1: Luz de Poste',
+    initialSun: 325,
+    availableLanes: 5,
+    unlockedPlantOnClear: 'lampiao_flor',
+    spawns: createSpawns([
+      { time: 8, type: 'basic', lane: 1 },
+      { time: 16, type: 'cone', lane: 3 },
+      { time: 24, type: 'basic', lane: 0 },
+      { time: 32, type: 'cyber_sprinter', lane: 4 },
+      { time: 40, type: 'cone', lane: 2 },
+      { time: 48, type: 'basic', lane: 2, bueiro: true },
+      { time: 56, type: 'bucket', lane: 3 },
+      { time: 64, type: 'cyber_sprinter', lane: 0 },
+      { time: 72, type: 'cone', lane: 4, bueiro: true },
+      { time: 80, type: 'basic', lane: 1 },
+      { time: 88, type: 'bucket', lane: 2 },
+      { time: 96, type: 'cone', lane: 0 }
+    ])
+  },
+  {
+    id: 32,
+    world: 6,
+    stage: 2,
+    name: 'Fase 6-2: Bueiros',
+    initialSun: 325,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'basic', lane: 0, bueiro: true },
+      { time: 14, type: 'cone', lane: 3 },
+      { time: 22, type: 'cyber_sprinter', lane: 2, bueiro: true },
+      { time: 30, type: 'rubber_hazard', lane: 1 },
+      { time: 38, type: 'bucket', lane: 4, bueiro: true },
+      { time: 46, type: 'cone', lane: 2 },
+      { time: 54, type: 'cyber_sprinter', lane: 0, bueiro: true },
+      { time: 62, type: 'pyro_scavenger', lane: 3 },
+      { time: 70, type: 'basic', lane: 4, bueiro: true },
+      { time: 78, type: 'bucket', lane: 1 },
+      { time: 86, type: 'cone', lane: 2, bueiro: true },
+      { time: 94, type: 'gargantuar', lane: 3 },
+      { time: 102, type: 'cyber_sprinter', lane: 0 }
+    ])
+  },
+  {
+    id: 33,
+    world: 6,
+    stage: 3,
+    name: 'Fase 6-3: Uivo',
+    initialSun: 350,
+    availableLanes: 5,
+    spawns: createSpawns([
+      { time: 8, type: 'cone', lane: 2 },
+      { time: 16, type: 'cyber_sprinter', lane: 0 },
+      { time: 24, type: 'basic', lane: 4, bueiro: true },
+      { time: 32, type: 'bucket', lane: 1 },
+      { time: 40, type: 'rubber_hazard', lane: 3 },
+      { time: 48, type: 'lobisomem', lane: 2 },
+      { time: 58, type: 'cone', lane: 0, bueiro: true },
+      { time: 66, type: 'cyber_sprinter', lane: 4 },
+      { time: 74, type: 'bucket', lane: 3 },
+      { time: 82, type: 'pyro_scavenger', lane: 1 },
+      { time: 90, type: 'cone', lane: 2, bueiro: true }
+    ])
+  },
+  {
+    id: 34,
+    world: 6,
+    stage: 4,
+    name: 'Fase 6-4: Apagão',
+    initialSun: 350,
+    availableLanes: 5,
+    regras: ['sem_sol_do_ceu'],
+    spawns: createSpawns([
+      { time: 8, type: 'basic', lane: 1 },
+      { time: 14, type: 'cyber_sprinter', lane: 3, bueiro: true },
+      { time: 22, type: 'cone', lane: 0 },
+      { time: 30, type: 'bucket', lane: 4, bueiro: true },
+      { time: 38, type: 'rubber_hazard', lane: 2 },
+      { time: 46, type: 'cyber_sprinter', lane: 1 },
+      { time: 54, type: 'gargantuar', lane: 2, bueiro: true },
+      { time: 62, type: 'cone', lane: 3 },
+      { time: 70, type: 'pyro_scavenger', lane: 0, bueiro: true },
+      { time: 78, type: 'bucket', lane: 4 },
+      { time: 86, type: 'cyber_sprinter', lane: 2 },
+      { time: 94, type: 'gargantuar', lane: 1 },
+      { time: 102, type: 'cone', lane: 3, bueiro: true }
+    ])
+  },
+  // Clímax do Mundo 6: o Lobisomem volta com a cidade inteira atrás dele.
+  {
+    id: 35,
+    world: 6,
+    stage: 5,
+    name: 'Fase 6-5: Lua Cheia',
+    initialSun: 375,
+    availableLanes: 5,
+    unlockedPlantOnClear: 'mandacaru',
+    spawns: createSpawns([
+      { time: 8, type: 'cyber_sprinter', lane: 2 },
+      { time: 14, type: 'cone', lane: 0, bueiro: true },
+      { time: 22, type: 'bucket', lane: 4 },
+      { time: 30, type: 'rubber_hazard', lane: 1, bueiro: true },
+      { time: 38, type: 'lobisomem', lane: 2 },
+      { time: 48, type: 'cone', lane: 3 },
+      { time: 56, type: 'cyber_sprinter', lane: 0, bueiro: true },
+      { time: 64, type: 'gargantuar', lane: 4 },
+      { time: 72, type: 'pyro_scavenger', lane: 2, bueiro: true },
+      { time: 80, type: 'bucket', lane: 1 },
+      { time: 88, type: 'cone', lane: 3, bueiro: true },
+      { time: 96, type: 'cyber_sprinter', lane: 0 },
+      { time: 104, type: 'zomboss_mech', lane: 2 },
+      { time: 112, type: 'bucket', lane: 4 },
+      { time: 118, type: 'cyber_sprinter', lane: 1, bueiro: true }
+    ])
   }
 ];
 
 /** Bioma de cada mundo da Aventura. */
 export function biomaDoMundo(world: number): string {
   if (world === 13) return 'assombrado'; // 🎃 Noite da Cuca (evento)
+  if (world === 6) return 'cidade';
   if (world === 5) return 'serra';
   if (world === 4) return 'mangue';
   if (world === 3) return 'igarape';

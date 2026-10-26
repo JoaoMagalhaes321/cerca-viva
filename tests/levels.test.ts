@@ -6,7 +6,7 @@ import { BIOME_CATALOG, PLANT_CATALOG } from '../src/types';
 // Se um zumbi novo entrar no jogo, acrescente aqui também.
 const KNOWN_ZOMBIES = [
   'basic', 'cone', 'bucket', 'cyber_sprinter', 'gargantuar', 'zomboss_mech', 'rubber_hazard', 'pyro_scavenger',
-  'canoeiro', 'mapinguari', 'siri', 'mumia', 'cuca', 'boitata'
+  'canoeiro', 'mapinguari', 'siri', 'mumia', 'cuca', 'boitata', 'lobisomem'
 ];
 const GRID_ROWS = 5;
 const plantIds = new Set(PLANT_CATALOG.map((p) => p.id));

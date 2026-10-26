@@ -83,6 +83,14 @@ export const CAMINHOS: Record<string, [Caminho, Caminho]> = {
   aguape: [
     { id: 'tapete', nome: 'Tapete de Raízes', icone: '🪷', descricao: 'As raízes alcançam três casas à frente.' },
     { id: 'bolhao', nome: 'Bolhão', icone: '🫧', descricao: 'Bolhas com 50% mais dano que param o zumbi por um instante.' }
+  ],
+  lampiao_flor: [
+    { id: 'farolete', nome: 'Farolete', icone: '🔦', descricao: 'A luz alcança 5×5 casas em volta.' },
+    { id: 'vagalume', nome: 'Vagalume', icone: '✨', descricao: 'Clarão a cada 6 s, que ofusca por 1,8 s.' }
+  ],
+  mandacaru: [
+    { id: 'espinho_longo', nome: 'Espinho Longo', icone: '🌵', descricao: 'Devolve 70 de dano por segundo a quem morde.' },
+    { id: 'florado', nome: 'Mandacaru Florado', icone: '🌼', descricao: 'A flor dá 25 de sol a cada 15 s.' }
   ]
 };
 

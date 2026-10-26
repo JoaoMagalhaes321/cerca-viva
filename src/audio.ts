@@ -15,7 +15,8 @@ const TEMA_DO_BIOMA: Record<string, Faixa['id'] | undefined> = {
   igarape: 'igarape',
   mangue: 'mangue',
   serra: 'serra',
-  assombrado: 'assombrado'
+  assombrado: 'assombrado',
+  cidade: 'cidade'
 };
 
 /** Cada chefe tem o seu tema; nos outros cenários toca a Colheitadeira Z. */
@@ -23,6 +24,7 @@ export function temaDoChefe(bioma: string): Faixa['id'] {
   if (bioma === 'igarape') return 'chefe_mata'; // Mapinguari
   if (bioma === 'assombrado') return 'chefe_cuca'; // Cuca
   if (bioma === 'serra') return 'chefe_vento'; // Boitatá
+  if (bioma === 'cidade') return 'chefe_lua'; // Lobisomem
   return 'chefe';
 }
 

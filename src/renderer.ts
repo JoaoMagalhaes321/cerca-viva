@@ -166,6 +166,132 @@ export class CharacterRenderer {
   }
 
   // Serra do Vento: degraus de pedra — o alto mais claro com borda de pedra, o vale mais escuro
+  /** Cidade à Noite: quintal de cidade — grama rala com rachaduras de calçada e uma ou outra lata. */
+  public static drawAsfalto(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number): void {
+    const n = (row * 7 + col * 13) % 5;
+    ctx.save();
+    ctx.fillStyle = 'rgba(30, 30, 40, 0.18)';
+    ctx.fillRect(x, y, w, h);
+    ctx.strokeStyle = 'rgba(15, 15, 25, 0.35)';
+    ctx.lineWidth = 1.5;
+    if (n === 1 || n === 3) {
+      ctx.beginPath();
+      ctx.moveTo(x + w * 0.2, y + h * 0.8);
+      ctx.lineTo(x + w * 0.45, y + h * 0.55);
+      ctx.lineTo(x + w * 0.4, y + h * 0.3);
+      ctx.stroke();
+    }
+    if (n === 2) {
+      // tampa de lata
+      ctx.fillStyle = 'rgba(148, 163, 184, 0.45)';
+      ctx.beginPath();
+      ctx.ellipse(x + w * 0.72, y + h * 0.78, 6, 3.5, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
+  }
+
+  /** Bueiro: tampa redonda de ferro de onde alguns zumbis saem. */
+  public static drawBueiro(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number): void {
+    const cx = x + w / 2;
+    const cy = y + h * 0.62;
+    const r = Math.min(w, h) * 0.3;
+    ctx.save();
+    ctx.fillStyle = '#1f2430';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 2, r + 3, r * 0.62 + 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    const g = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, 2, cx, cy, r);
+    g.addColorStop(0, '#8a93a3');
+    g.addColorStop(1, '#3a4150');
+    ctx.fillStyle = g;
+    ctx.strokeStyle = '#141820';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy, r, r * 0.62, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(20, 24, 32, 0.8)';
+    ctx.lineWidth = 1.5;
+    for (let i = -2; i <= 2; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - r * 0.7, cy + i * r * 0.2);
+      ctx.lineTo(cx + r * 0.7, cy + i * r * 0.2);
+      ctx.stroke();
+    }
+    ctx.restore();
+  }
+
+  /** Poste de luz: haste, luminária e o círculo quente que ilumina 3×3. */
+  public static drawPoste(ctx: CanvasRenderingContext2D, cx: number, cy: number, cellH: number, t: number): void {
+    const s = cellH / 90;
+    const pisca = 0.9 + Math.sin(t * 0.009) * 0.06 + (Math.sin(t * 0.07) > 0.97 ? -0.25 : 0);
+    ctx.save();
+    // halo
+    const halo = ctx.createRadialGradient(cx, cy - 10 * s, 4, cx, cy, cellH * 1.5);
+    halo.addColorStop(0, `rgba(255, 230, 150, ${0.28 * pisca})`);
+    halo.addColorStop(1, 'rgba(255, 230, 150, 0)');
+    ctx.fillStyle = halo;
+    ctx.beginPath();
+    ctx.arc(cx, cy, cellH * 1.5, 0, Math.PI * 2);
+    ctx.fill();
+    // haste
+    ctx.strokeStyle = '#1f2430';
+    ctx.lineWidth = 6 * s;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 28 * s);
+    ctx.lineTo(cx, cy - 46 * s);
+    ctx.stroke();
+    ctx.strokeStyle = '#596273';
+    ctx.lineWidth = 3 * s;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy + 26 * s);
+    ctx.lineTo(cx, cy - 44 * s);
+    ctx.stroke();
+    // base
+    ctx.fillStyle = '#2a303d';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 30 * s, 12 * s, 5 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    // luminária
+    ctx.fillStyle = '#2a303d';
+    ctx.beginPath();
+    ctx.moveTo(cx - 14 * s, cy - 44 * s);
+    ctx.lineTo(cx + 14 * s, cy - 44 * s);
+    ctx.lineTo(cx + 9 * s, cy - 56 * s);
+    ctx.lineTo(cx - 9 * s, cy - 56 * s);
+    ctx.closePath();
+    ctx.fill();
+    ctx.fillStyle = `rgba(255, 236, 170, ${pisca})`;
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - 43 * s, 10 * s, 4 * s, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = `rgba(255, 250, 220, ${0.9 * pisca})`;
+    ctx.beginPath();
+    ctx.arc(cx, cy - 46 * s, 4 * s, 0, Math.PI * 2);
+    ctx.fill();
+    // mariposa
+    const mx = cx + Math.cos(t * 0.004) * 14 * s;
+    const my = cy - 50 * s + Math.sin(t * 0.007) * 6 * s;
+    ctx.fillStyle = 'rgba(226, 232, 240, 0.8)';
+    ctx.beginPath();
+    ctx.ellipse(mx, my, 2.5 * s, 1.5 * s, Math.sin(t * 0.02), 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  /** Cidade à Noite: casa escura (fora da luz) ou clara (na luz), com a borda suave. */
+  public static drawEscuridao(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, iluminada: boolean, t: number): void {
+    if (iluminada) {
+      ctx.fillStyle = `rgba(255, 228, 150, ${0.07 + Math.sin(t * 0.003) * 0.015})`;
+      ctx.fillRect(x, y, w, h);
+      return;
+    }
+    ctx.fillStyle = 'rgba(8, 10, 30, 0.42)';
+    ctx.fillRect(x, y, w, h);
+  }
+
   public static drawDegrau(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, row: number, col: number, nivel: 'alto' | 'vale' | 'meio', escuro: boolean): void {
     ctx.save();
     if (nivel === 'alto') {
@@ -886,8 +1012,16 @@ export class CharacterRenderer {
       );
 
       const apagado = z.variant === 'boitata' && (z.apagadoTimer ?? 0) > 0;
-      const body = getSprite(apagado ? 'boitata--apagado' : `${z.variant}--corpo`, isNight);
+      const humano = z.variant === 'lobisomem' && !!z.humano;
+      const body = getSprite(apagado ? 'boitata--apagado' : humano ? 'lobisomem--humano' : `${z.variant}--corpo`, isNight);
       if (body) place(ctx, body);
+      if (z.variant === 'lobisomem' && !humano && this.efeitos) {
+        // Brilho da lua nos olhos da fera
+        ctx.save();
+        ctx.globalAlpha = 0.35 + Math.sin(performance.now() * 0.01) * 0.15;
+        ctx.drawImage(this.brilho('#fde68a', '88'), -spec.halfW * 1.2, -(spec.feet - spec.head) * k * 1.05, spec.halfW * 2.4, (spec.feet - spec.head) * k * 0.6);
+        ctx.restore();
+      }
       if (z.variant === 'boitata' && !apagado && this.efeitos) {
         // Calor tremulando em volta da cobra de fogo
         ctx.save();
@@ -1085,6 +1219,19 @@ export class CharacterRenderer {
       ctx.restore();
     }
 
+    if ((z.ofuscadoTimer ?? 0) > 0) {
+      // Estrelinhas rodando: ofuscado pelo Lampião-Flor
+      ctx.save();
+      if (z.confusoTimer > 0) ctx.scale(-1, 1);
+      ctx.font = '13px sans-serif';
+      ctx.textAlign = 'center';
+      const a = performance.now() * 0.008;
+      for (let i = 0; i < 3; i++) {
+        const ang = a + (i * Math.PI * 2) / 3;
+        ctx.fillText('✦', Math.cos(ang) * 13, top - 10 + Math.sin(ang) * 5);
+      }
+      ctx.restore();
+    }
     if (z.confusoTimer > 0) {
       // Interrogação balançando em cima da cabeça (desespelhada)
       ctx.save();
@@ -1651,5 +1798,6 @@ const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
   siri: { w: 170, h: 230, ox: 82, feet: 215, head: 2, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
   mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e3d9bc' },
   cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' },
-  boitata: { w: 320, h: 200, ox: 150, feet: 184, head: 30, k: 0.36, halfW: 50, sleeve: '#ff5a1f' }
+  boitata: { w: 320, h: 200, ox: 150, feet: 184, head: 30, k: 0.36, halfW: 50, sleeve: '#ff5a1f' },
+  lobisomem: { w: 230, h: 280, ox: 116, feet: 262, head: 10, k: 0.36, halfW: 36, sleeve: '#4a4a62' }
 };

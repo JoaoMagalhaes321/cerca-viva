@@ -69,6 +69,7 @@ export class Cenario {
   }
 
   public update(dt: number, clima: WeatherType, escuro: boolean, bioma: string, width: number, height: number, boardTop: number): void {
+    this.nuvemNaLua = this.luaEncoberta ? Math.min(1, this.nuvemNaLua + dt * 1.5) : Math.max(0, this.nuvemNaLua - dt * 1.5);
     this.tempo += dt;
     const reduzido = acessibilidade.reduzirEfeitos;
     if (this.transicao > 0) this.transicao = Math.max(0, this.transicao - dt / 2.2);
@@ -147,6 +148,10 @@ export class Cenario {
   }
 
   // ---------------------------------------------------------------- desenho
+
+  /** Cidade: nuvens cobrindo a lua (o Lobisomem vira gente). Animado em update(). */
+  public luaEncoberta = false;
+  private nuvemNaLua = 0;
 
   /** Céu por cima do cache: transição de clima, nuvens, sol/lua, estrelas, neblina. */
   public drawCeu(ctx: CanvasRenderingContext2D, width: number, height: number, boardTop: number, clima: WeatherType, escuro: boolean, bioma: string): void {
@@ -231,6 +236,37 @@ export class Cenario {
       }
       ctx.globalAlpha = 1;
       for (const n of this.nuvens) void n;
+      // Cidade: prédios no horizonte, com janelas acesas; nuvens cobrem a lua quando o Lobisomem vira gente
+      if (bioma === 'cidade') {
+        const base = boardTop;
+        ctx.fillStyle = '#0b0f1f';
+        let x = -10;
+        let i = 0;
+        while (x < width) {
+          const w = 26 + ((i * 37) % 40);
+          const h = Math.max(12, base * (0.35 + ((i * 53) % 50) / 100));
+          ctx.fillRect(x, base - h, w, h + 2);
+          ctx.fillStyle = 'rgba(255, 220, 130, 0.75)';
+          for (let jy = base - h + 6; jy < base - 6; jy += 9) {
+            for (let jx = x + 4; jx < x + w - 5; jx += 8) {
+              if (((jx * 7 + jy * 13 + i) % 11) < 4) ctx.fillRect(jx, jy, 4, 5);
+            }
+          }
+          ctx.fillStyle = '#0b0f1f';
+          x += w + 4;
+          i++;
+        }
+        if (this.luaEncoberta) {
+          ctx.globalAlpha = Math.min(1, this.nuvemNaLua);
+          ctx.fillStyle = 'rgba(40, 46, 70, 0.92)';
+          for (const [dx, dy, r] of [[-lr * 1.1, lr * 0.2, lr * 0.9], [0, -lr * 0.1, lr * 1.1], [lr * 1.1, lr * 0.3, lr * 0.95], [lr * 0.4, lr * 0.6, lr * 0.7]] as const) {
+            ctx.beginPath();
+            ctx.arc(lx + dx, ly + dy, r, 0, Math.PI * 2);
+            ctx.fill();
+          }
+          ctx.globalAlpha = 1;
+        }
+      }
     }
     // Neblina rasteira no igarapé e no pântano
     if (bioma === 'igarape' || bioma === 'bioluminescent_swamp') {
