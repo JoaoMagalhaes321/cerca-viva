@@ -29,6 +29,7 @@ import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, pront
 import { Foto, Gravador } from './replay';
 import { CENAS, Vfx, criarCena, desenharVfx } from './vfx';
 import { Cenario, tocarTrovao } from './cenario';
+import { chance as chanceIa, escolherLinha, linhaVizinhaMaisVazia, nivelPorOnda } from './inteligencia';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
@@ -120,11 +121,25 @@ export interface ZombieEntity {
   elite?: EliteZumbi;
   /** Cuca cochilando: parada, pele de pedra; só luz solar acorda. */
   dormindoTimer?: number;
+  /** Inteligência: já tentou desviar de um cacto. */
+  desviou?: boolean;
+  /** Inteligência: recarga da esquiva de tiros. */
+  esquivaCd?: number;
+  /** Inteligência: grupo do bando (os de trás levam menos dano de tiros). */
+  bando?: number;
+  /** Inteligência: pulando uma armadilha (segundos que faltam, de PULO_DURACAO). */
+  pulandoTimer?: number;
+  puloCd?: number;
+  /** Inteligência: Capataz — apressa os zumbis da linha dele. */
+  capataz?: boolean;
   /** Quantos truques a Cuca já fez (define o próximo). */
   cucaTruques?: number;
 }
 
 export type EliteZumbi = 'ferro' | 'gigante' | 'dupla' | 'veloz';
+/** Duração do pulo por cima de uma armadilha (segundos). */
+export const PULO_DURACAO = 0.55;
+
 export const ELITES: Record<EliteZumbi, { icone: string; nome: string; descricao: string }> = {
   ferro: { icone: '⚙️', nome: 'de Ferro', descricao: 'Capacete de ferro: 60% mais vida e só metade do dano de Natureza.' },
   gigante: { icone: '🦀', nome: 'Gigante', descricao: 'Siri enorme: dobro de vida e mordida mais forte.' },
@@ -183,6 +198,8 @@ export interface ProjectileEntity {
   caminho?: string | null;
   /** Bola de fogo da Abóbora-Brasa: deixa a casa do alvo em brasa. */
   abobora?: boolean;
+  /** Inteligência: zumbi que já esquivou deste tiro (o tiro passa reto por ele). */
+  esquivadoPor?: number;
 }
 
 export interface SunOrb {
@@ -283,6 +300,13 @@ export class GameEngine {
   public vfx: Vfx[] = [];
   /** Céu, chuva, relâmpago, vento e troca de clima. */
   public cenario = new Cenario();
+  /** Nível de inteligência dos zumbis (0 a 5): comportamentos em inteligencia.ts. */
+  public inteligencia = 0;
+  /** Combos feitos por linha na onda anterior (a horda evita essa linha). */
+  private combosPorLinha: number[] = [0, 0, 0, 0, 0];
+  private combosDaOndaPorLinha: number[] = [0, 0, 0, 0, 0];
+  private proximoBando = 0;
+  private contagemCapataz = 0;
   private avisouClima = false;
   /** Pausa de impacto: o jogo congela por um instante no combo. */
   private pausaDeImpacto = 0;
@@ -433,6 +457,16 @@ export class GameEngine {
     window.addEventListener('resize', () => this.resize());
   }
 
+  /** Força da defesa em cada linha (dano por segundo + muralhas), para a inteligência dos zumbis. */
+  public defesaPorLinha(): number[] {
+    const d = [0, 0, 0, 0, 0];
+    for (const p of this.plants) {
+      const dps = p.def.attackInterval > 0 ? p.def.damage / p.def.attackInterval : 0;
+      d[p.row] += dps / 10 + (p.def.id === 'wallnut' || p.def.id === 'musgo_esponja' ? 2 : 0.5);
+    }
+    return d;
+  }
+
   /** Cena escura: tempestade noturna, névoa, lua cheia ou o pântano. */
   public ehNoite(): boolean {
     return this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia' || this.currentBiome.id === 'bioluminescent_swamp';
@@ -543,6 +577,11 @@ export class GameEngine {
     this.gravador.limpar();
     this.tempoDePartida = 0;
     this.vfx = [];
+    this.inteligencia = 0;
+    this.combosPorLinha = [0, 0, 0, 0, 0];
+    this.combosDaOndaPorLinha = [0, 0, 0, 0, 0];
+    this.proximoBando = 0;
+    this.contagemCapataz = 0;
     this.cenario.reiniciar();
     this.avisouClima = false;
     this.pausaDeImpacto = 0;
@@ -1628,6 +1667,15 @@ export class GameEngine {
       let hitZombie: ZombieEntity | null = null;
       for (const z of this.zombies) {
         if (z.row === proj.row && Math.abs(z.x - proj.x) < 0.36) {
+          if (proj.esquivadoPor === z.id) continue;
+          // Inteligência: esquiva (abaixa e a semente passa)
+          if ((z.variant === 'basic' || z.variant === 'cone' || z.variant === 'mumia') && (z.esquivaCd ?? 0) <= 0 && !proj.isRicochet && Math.random() < chanceIa('esquiva', this.inteligencia)) {
+            z.esquivaCd = 3.5;
+            proj.esquivadoPor = z.id;
+            z.walkPhase += 1.5;
+            this.spawnFloatingText('🤸 ESQUIVOU!', z.x, z.row + 0.2, '#e2e8f0', 0.9);
+            continue;
+          }
           hitZombie = z;
           break;
         }
@@ -1679,9 +1727,12 @@ export class GameEngine {
       }
 
       if (this.isRiverRow(z.row)) z.wetTimer = Math.max(z.wetTimer, 2.5);
+      if ((z.esquivaCd ?? 0) > 0) z.esquivaCd! -= dt;
+      if ((z.puloCd ?? 0) > 0) z.puloCd! -= dt;
+      const pulando = (z.pulandoTimer ?? 0) > 0;
 
       const zCol = Math.floor(z.x);
-      if (zCol >= 0 && zCol < GRID_COLS) {
+      if (zCol >= 0 && zCol < GRID_COLS && !pulando) {
         const tile = this.tiles[z.row][zCol];
         if (tile.hazard === 'puddle') {
           z.wetTimer = Math.max(z.wetTimer, 3.0);
@@ -1731,6 +1782,15 @@ export class GameEngine {
       const cochilando = (z.dormindoTimer ?? 0) > 0;
       if (cochilando) {
         // Cuca cochilando: fica parada, de pedra
+      } else if (pulando) {
+        // Inteligência: pulando a armadilha — atravessa uma casa no ar
+        z.pulandoTimer! -= dt;
+        z.x -= (1 / PULO_DURACAO) * dt;
+        if (z.pulandoTimer! <= 0) {
+          z.pulandoTimer = 0;
+          z.stunTimer = Math.max(z.stunTimer, 0.5);
+          this.spawnParticles(z.x, z.row + 0.85, '#a3a3a3', 6);
+        }
       } else if (z.confusoTimer > 0 && z.frozenTimer <= 0 && z.stunTimer <= 0) {
         // Pegadas ao contrário: anda para trás, para o lado errado
         z.x = Math.min(GRID_COLS + 0.4, z.x + z.speed * 0.9 * dt);
@@ -1810,6 +1870,22 @@ export class GameEngine {
           sound.efeito('mordida_cerca', 0.35);
           if (morderCerca(cerca, z.damagePerSec * chillMult, dt) === 'quebrou') this.quebrarCerca(cerca);
         } else if (targetPlant) {
+          // Inteligência: bateu num cacto, tenta desviar para a linha vizinha menos defendida (uma vez)
+          if (!z.desviou && (targetPlant.def.id === 'wallnut' || targetPlant.def.id === 'musgo_esponja') && (z.variant === 'basic' || z.variant === 'cone' || z.variant === 'bucket' || z.variant === 'mumia')) {
+            z.desviou = true;
+            if (Math.random() < chanceIa('desvio', this.inteligencia)) {
+              const nova = linhaVizinhaMaisVazia(z.row, this.getActiveLanes().filter((r) => !this.isRiverRow(r)), this.defesaPorLinha());
+              if (nova !== null) {
+                this.spawnParticles(z.x, z.row + 0.7, '#94a3b8', 8);
+                z.row = nova;
+                z.x = Math.min(GRID_COLS - 0.3, z.x + 0.3);
+                z.walkPhase += 2;
+                this.spawnFloatingText('↕️ DESVIOU!', z.x, z.row + 0.2, '#e2e8f0', 0.95);
+                this.falar('confuso', z.x, z.row, 0.3);
+                continue;
+              }
+            }
+          }
           z.isEating = true;
           targetPlant.hp -= z.damagePerSec * chillMult * dt;
           if (
@@ -1828,7 +1904,29 @@ export class GameEngine {
             this.marcas.plantasPerdidas++;
           }
         } else {
-          z.x -= z.speed * chillMult * mudSpeedMult * riverMult * freioDasRaizes(cerca, z.x) * dt;
+          // Inteligência: pula a armadilha da casa da frente
+          const proxCol = Math.floor(z.x - 0.35);
+          if (
+            (z.puloCd ?? 0) <= 0 && proxCol >= 0 && proxCol < GRID_COLS && z.x - 0.35 - proxCol > 0.85 &&
+            z.variant !== 'canoeiro' && z.variant !== 'zomboss_mech' && z.variant !== 'mapinguari' && z.variant !== 'cuca' && z.variant !== 'gargantuar' &&
+            ['electrified_puddle', 'ice_patch', 'scorched', 'toxic_pool'].includes(this.tiles[z.row][proxCol].hazard)
+          ) {
+            z.puloCd = 2.5;
+            if (Math.random() < chanceIa('pulo', this.inteligencia)) {
+              z.pulandoTimer = PULO_DURACAO;
+              this.spawnFloatingText('🦘 PULOU!', z.x, z.row + 0.1, '#fde68a', 0.95);
+              sound.efeito('vento', 0.3);
+            }
+          }
+          // Inteligência: Capataz apressa a linha; bando anda no ritmo do mais lento
+          let ritmo = 1;
+          if (!z.capataz && this.zombies.some((o) => o.capataz && o.row === z.row)) ritmo *= 1.3;
+          if (z.bando) {
+            let minSpeed = z.speed;
+            for (const o of this.zombies) if (o.bando === z.bando && o.speed < minSpeed) minSpeed = o.speed;
+            ritmo *= minSpeed / z.speed;
+          }
+          z.x -= z.speed * ritmo * chillMult * mudSpeedMult * riverMult * freioDasRaizes(cerca, z.x) * dt;
           z.walkPhase += dt * (z.chilledTimer > 0 ? 3 : 6);
         }
       }
@@ -1917,8 +2015,10 @@ export class GameEngine {
       if (pt.life <= 0) this.particles.splice(i, 1);
     }
 
-    if (this.waveDirector) this.waveDirector.update(dt);
-    else this.updateWaveDirector(dt);
+    if (this.waveDirector) {
+      this.waveDirector.update(dt);
+      this.inteligencia = nivelPorOnda(this.wave);
+    } else this.updateWaveDirector(dt);
 
     this.tempoDePartida += dt;
     this.gravador.tick(dt, this.tempoDePartida, () => this.tirarFoto());
@@ -2062,6 +2162,11 @@ export class GameEngine {
     let dano = proj.damage;
     if (proj.caminho === 'corrosiva' && !target.lostHeadgear && (target.variant === 'cone' || target.variant === 'bucket')) {
       dano = Math.round(dano * 1.5);
+    }
+    // Inteligência: no bando, quem tem um companheiro na frente leva metade do dano de tiros
+    if (target.bando && this.zombies.some((o) => o.bando === target.bando && o.id !== target.id && o.row === target.row && o.x < target.x && target.x - o.x < 1.0)) {
+      dano = Math.round(dano * 0.5);
+      this.spawnFloatingText('🛡️ ESCUDO DO BANDO', target.x, target.row + 0.3, '#fca5a5', 0.85);
     }
     this.applyElementalDamage(target, dano, proj.element);
     this.spawnParticles(target.x, target.row + 0.5, proj.color, 8);
@@ -2497,6 +2602,7 @@ export class GameEngine {
   private handleZombieDeath(z: ZombieEntity, index: number): void {
     this.zombies.splice(index, 1);
     this.zombiesKilled++;
+    if (z.capataz) this.spawnFloatingText('📯 O CAPATAZ CAIU! Linha volta ao normal', z.x, z.row + 0.1, '#fde047', 1.1);
     this.onDescoberta?.('zumbis', z.variant);
     if (!this.tiposDerrotados.includes(z.variant)) this.tiposDerrotados.push(z.variant);
     if (z.variant === 'zomboss_mech' || z.variant === 'mapinguari' || z.variant === 'cuca') this.gravador.chefeCaiu(this.tempoDePartida, z.name);
@@ -2549,6 +2655,8 @@ export class GameEngine {
       if (newWave !== this.wave) {
         this.wave = newWave;
         this.marcas.combosNaOnda = 0;
+        this.combosPorLinha = this.combosDaOndaPorLinha;
+        this.combosDaOndaPorLinha = [0, 0, 0, 0, 0];
         this.onUiUpdate();
       }
 
@@ -2584,6 +2692,8 @@ export class GameEngine {
       if (newWave !== this.wave) {
         this.wave = newWave;
         this.marcas.combosNaOnda = 0;
+        this.combosPorLinha = this.combosDaOndaPorLinha;
+        this.combosDaOndaPorLinha = [0, 0, 0, 0, 0];
         this.onUiUpdate();
       }
 
@@ -2624,6 +2734,13 @@ export class GameEngine {
       row = Math.max(0, Math.min(GRID_ROWS - 1, targetLane));
     } else {
       row = activeLanes[Math.floor(Math.random() * activeLanes.length)];
+      // Inteligência: o Corredor caça o Lírio; a horda lê a defesa
+      if (type === 'cyber_sprinter' && Math.random() < chanceIa('faminto', this.inteligencia)) {
+        const comLirio = activeLanes.filter((r) => this.plants.some((p) => p.row === r && p.def.id === 'sunflower'));
+        if (comLirio.length > 0) row = comLirio[Math.floor(Math.random() * comLirio.length)];
+      } else if (Math.random() < chanceIa('padrao', this.inteligencia)) {
+        row = escolherLinha(activeLanes, this.defesaPorLinha(), this.combosPorLinha, Math.random());
+      }
     }
 
     if (type === 'zomboss_mech') {
@@ -2767,6 +2884,26 @@ export class GameEngine {
       confusoTimer: 0,
       elite
     });
+    // Inteligência: bando (chega junto, o da frente é escudo) e Capataz (apressa a linha)
+    const novo = this.zombies[this.zombies.length - 1];
+    if (!elite && (type === 'basic' || type === 'cone' || type === 'mumia') && Math.random() < chanceIa('bando', this.inteligencia)) {
+      const id = ++this.proximoBando;
+      novo.bando = id;
+      const n = 1 + Math.floor(Math.random() * 2);
+      for (let k = 0; k < n; k++) {
+        this.zombies.push({ ...novo, id: this.nextEntityId++, x: novo.x + 0.75 * (k + 1), walkPhase: novo.walkPhase + k + 1, bando: id });
+      }
+      this.spawnFloatingText('👥 BANDO!', GRID_COLS - 0.6, row + 0.1, '#fca5a5', 1.0);
+    } else if (!elite && (type === 'basic' || type === 'cone') && chanceIa('capataz', this.inteligencia) > 0) {
+      this.contagemCapataz++;
+      if (this.contagemCapataz % 6 === 0 && !this.zombies.some((z) => z.capataz)) {
+        novo.capataz = true;
+        novo.name = 'Capataz';
+        novo.hp = Math.round(novo.hp * 1.3);
+        novo.maxHp = novo.hp;
+        this.spawnFloatingText('📯 CAPATAZ! (apressa a linha)', GRID_COLS - 0.6, row + 0.1, '#fde047', 1.1);
+      }
+    }
     if (elite === 'dupla') {
       // O parceiro vem logo atrás
       const z = this.zombies[this.zombies.length - 1];
@@ -3177,6 +3314,8 @@ export class GameEngine {
     this.marcas.maxCombosNaOnda = Math.max(this.marcas.maxCombosNaOnda, this.marcas.combosNaOnda);
     this.onCombo?.(synergyId);
     // Cena do combo: efeitos, faixa com contador de sequência, pausa de impacto e soquinho
+    const linhaCombo = Math.max(0, Math.min(GRID_ROWS - 1, Math.round(y)));
+    this.combosDaOndaPorLinha[linhaCombo]++;
     this.comboSeq++;
     this.comboSeqTimer = 2.2;
     const reduzido = acessibilidade.reduzirEfeitos;

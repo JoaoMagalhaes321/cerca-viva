@@ -2,7 +2,7 @@
 // Plantas e zumbis são sprites SVG (public/sprites): estilo cartoon de dia e luz noturna nas fases escuras.
 // O gramado e a cerca viva continuam desenhados em código.
 
-import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant } from './engine';
+import { ELITES, PhysicsDebris, PlantEntity, ZombieEntity, ZombieVariant, PULO_DURACAO } from './engine';
 import { CERCA, CercaViva } from './cerca';
 import { MUDA, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { getSpriteClarao, getSprite, SpriteImage } from './sprites';
@@ -755,7 +755,8 @@ export class CharacterRenderer {
       ctx.clip();
     }
 
-    const lift = isZomboss
+    const pulo = (z.pulandoTimer ?? 0) > 0 ? Math.sin((1 - z.pulandoTimer! / PULO_DURACAO) * Math.PI) * -cellH * 0.4 : 0;
+    const lift = pulo !== 0 ? pulo : isZomboss
       ? Math.sin(walk * 1.4) * 3
       : canoeiro
         ? Math.sin(walk * 0.9) * 1.8
@@ -899,6 +900,20 @@ export class CharacterRenderer {
       ctx.fill();
     }
 
+    if (z.capataz) {
+      // Apito do Capataz em cima da cabeça, com um anel amarelo
+      ctx.save();
+      if (z.confusoTimer > 0) ctx.scale(-1, 1);
+      ctx.strokeStyle = 'rgba(253, 224, 71, 0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, spec.halfW * 1.1, 6, 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.font = '15px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('📯', 0, top - 8 + Math.sin(performance.now() * 0.006) * 2);
+      ctx.restore();
+    }
     if (z.elite) {
       // Selo da mutação em cima da cabeça
       ctx.save();
