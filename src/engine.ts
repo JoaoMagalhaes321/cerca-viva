@@ -29,6 +29,7 @@ import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, pront
 import { Foto, Gravador } from './replay';
 import { CENAS, Vfx, criarCena, desenharVfx } from './vfx';
 import { Cenario, tocarTrovao } from './cenario';
+import { bonusDoNivel } from './sementes';
 import { chance as chanceIa, escolherLinha, linhaVizinhaMaisVazia, nivelPorOnda } from './inteligencia';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
@@ -69,6 +70,8 @@ export interface PlantEntity {
   armed: boolean;
   /** Adormecida pela canção da Cuca: não ataca nem gera sol enquanto > 0. */
   dormindoTimer?: number;
+  /** Nível da planta (sementes raras): 1 a 3. */
+  nivel?: number;
 }
 
 export type ZombieVariant =
@@ -302,6 +305,8 @@ export class GameEngine {
   public cenario = new Cenario();
   /** Nível de inteligência dos zumbis (0 a 5): comportamentos em inteligencia.ts. */
   public inteligencia = 0;
+  /** Nível de cada planta (sementes raras), fornecido por quem monta o jogo. */
+  public nivelDaPlanta: (id: string) => number = () => 1;
   /** Combos feitos por linha na onda anterior (a horda evita essa linha). */
   private combosPorLinha: number[] = [0, 0, 0, 0, 0];
   private combosDaOndaPorLinha: number[] = [0, 0, 0, 0, 0];
@@ -1357,13 +1362,16 @@ export class GameEngine {
 
     const armDuration = this.unlockedMutations.has('overclock_roots') ? 2.2 : 4.5;
 
+    const nivel = this.nivelDaPlanta(def.id);
+    const bonus = bonusDoNivel(nivel);
     this.plants.push({
       id: this.nextEntityId++,
       def,
       row,
       col,
-      hp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1)),
-      maxHp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1)),
+      nivel,
+      hp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1) * bonus.vida),
+      maxHp: Math.round(def.maxHp * (adubada ? ADUBADA.vida : 1) * bonus.vida),
       attackTimer: def.attackInterval * 0.4,
       overdriveTimer: 0,
       animPhase: Math.random() * Math.PI * 2,
@@ -1581,7 +1589,7 @@ export class GameEngine {
             this.spawnFloatingText('💥 BUM!', p.col + 0.5, p.row, '#fef08a', 1.45);
             this.sacudir(7, 0.35, 'medio');
             const raioMina = p.caminho === 'mina_pesada' ? 2.0 : 1.25;
-            const danoMina = p.def.damage * (p.adubada ? ADUBADA.dano : 1) * (p.caminho === 'mina_pesada' ? 1.3 : 1);
+            const danoMina = p.def.damage * (p.adubada ? ADUBADA.dano : 1) * (p.caminho === 'mina_pesada' ? 1.3 : 1) * bonusDoNivel(p.nivel ?? 1).dano;
             for (const z of this.zombies) {
               if (z.row === p.row && Math.abs(z.x - (p.col + 0.5)) <= raioMina) {
                 this.applyElementalDamage(z, Math.round(danoMina), 'explosive');
@@ -1623,7 +1631,7 @@ export class GameEngine {
         if (p.attackTimer <= 0) {
           p.attackTimer = p.def.attackInterval;
           p.scaleKick = 0.25;
-          const extraSun = (this.unlockedMutations.has('solar_nova') ? 10 : 0) + (p.adubada ? ADUBADA.solExtra : 0);
+          const extraSun = (this.unlockedMutations.has('solar_nova') ? 10 : 0) + (p.adubada ? ADUBADA.solExtra : 0) + bonusDoNivel(p.nivel ?? 1).sol;
           const quantos = p.caminho === 'lirio_sol' ? 2 : 1;
           for (let k = 0; k < quantos; k++) {
             this.suns.push({
@@ -1652,7 +1660,7 @@ export class GameEngine {
         if (perto && p.attackTimer <= 0) {
           p.attackTimer = p.def.attackInterval;
           p.scaleKick = 0.35;
-          this.sustoDaFlor(p, alcance, p.caminho === 'assombracao' ? 3 : 2, Math.round(p.def.damage * (p.adubada ? ADUBADA.dano : 1)));
+          this.sustoDaFlor(p, alcance, p.caminho === 'assombracao' ? 3 : 2, Math.round(p.def.damage * (p.adubada ? ADUBADA.dano : 1) * bonusDoNivel(p.nivel ?? 1).dano));
         }
       } else if (p.def.attackInterval > 0) {
         const hasZombieAhead = this.zombies.some((z) => z.row === p.row && z.x > p.col);
@@ -2147,6 +2155,7 @@ export class GameEngine {
     else sound.playShoot(plant.def.element);
     let mult = plant.adubada ? ADUBADA.dano : 1;
     if (this.estagioDe(plant) === 'muda') mult *= MUDA.dano;
+    mult *= bonusDoNivel(plant.nivel ?? 1).dano;
     const c = plant.caminho;
     if (c === 'quiabo_pesado') mult *= 1.8;
     else if (c === 'abobora_bomba') mult *= 1.5;

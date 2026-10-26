@@ -1373,3 +1373,14 @@ html, body {
 .result-replay-titulo b { color: #fde68a; }
 #result-replay-canvas { width: min(100%, 360px); height: auto; border-radius: 10px; border: 2px solid rgba(250, 204, 21, 0.5); background: #5fae38; }
 @media (max-height: 480px) { #result-replay-canvas { width: min(100%, 220px); } }
+
+/* Sementes raras e nível das plantas */
+.seed-nivel { position: absolute; top: 2px; left: 4px; font-size: 0.5rem; color: #ffd84a; text-shadow: 0 1px 0 #000; letter-spacing: -1px; }
+.almanac-nivel { color: #ffd84a; font-size: 0.8rem; margin-left: 4px; letter-spacing: -1px; }
+.almanac-subir { margin-top: 6px; display: flex; flex-direction: column; gap: 2px; }
+.almanac-subir small { color: #cbd5e1; font-size: 0.68rem; }
+.almanac-subir-btn { font-size: 0.72rem; padding: 4px 10px; align-self: flex-start; }
+.almanac-subir-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.almanac-nivel-max { color: #fde68a; font-size: 0.72rem; }
+.result-sementes { text-align: center; color: #fde68a; font-weight: 700; font-size: 0.8rem; margin: 4px 0; }
+.result-sementes:empty { display: none; }

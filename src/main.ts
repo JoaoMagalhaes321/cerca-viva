@@ -31,6 +31,7 @@ import { mostrarAbertura } from './abertura';
 import { tocarReplay } from './replay';
 import { aplicarAcessibilidade } from './acessibilidade';
 import { nivelDeInteligencia } from './inteligencia';
+import { carregarSementes, custoParaSubir, estrelas, nivelDa, recompensa, salvarSementes, subirNivel } from './sementes';
 import { PLANTAS_HALLOWEEN, NIVEL_HALLOWEEN, halloweenAtivo, diasRestantesDoHalloween } from './halloween';
 import { AcessibilidadeUi } from './acessibilidade-ui';
 
@@ -188,6 +189,7 @@ function buildSeedPackets(): void {
       <span class="element-tag">${plant.elementBadge}</span>
       <canvas class="seed-portrait" width="44" height="38"></canvas>
       <span class="seed-name">${plant.name}</span>
+      ${nivelDa(sementes, plant.id) >= 2 ? `<span class="seed-nivel">${estrelas(nivelDa(sementes, plant.id))}</span>` : ''}
       <span class="seed-cost">${plant.cost}</span>
       <div class="cooldown-overlay" id="cd-${plant.id}"></div>
     `;
@@ -431,6 +433,8 @@ function openAlmanacModal(tab: 'synergies' | 'plants' | 'zombies' = 'synergies')
 }
 
 function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
+  const rotulo = document.getElementById('almanac-sementes');
+  if (rotulo) rotulo.textContent = `🌰 ${sementes.total}`;
   const tabBtns = almanacModal.querySelectorAll<HTMLButtonElement>('.tab-btn');
   tabBtns.forEach((btn) => {
     btn.classList.toggle('active', btn.dataset.tab === tab);
@@ -448,11 +452,35 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         <canvas width="64" height="58" style="flex-shrink:0;"></canvas>
         <div class="almanac-card-info">
           <span class="badge-pill">${plant.elementBadge} ${plant.cost}☀️ • Recarga: ${plant.cooldown}s</span>
-          <h4>${plant.name}</h4>
+          <h4>${plant.name} <span class="almanac-nivel" title="Nível da planta">${estrelas(nivelDa(sementes, plant.id))}</span></h4>
           <p>${plant.description}</p>
           <p style="color:#e9d5ff; margin-top:4px;"><strong>🧪 Supremo:</strong> ${plant.overdriveDesc}</p>
+          <div class="almanac-subir"></div>
         </div>
       `;
+      const subir = card.querySelector('.almanac-subir') as HTMLElement;
+      const nivelAtual = nivelDa(sementes, plant.id);
+      const custo = custoParaSubir(nivelAtual);
+      const liberada = ProgressionManager.getProgress().unlockedPlants.includes(plant.id) || !!plant.evento;
+      if (custo === null) {
+        subir.innerHTML = `<span class="almanac-nivel-max">🌟 Nível máximo: +30% vida, +25% dano${plant.id === 'sunflower' ? ', +10 sol' : ''}</span>`;
+      } else if (liberada) {
+        const b = nivelAtual === 1 ? '+15% vida, +10% dano' : '+30% vida, +25% dano e coroa de folhas';
+        subir.innerHTML = `<button type="button" class="secondary-btn almanac-subir-btn" ${sementes.total < custo ? 'disabled' : ''}>🌰 Subir para o nível ${nivelAtual + 1} (${custo} sementes)</button><small>${b}</small>`;
+        subir.querySelector('button')!.addEventListener('click', () => {
+          const novo = subirNivel(sementes, plant.id);
+          if (novo === null) {
+            showToast(`Faltam sementes: você tem ${sementes.total} e precisa de ${custo}.`);
+            return;
+          }
+          salvarSementes(sementes);
+          atualizarSementesNoMenu();
+          showToast(`🌟 ${plant.name} subiu para o nível ${novo}! ${estrelas(novo)}`);
+          sound.efeito('conquista');
+          buildSeedPackets();
+          renderAlmanacTab('plants');
+        });
+      }
       const c = card.querySelector('canvas') as HTMLCanvasElement;
       const pCtx = c.getContext('2d');
       if (pCtx) {
@@ -856,9 +884,31 @@ function mostrarReplay(): void {
   pararReplay = tocarReplay(document.getElementById('result-replay-canvas') as HTMLCanvasElement, m);
 }
 
+/** Sementes raras ganhas nesta partida (mostradas na tela de resultado). */
+function darSementes(won: boolean): number {
+  const progress = ProgressionManager.getProgress();
+  const modo = modos.ativo() ? (modos.modoAtual() === 'desafio' ? 'desafio' : 'infinito') : expedicao.ativo() ? 'expedicao' : currentLevel?.evento ? 'evento' : 'aventura';
+  const ganhas = recompensa({
+    venceu: won,
+    modo,
+    mundo: currentLevel?.world,
+    primeiraVez: !!currentLevel && !currentLevel.evento && currentLevel.id >= progress.maxUnlockedLevelId,
+    ondas: modo === 'expedicao' ? engine.wave : engine.wave,
+    chefeDerrotado: engine.tiposDerrotados.some((t) => t === 'zomboss_mech' || t === 'mapinguari' || t === 'cuca')
+  });
+  sementes.total += ganhas;
+  salvarSementes(sementes);
+  atualizarSementesNoMenu();
+  if (ganhas > 0) window.setTimeout(() => showToast(`🌰 +${ganhas} sementes raras (total ${sementes.total}). Suba suas plantas de nível no Almanaque.`), 900);
+  return ganhas;
+}
+
 function openGameOverModal(won: boolean): void {
   document.getElementById('compartilhar-desafio-btn')?.remove();
   mostrarReplay();
+  const sementesGanhas = darSementes(won);
+  const caixaSementes = document.getElementById('result-sementes');
+  if (caixaSementes) caixaSementes.textContent = `🌰 +${sementesGanhas} sementes raras · total ${sementes.total}`;
   if (modos.ativo()) {
     modos.mostrarResultado(won);
     return;
@@ -1115,6 +1165,15 @@ menuAlmanacBtn.addEventListener('click', () => {
 
 aplicarAcessibilidade();
 const acessUi = new AcessibilidadeUi(showToast);
+
+// 🌰 Sementes raras: nível das plantas
+const sementes = carregarSementes();
+engine.nivelDaPlanta = (id) => nivelDa(sementes, id);
+function atualizarSementesNoMenu(): void {
+  const el = document.getElementById('menu-sementes-info');
+  if (el) el.textContent = `🌰 ${sementes.total}`;
+}
+atualizarSementesNoMenu();
 
 // 🎃 Noite da Cuca: botão do menu só na época do evento (1/out a 2/nov)
 const menuHalloweenBtn = document.getElementById('menu-halloween-btn') as HTMLButtonElement;
