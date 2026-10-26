@@ -12,7 +12,7 @@ import { infoDaRegra, regrasDaFase } from './regras-fase';
 import { comportamentosAtivos, nivelDeInteligencia } from './inteligencia';
 import './preparacao.css';
 
-const CHEFES: ZombieVariant[] = ['zomboss_mech', 'mapinguari', 'gargantuar', 'cuca'];
+const CHEFES: ZombieVariant[] = ['zomboss_mech', 'mapinguari', 'gargantuar', 'cuca', 'boitata'];
 
 export interface OpcoesPreparacao {
   maxDeck: number;
@@ -167,7 +167,7 @@ export class Preparacao {
       el.innerHTML = `<canvas width="56" height="60"></canvas><strong>${info?.nome ?? z.variant}</strong><small>${z.chefe ? '👑 Chefe' : `×${z.quantidade}`}</small>`;
       const ctx = (el.querySelector('canvas') as HTMLCanvasElement).getContext('2d');
       if (ctx) {
-        const escala = z.variant === 'zomboss_mech' ? 0.4 : z.variant === 'gargantuar' || z.variant === 'mapinguari' || z.variant === 'cuca' ? 0.62 : 0.9;
+        const escala = z.variant === 'zomboss_mech' || z.variant === 'boitata' ? 0.4 : z.variant === 'gargantuar' || z.variant === 'mapinguari' || z.variant === 'cuca' ? 0.62 : 0.9;
         CharacterRenderer.drawZombie(
           ctx,
           {
@@ -208,6 +208,8 @@ export class Preparacao {
     if (tipos.has('gargantuar')) dicas.push('Colossos aguentam muito: combine elementos e Cacto-Muralha.');
     if (tipos.has('cuca')) dicas.unshift('A Cuca canta e as plantas dormem; quando ela cochila, só o Feixe Orbital (75☀️) acorda e machuca.');
     if (tipos.has('mumia')) dicas.push('Múmias não sentem gelo: fogo queima as faixas em dobro.');
+    if (tipos.has('boitata')) dicas.unshift('O Boitatá só se machuca apagado: molhe com Hidro-Brotos, Aguapé ou Tempestade e aí bata.');
+    if (level.world === 5) dicas.push('Serra: atiradores no alto (linhas 1 e 2) batem mais forte; o vale (4 e 5) precisa de muralha.');
     if (level.availableLanes < 5) dicas.push(`Só ${level.availableLanes} ${level.availableLanes === 1 ? 'linha aberta' : 'linhas abertas'} nesta fase.`);
     return dicas.slice(0, 2).join(' ') || 'Plante Lírios cedo para ter sol e segure a fila com um atirador por linha.';
   }

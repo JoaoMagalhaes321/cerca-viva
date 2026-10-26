@@ -568,6 +568,13 @@ function renderAlmanacTab(tab: 'synergies' | 'plants' | 'zombies'): void {
         desc: '🦀 Do mangue (Mundo 4): anda de lado e troca de linha de tempos em tempos, então não adianta defender uma linha só. A carapaça segura metade do dano de projéteis de Natureza; ☣️ ácido e 🔥 fogo passam direto. Na lama da maré baixa não atola.'
       },
       {
+        variant: 'boitata',
+        name: 'Boitatá (Chefe da Serra)',
+        hp: 3000,
+        speedText: 'Rápido · corre a linha',
+        desc: '🐍🔥 Cobra de fogo do folclore (Mundo 5): enquanto está em chamas não se machuca, corre a linha deixando brasa e queima a primeira planta que encontra; troca de linha de tempos em tempos. 💧 Água apaga por 6 s: aí ela fica lenta e leva dano normal. Molhe, depois bata com tudo.'
+      },
+      {
         variant: 'mapinguari',
         name: 'Mapinguari (Chefe do Igarapé)',
         hp: 3200,
@@ -807,6 +814,11 @@ const MUNDOS: Record<number, { titulo: string; fundo: string; borda: string }> =
     titulo: '🦀 MUNDO 4: MANGUE DA MARÉ',
     fundo: 'linear-gradient(90deg, rgba(120, 53, 15, 0.85), rgba(180, 83, 9, 0.35))',
     borda: '#fb923c'
+  },
+  5: {
+    titulo: '⛰️ MUNDO 5: SERRA DO VENTO',
+    fundo: 'linear-gradient(90deg, rgba(71, 85, 105, 0.85), rgba(100, 116, 139, 0.35))',
+    borda: '#cbd5e1'
   }
 };
 
