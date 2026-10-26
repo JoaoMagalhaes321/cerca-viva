@@ -28,6 +28,7 @@ import {
 import { FLORESCER_EM, MUDA, MUDA_SEGUNDOS, caminhoPorId, estagioDaPlanta, prontaParaFlorescer } from './florescer';
 import { Foto, Gravador } from './replay';
 import { CENAS, Vfx, criarCena, desenharVfx } from './vfx';
+import { Cenario, tocarTrovao } from './cenario';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
@@ -280,6 +281,9 @@ export class GameEngine {
   public gravador = new Gravador();
   /** Efeitos visuais dos combos em andamento. */
   public vfx: Vfx[] = [];
+  /** Céu, chuva, relâmpago, vento e troca de clima. */
+  public cenario = new Cenario();
+  private avisouClima = false;
   /** Pausa de impacto: o jogo congela por um instante no combo. */
   private pausaDeImpacto = 0;
   /** Soquinho de zoom no ponto do combo (0 a 1, decai). */
@@ -417,10 +421,21 @@ export class GameEngine {
     this.onBloomPrompt = callbacks.onBloomPrompt;
     this.onDescoberta = callbacks.onDescoberta;
 
+    this.cenario.onTrovao = () => {
+      tocarTrovao();
+      this.sacudir(4, 0.4, 'medio');
+      // Relâmpago energiza as poças (como já era na tempestade)
+      this.lightningFlash = Math.max(this.lightningFlash, 0.2);
+    };
     this.initBoard();
     this.setupInputs();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  }
+
+  /** Cena escura: tempestade noturna, névoa, lua cheia ou o pântano. */
+  public ehNoite(): boolean {
+    return this.weather === 'night_storm' || this.weather === 'spore_fog' || this.weather === 'lua_cheia' || this.currentBiome.id === 'bioluminescent_swamp';
   }
 
   public getActiveLanes(): number[] {
@@ -528,6 +543,8 @@ export class GameEngine {
     this.gravador.limpar();
     this.tempoDePartida = 0;
     this.vfx = [];
+    this.cenario.reiniciar();
+    this.avisouClima = false;
     this.pausaDeImpacto = 0;
     this.soco = 0;
     this.comboSeq = 0;
@@ -1325,8 +1342,10 @@ export class GameEngine {
     const nextIdx = (order.indexOf(this.weather) + 1) % order.length;
     const nextWeather = order[nextIdx];
     if (this.weather !== nextWeather) {
+      this.cenario.iniciarTransicao(this.weather, this.ehNoite());
       this.weather = nextWeather;
       this.boardCacheDirty = true;
+      this.avisouClima = false;
     }
 
     if (this.weather === 'rain') {
@@ -1383,10 +1402,18 @@ export class GameEngine {
 
     this.atualizarMare(dt);
     if (!this.weatherLocked) this.weatherTimer -= dt;
+    if (!this.weatherLocked && this.weatherTimer <= 4 && !this.avisouClima) {
+      this.avisouClima = true;
+      const ordem: WeatherType[] = ['sunny', 'rain', 'night_storm'];
+      const proximo = ordem[(ordem.indexOf(this.weather) + 1) % ordem.length];
+      this.spawnFloatingText(proximo === 'rain' ? '🌧️ Chuva chegando…' : proximo === 'night_storm' ? '⛈️ Tempestade chegando…' : '☀️ O sol vai abrir…', 4.5, -0.35, '#e0f2fe', 1.1);
+    }
     if (this.weatherTimer <= 0) {
       this.weatherTimer = 42;
       this.cycleWeather();
     }
+    this.cenario.update(dt, this.weather, this.ehNoite(), this.currentBiome.id, this.canvas.width / this.dpr, this.canvas.height / this.dpr, this.boardTop);
+    CharacterRenderer.vento = this.cenario.vento;
 
     if (this.lightningFlash > 0) {
       this.lightningFlash = Math.max(0, this.lightningFlash - dt * 1.8);
@@ -3309,6 +3336,7 @@ export class GameEngine {
     }
     // 1. Draw cached board (1 ultra-fast drawImage call instead of 45 gradient allocations!)
     ctx.drawImage(this.boardCacheCanvas, 0, 0, width, height);
+    this.cenario.drawCeu(ctx, width, height, this.boardTop, this.weather, this.ehNoite(), this.currentBiome.id);
     const mares = this.currentBiome.tideRows ?? [];
     if (mares.length > 0 && this.mare.nivel > 0) {
       // Água da maré subindo por cima da lama (a lama fica no cache; a água anima ao vivo)
@@ -3719,21 +3747,8 @@ export class GameEngine {
     }
 
     // 11. Weather Rain Drops & Lightning Flash Overlay
-    if (this.weather === 'rain' || this.weather === 'night_storm') {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(125, 211, 252, 0.32)';
-      ctx.lineWidth = 1.5;
-      const timeOffset = performance.now() * 0.4;
-      ctx.beginPath();
-      for (let i = 0; i < 38; i++) {
-        const rx = (i * 97 + timeOffset) % width;
-        const ry = (i * 61 + timeOffset * 1.7) % height;
-        ctx.moveTo(rx, ry);
-        ctx.lineTo(rx - 6, ry + 16);
-      }
-      ctx.stroke();
-      ctx.restore();
-    }
+    this.cenario.drawVagalumes(ctx);
+    this.cenario.drawChuva(ctx, width, height, this.boardTop, this.ehNoite());
 
     if (this.lightningFlash > 0) {
       ctx.save();
@@ -3741,6 +3756,7 @@ export class GameEngine {
       ctx.fillRect(0, 0, width, height);
       ctx.restore();
     }
+    this.cenario.drawClarao(ctx, width, height);
 
     // 12. Floating Combat & Synergy Texts
     for (const ft of this.floatingTexts) {
