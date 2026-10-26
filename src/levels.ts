@@ -675,6 +675,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
 
   // NÍVEL 4-5: Ressaca
   // Clímax do Mundo 4: dois Colossos, siris por todo lado e a Colheitadeira Z no fim.
+  // Recompensa: Mangue-Vermelho, que não teme a maré e segura o Siri na linha.
   {
     id: 25,
     world: 4,
@@ -682,6 +683,7 @@ export const LEVEL_CATALOG: LevelConfig[] = [
     name: 'Fase 4-5: Ressaca',
     initialSun: 375,
     availableLanes: 5,
+    unlockedPlantOnClear: 'mangue_vermelho', // Recompensa do Mundo 4 (D-20261026-1)
     spawns: createSpawns([
       { time: 6, type: 'siri', lane: 2 },
       { time: 10, type: 'canoeiro', lane: 0 },

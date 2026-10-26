@@ -449,6 +449,22 @@ export const PLANT_CATALOG: PlantDefinition[] = [
     color: '#5eead4'
   },
   {
+    id: 'mangue_vermelho',
+    name: 'Mangue-Vermelho',
+    emoji: '🌳',
+    element: 'nature',
+    elementBadge: '🦀',
+    cost: 100,
+    cooldown: 12,
+    maxHp: 1200,
+    attackInterval: 0,
+    damage: 0,
+    description: 'Árvore do mangue: cresce na terra e na água, sem medo da maré. As raízes deixam os zumbis à frente mais lentos e o Zumbi Siri preso nelas não troca de linha.',
+    overdriveDesc: 'Raízes da Maré: prende todos os zumbis da linha por 3 s, causa 60 de dano e recupera 500 de vida.',
+    color: '#b45309',
+    habitat: 'ambos'
+  },
+  {
     id: 'aguape',
     name: 'Aguapé',
     emoji: '🪷',
