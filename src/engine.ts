@@ -31,6 +31,7 @@ import { CENAS, Vfx, criarCena, desenharVfx } from './vfx';
 import { Cenario, tocarTrovao } from './cenario';
 import { chance as chanceIa, escolherLinha, linhaVizinhaMaisVazia, nivelPorOnda } from './inteligencia';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
+import { Mascote, SituacaoSapo } from './mascote';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
 
@@ -392,6 +393,8 @@ export class GameEngine {
   public mare: Mare = { estado: 'baixa', nivel: 0, timer: MARE.baixaDura };
   /** Multiplica o intervalo entre os sóis que caem do céu (1 = normal). */
   public skySunScale = 1;
+  /** O sapo-cururu (null enquanto não foi liberado). */
+  public mascote: Mascote | null = null;
 
   public seedCooldowns: Record<string, number> = {};
   public unlockedMutations: Set<string> = new Set();
@@ -652,6 +655,7 @@ export class GameEngine {
 
     this.cercas = [];
     for (const r of activeLanes) this.cercas.push(novaCerca(r));
+    this.mascote?.reiniciar(activeLanes);
 
     PLANT_CATALOG.forEach((p) => {
       this.seedCooldowns[p.id] = 0;
@@ -1950,6 +1954,7 @@ export class GameEngine {
       // Cerca quebrada (ou linha sem cerca): o zumbi entra na casa
       if (z.x < CERCA.xDaCasa) {
         this.gameOver = true;
+        this.sapoDiz('derrota', true);
         this.onGameEnd(false);
         return;
       }
@@ -2017,6 +2022,7 @@ export class GameEngine {
       this.falas[i].life -= dt;
       if (this.falas[i].life <= 0) this.falas.splice(i, 1);
     }
+    this.updateMascote(dt);
 
     for (let i = this.arcs.length - 1; i >= 0; i--) {
       this.arcs[i].life -= dt;
@@ -2063,6 +2069,7 @@ export class GameEngine {
     this.marcas.cercasQuebradas++;
     sound.efeito('cerca_quebra');
     this.falar('cerca_quebra', 0.4, c.row + 0.2);
+    this.sapoDiz('cerca');
     this.sacudir(5, 0.3, 'medio');
     this.spawnParticles(-0.3, c.row + 0.55, '#4ade80', 18);
     this.spawnParticles(-0.3, c.row + 0.55, '#b9824a', 10);
@@ -2695,6 +2702,7 @@ export class GameEngine {
       ) {
         sound.bossMode = false;
         this.gameOver = true;
+        this.sapoDiz('vitoria', true);
         this.onGameEnd(true);
       }
     } else {
@@ -2738,6 +2746,7 @@ export class GameEngine {
       } else if (this.zombies.length === 0 && !this.gameOver) {
         sound.bossMode = false;
         this.gameOver = true;
+        this.sapoDiz('vitoria', true);
         this.onGameEnd(true);
       }
     }
@@ -2935,6 +2944,7 @@ export class GameEngine {
     if (rios.includes(row)) row = terra[Math.floor(terra.length / 2)] ?? 2;
     this.bossSpawned = true;
     sound.bossMode = true;
+    this.sapoDiz('chefe', true);
     sound.efeito('rugido');
     this.lightningFlash = 0.4;
     this.onToast('👁️ O MAPINGUARI SAIU DA MATA! Fogo queima o pelo dele; mire no olho quando ele parar.');
@@ -3017,6 +3027,7 @@ export class GameEngine {
   public spawnZombossFinalBoss(): void {
     this.bossSpawned = true;
     sound.bossMode = true;
+    this.sapoDiz('chefe', true);
     sound.playBossSiren();
     this.lightningFlash = 0.65;
     this.onToast('💀 ALERTA DE CHEFE FINAL: A COLHEITADEIRA Z ENTROU NO JARDIM!');
@@ -3119,6 +3130,7 @@ export class GameEngine {
     if (this.gameOver) return;
     sound.bossMode = false;
     this.gameOver = true;
+    this.sapoDiz(won ? 'vitoria' : 'derrota', true);
     this.onGameEnd(won);
   }
 
@@ -3165,6 +3177,7 @@ export class GameEngine {
     const row = typeof targetLane === 'number' && lanes.includes(targetLane) ? targetLane : lanes[Math.floor(lanes.length / 2)] ?? 2;
     this.bossSpawned = true;
     sound.bossMode = true;
+    this.sapoDiz('chefe', true);
     sound.playBossSiren();
     this.lightningFlash = 0.5;
     this.onToast('🐊 A CUCA CHEGOU! A canção dela faz as plantas dormirem. Quando ela cochila, só luz solar (Feixe Orbital) machuca e acorda.');
@@ -3334,6 +3347,7 @@ export class GameEngine {
     this.combosDaOndaPorLinha[linhaCombo]++;
     this.comboSeq++;
     this.comboSeqTimer = 2.2;
+    this.sapoDiz(this.comboSeq >= 3 ? 'combao' : 'combo');
     const reduzido = acessibilidade.reduzirEfeitos;
     const faixaAntiga = this.vfx.findIndex((v) => v.tipo === 'faixa');
     if (faixaAntiga >= 0) this.vfx.splice(faixaAntiga, 1);
@@ -3353,10 +3367,57 @@ export class GameEngine {
   public falar(situacao: keyof typeof FALAS, x: number, y: number, chance = 1): void {
     if (Math.random() > chance) return;
     const opcoes = FALAS[situacao];
-    if (!opcoes || this.falas.some((f) => Math.abs(f.x - x) < 0.6 && Math.abs(f.y - y) < 0.6)) return;
+    if (!opcoes) return;
+    this.dizer(opcoes[Math.floor(Math.random() * opcoes.length)], x, y);
+  }
+
+  /** Balão com um texto já escolhido (plantas e o sapo). */
+  private dizer(texto: string, x: number, y: number, vida = 1.9): void {
+    if (this.falas.some((f) => Math.abs(f.x - x) < 0.6 && Math.abs(f.y - y) < 0.6)) return;
     if (this.falas.length >= 3) this.falas.shift();
-    this.falas.push({ texto: opcoes[Math.floor(Math.random() * opcoes.length)], x, y, life: 1.9, maxLife: 1.9 });
+    this.falas.push({ texto, x, y, life: vida, maxLife: vida });
     sound.efeito('fala', 0.4);
+  }
+
+  /** O sapo comenta a partida (se estiver acordado e não tiver falado há pouco). */
+  private sapoDiz(situacao: SituacaoSapo, forcar = false): void {
+    const m = this.mascote;
+    if (!m) return;
+    const texto = m.reagir(situacao, forcar);
+    if (texto) {
+      this.dizer(texto, -0.5, m.row - 0.1, 2.4);
+      if (situacao !== 'dormindo') sound.efeito('croc', 1.5);
+    }
+  }
+
+  /** Posição do sapo em colunas/linhas (ele senta na cerca, à esquerda do tabuleiro). */
+  private updateMascote(dt: number): void {
+    const m = this.mascote;
+    if (!m) return;
+    const linhas = this.getActiveLanes();
+    const r = m.update(
+      dt,
+      this.ehNoite(),
+      this.zombies.map((z) => ({ id: z.id, variant: z.variant, row: z.row, x: z.x, hp: z.hp, elite: z.elite })),
+      linhas
+    );
+    if (r.comer !== undefined) {
+      const idx = this.zombies.findIndex((z) => z.id === r.comer);
+      if (idx >= 0) {
+        const z = this.zombies[idx];
+        this.spawnFloatingText('🐸 NHAC!', Math.max(0.3, z.x), z.row + 0.1, '#bef264', 1.3);
+        this.spawnParticles(Math.max(0.2, z.x), z.row + 0.5, '#f472b6', 10);
+        sound.efeito('lingua');
+        this.handleZombieDeath(z, idx);
+      }
+    } else if (m.estado === 'acordado' && !m.comeu) {
+      // Aviso de perigo: alguém chegou perto da casa
+      if (this.zombies.some((z) => z.x < 1.6 && z.x > 0)) this.sapoDiz('perigo');
+    }
+    if (r.fala) {
+      this.dizer(r.fala, -0.5, m.row - 0.1, 2.4);
+      if (m.estado !== 'dormindo') sound.efeito('croc', 1.5);
+    }
   }
 
   private spawnFloatingText(
@@ -3785,6 +3846,15 @@ export class GameEngine {
       }
     }
 
+    // 5a. O sapo-cururu na cerca (depois dos zumbis, para a língua passar por cima)
+    if (this.mascote) {
+      const m = this.mascote;
+      const sx = this.boardLeft - 27; // em cima da cerca (que fica em boardLeft - 25)
+      const sy = this.boardTop + (m.row + 0.4) * this.cellH;
+      const alvo = m.alvo ? { x: this.boardLeft + m.alvo.x * this.cellW, y: this.boardTop + (m.alvo.row + 0.5) * this.cellH } : null;
+      CharacterRenderer.drawSapo(ctx, sx, sy, this.cellH, m, isNightScene, agora, alvo);
+    }
+
     // 5b. Curupira correndo
     for (const c of this.curupiras) {
       CharacterRenderer.drawCurupira(ctx, this.boardLeft + c.x * this.cellW, this.boardTop + (c.row + 0.54) * this.cellH, this.cellH, isNightScene, agora);
@@ -3952,11 +4022,13 @@ export class GameEngine {
       ctx.font = "800 12px 'Nunito', 'Outfit', sans-serif";
       const w = ctx.measureText(f.texto).width + 16;
       const h = 22;
+      // Balão do sapo (na borda esquerda): a caixa desliza para dentro da tela, o rabinho fica no lugar
+      const dx = Math.max(0, 6 - (fx - w / 2)) / Math.max(k, 0.01);
       ctx.fillStyle = '#fff8e6';
       ctx.strokeStyle = '#2a2416';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.roundRect(-w / 2, -h - 8, w, h, 8);
+      ctx.roundRect(-w / 2 + dx, -h - 8, w, h, 8);
       ctx.moveTo(-5, -8);
       ctx.lineTo(0, 0);
       ctx.lineTo(5, -8);
@@ -3967,7 +4039,7 @@ export class GameEngine {
       ctx.fillStyle = '#2a2416';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(f.texto, 0, -h / 2 - 8);
+      ctx.fillText(f.texto, dx, -h / 2 - 8);
       ctx.restore();
     }
 

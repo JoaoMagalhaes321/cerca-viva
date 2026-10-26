@@ -595,6 +595,22 @@ class SoundManager {
         o.frequency.linearRampToValueAtTime(30, t + 1.8);
         break;
       }
+      case 'lingua': {
+        // Língua do sapo: "thwip" subindo e um "nhac" grave
+        const o = this.osc(ctx, 'sine', 320, t, t + 0.12, g(0.1, 0.003, 0.12));
+        o.frequency.exponentialRampToValueAtTime(900, t + 0.1);
+        this.ruidoFiltrado(ctx, t + 0.14, 0.06, 0.18, 'bandpass', 700);
+        this.osc(ctx, 'triangle', 110, t + 0.16, t + 0.3, this.envelope(ctx, t + 0.16, 0.004, 0.1, t + 0.3));
+        break;
+      }
+      case 'croc': {
+        // Coaxar do sapo-cururu: dois pulsos graves e roucos
+        for (const d of [0, 0.13]) {
+          const o = this.osc(ctx, 'sawtooth', 150, t + d, t + d + 0.11, this.envelope(ctx, t + d, 0.01, 0.06, t + d + 0.11));
+          o.frequency.exponentialRampToValueAtTime(95, t + d + 0.1);
+        }
+        break;
+      }
       case 'fala': {
         this.osc(ctx, 'sine', 740, t, t + 0.05, g(0.06, 0.002, 0.05));
         this.osc(ctx, 'sine', 880, t + 0.06, t + 0.12, this.envelope(ctx, t + 0.06, 0.002, 0.06, t + 0.12));
@@ -626,6 +642,6 @@ class SoundManager {
 export type Efeito =
   | 'mordida_cerca' | 'cerca_quebra' | 'cerca_floresce' | 'floresceu' | 'muda_cresce' | 'replantar'
   | 'bolha' | 'bolha_estoura' | 'rugido' | 'pisao' | 'curupira' | 'siri_lado' | 'mare_sobe' | 'mare_desce'
-  | 'congelar' | 'derrete' | 'capacete_cai' | 'zumbi_cai' | 'vento' | 'veneno' | 'mina_arma' | 'conquista' | 'fala' | 'cancao' | 'ronco' | 'buu' | 'trovao';
+  | 'congelar' | 'derrete' | 'capacete_cai' | 'zumbi_cai' | 'vento' | 'veneno' | 'mina_arma' | 'conquista' | 'fala' | 'cancao' | 'ronco' | 'buu' | 'trovao' | 'lingua' | 'croc';
 
 export const sound = new SoundManager();
