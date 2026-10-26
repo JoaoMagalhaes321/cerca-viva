@@ -14,6 +14,8 @@ const brilhos = new Map<string, HTMLCanvasElement>();
 export class CharacterRenderer {
   /** Efeitos extras (brilhos das plantas). O motor desliga quando o aparelho não aguenta. */
   public static efeitos = true;
+  /** Rajada de vento do cenário (0 a 1): inclina as plantas. */
+  public static vento = 0;
 
   /** Textura de brilho na cor pedida (alfa em hexa, ex.: '44'), pronta para drawImage. */
   public static brilho(cor: string, alfa = '66'): HTMLCanvasElement {
@@ -582,7 +584,7 @@ export class CharacterRenderer {
     const estagio = estagioDaPlanta(p.idade, p.caminho);
     const s = (cellH / 92) * (1 + p.scaleKick * 0.7) * (estagio === 'muda' ? MUDA.tamanho : 1);
     const t = p.animPhase;
-    const sway = Math.sin(t) * 3.2;
+    const sway = Math.sin(t) * 3.2 + CharacterRenderer.vento * (8 + Math.sin(t * 4) * 3);
     const breathe = 1 + Math.sin(t * 1.3) * 0.035;
 
     ctx.save();
