@@ -801,7 +801,7 @@ export class CharacterRenderer {
           rotateAround(px, py, canoeiro ? Math.sin(walk * 1.1) * 0.28 : armBob * 0.02);
           place(arm);
           if (z.variant === 'pyro_scavenger' && !doused) {
-            this.drawPilotFlame(ctx, (9 - spec.ox) * k, (114 - spec.feet) * k);
+            this.drawPilotFlame(ctx, (2 - spec.ox) * k, (118 - spec.feet) * k);
           }
           ctx.restore();
         }
@@ -1081,18 +1081,18 @@ interface ZombieSpriteSpec {
 }
 
 const ZOMBIE_SPRITES: Record<ZombieVariant, ZombieSpriteSpec> = {
-  basic: { w: 170, h: 230, ox: 82, feet: 215, head: 26, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#6e6491' },
-  cone: { w: 170, h: 230, ox: 82, feet: 215, head: 20, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#7f93a6' },
-  bucket: { w: 170, h: 230, ox: 82, feet: 215, head: 22, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#3a302c' },
-  cyber_sprinter: { w: 170, h: 230, ox: 92, feet: 206, head: 14, k: 0.36, halfW: 24, pivot: [86, 94], sleeve: '#2a3a5c' },
-  rubber_hazard: { w: 170, h: 230, ox: 82, feet: 215, head: 24, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#ffd23a' },
-  pyro_scavenger: { w: 170, h: 230, ox: 86, feet: 215, head: 24, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#d9631e' },
-  gargantuar: { w: 230, h: 280, ox: 124, feet: 262, head: 42, k: 0.36, halfW: 34, pivot: [84, 112], sleeve: '#a7bf8a' },
-  zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 12, k: 0.3, halfW: 52, sleeve: '#d9452b' },
+  basic: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  cone: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  bucket: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#2f2f3a' },
+  cyber_sprinter: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#243260' },
+  rubber_hazard: { w: 170, h: 230, ox: 82, feet: 215, head: 8, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#ffd23a' },
+  pyro_scavenger: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#ff8a1f' },
+  gargantuar: { w: 230, h: 280, ox: 124, feet: 262, head: 42, k: 0.36, halfW: 34, pivot: [84, 112], sleeve: '#8ba56a' },
+  zomboss_mech: { w: 360, h: 280, ox: 190, feet: 262, head: 40, k: 0.3, halfW: 52, sleeve: '#d9452b' },
   // Canoeiro: "feet" é a linha d'água do casco; o casco abaixo dela fica escondido pela água
-  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 30, k: 0.5, halfW: 30, pivot: [94, 120], sleeve: '#2c9c8f' },
-  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#7a4a2a' },
-  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 6, k: 0.36, halfW: 24, pivot: [72, 100], sleeve: '#3f5f6a' },
-  mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 20, k: 0.36, halfW: 22, pivot: [72, 100], sleeve: '#d6cfb4' },
-  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 20, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#2f7a3a' }
+  canoeiro: { w: 200, h: 230, ox: 100, feet: 196, head: 2, k: 0.5, halfW: 30, pivot: [92, 112], sleeve: '#efe6cc' },
+  mapinguari: { w: 250, h: 300, ox: 128, feet: 282, head: 28, k: 0.36, halfW: 42, pivot: [70, 124], sleeve: '#8a5a30' },
+  siri: { w: 170, h: 230, ox: 82, feet: 215, head: 2, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#6fc7b8' },
+  mumia: { w: 170, h: 230, ox: 82, feet: 215, head: 12, k: 0.36, halfW: 24, pivot: [76, 118], sleeve: '#e3d9bc' },
+  cuca: { w: 250, h: 300, ox: 126, feet: 284, head: 2, k: 0.36, halfW: 40, pivot: [64, 150], sleeve: '#3f9a3a' }
 };
