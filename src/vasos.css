@@ -1,0 +1,99 @@
+/* Fases-quebra-cabeça "Vasos": lista, faixa de planejamento */
+.vasos-card { max-width: 640px; }
+.vasos-badge { background: linear-gradient(90deg, #65a30d, #15803d); color: #f7fee7; }
+.vasos-intro {
+  font-size: 0.78rem;
+  color: #cbd5e1;
+  line-height: 1.4;
+  margin: 4px 0 12px;
+}
+.vasos-lista {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 8px;
+  max-height: 58vh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+.vaso-card {
+  display: grid;
+  grid-template-columns: 34px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+  border-radius: 12px;
+  border: 2px solid rgba(148, 163, 184, 0.35);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.95), rgba(15, 23, 42, 0.95));
+  color: #f1f5f9;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.vaso-card:not([disabled]):hover,
+.vaso-card:not([disabled]):focus-visible {
+  transform: translateY(-2px);
+  border-color: #a3e635;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.35);
+}
+.vaso-card.feito { border-color: rgba(163, 230, 53, 0.55); }
+.vaso-card.fechado { opacity: 0.5; cursor: not-allowed; }
+.vaso-num {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 900;
+  background: rgba(163, 230, 53, 0.18);
+  border: 2px solid rgba(163, 230, 53, 0.5);
+  color: #d9f99d;
+}
+.vaso-card.feito .vaso-num { background: #65a30d; color: #f7fee7; }
+.vaso-corpo { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.vaso-corpo strong { font-size: 0.88rem; }
+.vaso-corpo small { font-size: 0.66rem; color: #94a3b8; }
+.vaso-chips { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 2px; }
+.vaso-chip {
+  font-size: 0.66rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.8);
+  border: 1px solid rgba(148, 163, 184, 0.35);
+}
+.vaso-estrelas { color: #facc15; font-size: 0.9rem; letter-spacing: 1px; white-space: nowrap; }
+.vasos-estrelas-titulo { color: #facc15; font-weight: 400; letter-spacing: 2px; }
+
+/* Faixa de planejamento: fica sobre o tabuleiro enquanto o tempo não corre */
+.vasos-faixa {
+  position: absolute;
+  left: 50%;
+  bottom: 86px;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px 8px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.92);
+  border: 2px solid rgba(163, 230, 53, 0.6);
+  color: #f1f5f9;
+  font-size: 0.74rem;
+  font-weight: 700;
+  z-index: 130;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.4);
+  max-width: calc(100% - 24px);
+}
+.vasos-faixa.hidden { display: none; }
+.vasos-faixa.pronta { border-color: #facc15; }
+.vasos-faixa.pronta .vasos-comecar { animation: vasos-pulsar 0.9s ease-in-out infinite; }
+.vasos-comecar { padding: 6px 14px; font-size: 0.8rem; white-space: nowrap; }
+@keyframes vasos-pulsar {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@media (max-width: 600px) {
+  .vasos-faixa { flex-direction: column; gap: 6px; border-radius: 16px; text-align: center; bottom: 78px; }
+}

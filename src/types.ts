@@ -115,8 +115,8 @@ export interface LevelConfig {
   regras?: string[];
   /** Com a regra deck_fixo: as sementes que a fase impõe. */
   deckFixo?: string[];
-  /** Fase de evento sazonal: não entra na progressão da Aventura. */
-  evento?: 'halloween';
+  /** Fase fora da Aventura (evento sazonal ou quebra-cabeça dos Vasos): não entra na progressão. */
+  evento?: 'halloween' | 'vasos';
 }
 
 export interface PlayerProgress {
