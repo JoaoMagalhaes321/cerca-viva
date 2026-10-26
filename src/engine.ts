@@ -33,6 +33,7 @@ import { bonusDoNivel } from './sementes';
 import { chance as chanceIa, escolherLinha, linhaVizinhaMaisVazia, nivelPorOnda } from './inteligencia';
 import { MUSGO, MUSGO_ID, molhadoAoMorder } from './musgo';
 import { Mascote, SituacaoSapo } from './mascote';
+import { MANGUE, MANGUE_ID, nasRaizes } from './mangue-vermelho';
 import { REACAO, Reacao, TipoReacao, novaReacao } from './reacoes';
 import { acessibilidade, desenharLetra, LETRA_DO_ELEMENTO, LETRA_DO_TERRENO } from './acessibilidade';
 import { ADUBADA, DURACAO, GELO, aoExpirar, efeitoNaPlanta, plantarConsomeCinza, pocasQueEletrificam, reacaoDoTerreno } from './terreno';
@@ -1314,6 +1315,18 @@ export class GameEngine {
         this.spawnFloatingText('👻 GRITO DE ARREPIAR!', plant.col + 1.5, plant.row, '#e9d5ff', 1.35);
         sound.efeito('buu');
         break;
+      case MANGUE_ID:
+        // Raízes da Maré: prendem e machucam todos os zumbis da linha; o mangue se recupera
+        for (const z of this.zombies) {
+          if (z.row === plant.row) {
+            z.stunTimer = Math.max(z.stunTimer, MANGUE.presoDoSuperpoder);
+            this.applyElementalDamage(z, MANGUE.danoDoSuperpoder, 'nature');
+            this.spawnParticles(z.x, z.row + 0.7, '#7c4a2d', 8);
+          }
+        }
+        plant.hp = Math.min(plant.maxHp, plant.hp + MANGUE.curaDoSuperpoder);
+        this.spawnFloatingText('🌳 RAÍZES DA MARÉ!', plant.col + 1.5, plant.row, '#86efac', 1.35);
+        break;
       case MUSGO_ID:
         // Espreme a água: encharca a linha, deixa poças, apaga as tochas e recupera vida
         for (let c = plant.col; c < GRID_COLS; c++) {
@@ -1898,7 +1911,11 @@ export class GameEngine {
       // Zumbi Siri: anda de lado e troca de linha de tempos em tempos
       if (z.variant === 'siri' && !z.isEating && z.frozenTimer <= 0 && z.stunTimer <= 0 && z.x > 0.8 && z.x < GRID_COLS - 0.2) {
         z.trocaLinhaTimer = (z.trocaLinhaTimer ?? 4 + Math.random() * 3) - dt;
-        if (z.trocaLinhaTimer <= 0) {
+        if (z.trocaLinhaTimer <= 0 && this.presoNoMangue(z)) {
+          // As raízes do Mangue-Vermelho seguram o siri na linha
+          z.trocaLinhaTimer = 4 + Math.random() * 3;
+          this.spawnFloatingText('🌳 PRESO NAS RAÍZES!', z.x, z.row + 0.2, '#86efac', 0.95);
+        } else if (z.trocaLinhaTimer <= 0) {
           z.trocaLinhaTimer = 4 + Math.random() * 3;
           const lanes = this.getActiveLanes();
           const opcoes = [z.row - 1, z.row + 1].filter((r) => lanes.includes(r));
@@ -2040,6 +2057,7 @@ export class GameEngine {
             z.hp -= 35 * dt;
           }
           if (targetPlant.caminho === 'espinhoso') z.hp -= 30 * dt;
+          if (targetPlant.def.id === MANGUE_ID && targetPlant.caminho === 'ostreiro') z.hp -= MANGUE.danoOstras * dt;
           if (targetPlant.def.id === MUSGO_ID) {
             z.wetTimer = Math.max(z.wetTimer, molhadoAoMorder(targetPlant.caminho));
           }
@@ -2074,7 +2092,8 @@ export class GameEngine {
             ritmo *= minSpeed / z.speed;
           }
           const antesX = z.x;
-          z.x -= z.speed * ritmo * chillMult * mudSpeedMult * riverMult * freioDasRaizes(cerca, z.x) * dt;
+          const mangueMult = this.presoNoMangue(z) ? MANGUE.lentidaoRaizes : 1;
+          z.x -= z.speed * ritmo * chillMult * mudSpeedMult * riverMult * mangueMult * freioDasRaizes(cerca, z.x) * dt;
           z.walkPhase += dt * (z.chilledTimer > 0 ? 3 : 6);
           // Rastro na grama (ou no barro da maré baixa) a cada meia casa
           if (!this.isRiverRow(z.row) && z.x < GRID_COLS && Math.floor(antesX * 2) !== Math.floor(z.x * 2) && !acessibilidade.reduzirEfeitos) {
@@ -2695,6 +2714,11 @@ export class GameEngine {
     }
 
     target.hp -= finalDamage;
+  }
+
+  /** Mangue-Vermelho: o zumbi está nas raízes de algum mangue da linha dele. */
+  private presoNoMangue(z: ZombieEntity): boolean {
+    return this.plants.some((p) => p.row === z.row && p.def.id === MANGUE_ID && nasRaizes(z.x, p.col, p.caminho));
   }
 
   /** Musgo-Esponja: o lança-chamas que encosta nele apaga (como levar um jato d'água). */

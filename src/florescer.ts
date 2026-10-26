@@ -76,6 +76,10 @@ export const CAMINHOS: Record<string, [Caminho, Caminho]> = {
     { id: 'encharcado', nome: 'Musgo Encharcado', icone: '💦', descricao: 'Quem morde fica Molhado por 8 s em vez de 4.' },
     { id: 'esponja_viva', nome: 'Esponja Viva', icone: '🟢', descricao: 'Recupera 14 de vida por segundo.' }
   ],
+  mangue_vermelho: [
+    { id: 'raizal', nome: 'Raizal', icone: '🌳', descricao: 'As raízes alcançam 3 casas à frente.' },
+    { id: 'ostreiro', nome: 'Mangue Ostreiro', icone: '🦪', descricao: 'Ostras nas raízes: quem morde leva 25 de dano por segundo.' }
+  ],
   aguape: [
     { id: 'tapete', nome: 'Tapete de Raízes', icone: '🪷', descricao: 'As raízes alcançam três casas à frente.' },
     { id: 'bolhao', nome: 'Bolhão', icone: '🫧', descricao: 'Bolhas com 50% mais dano que param o zumbi por um instante.' }
