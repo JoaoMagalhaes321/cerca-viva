@@ -1,0 +1,28 @@
+/* Boss Rush */
+.rush-card { max-width: 680px; }
+.rush-badge { background: linear-gradient(90deg, #a16207, #7c2d12); color: #fef3c7; }
+.rush-intro { font-size: 0.78rem; color: #cbd5e1; line-height: 1.4; margin: 4px 0 12px; }
+.rush-chefes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 6px; margin-bottom: 12px; }
+.rush-chefe {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 10px 4px 8px;
+  border-radius: 12px; border: 2px solid rgba(250, 204, 21, 0.45);
+  background: linear-gradient(180deg, rgba(69, 26, 3, 0.9), rgba(15, 23, 42, 0.95)); color: #fef3c7; text-align: center;
+}
+.rush-num {
+  position: absolute; top: -8px; left: -6px; width: 20px; height: 20px; border-radius: 50%;
+  background: #facc15; color: #422006; font-size: 0.7rem; font-weight: 900; display: flex; align-items: center; justify-content: center;
+}
+.rush-ico { font-size: 1.6rem; line-height: 1; }
+.rush-chefe strong { font-size: 0.72rem; }
+.rush-chefe small { font-size: 0.6rem; color: #94a3b8; }
+.rush-deck h4, .rush-ranking h4 { margin: 6px 0; font-size: 0.8rem; color: #cbd5e1; }
+.rush-cartas { display: flex; flex-wrap: wrap; gap: 4px; }
+.rush-carta { font-size: 0.68rem; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(30, 41, 59, 0.9); border: 1px solid rgba(148, 163, 184, 0.35); color: #e2e8f0; }
+.rush-aviso { font-size: 0.7rem; color: #fca5a5; margin: 6px 0 0; }
+.rush-ranking ol { margin: 0; padding-left: 22px; color: #e2e8f0; font-size: 0.8rem; }
+.rush-ranking li small { color: #94a3b8; margin-left: 6px; }
+.rush-vazio { font-size: 0.74rem; color: #94a3b8; margin: 0; }
+.rush-rodape { gap: 8px; flex-wrap: wrap; }
+@media (max-width: 600px) {
+  .rush-chefes { grid-template-columns: repeat(3, 1fr); }
+}

@@ -31,6 +31,7 @@ import { VasosUi } from './vasos-ui';
 import { LadoZumbiUi } from './lado-zumbi-ui';
 import { VasosEditorUi } from './vasos-editor-ui';
 import { DueloUi } from './duelo-ui';
+import { BossRushUi } from './boss-rush-ui';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
 import { JardimZen } from './zen-ui';
@@ -261,6 +262,8 @@ function syncHud(): void {
     ? ladoZumbi.rotuloDaOnda()
     : duelo.ativo()
     ? '🤝 DUELO · 🌻 × 🧟'
+    : rush.ativo()
+    ? rush.rotuloDaOnda()
     : engine.maxWaves > 0 ? `ONDA ${engine.wave} / ${engine.maxWaves}` : `ONDA ${engine.wave} · ∞`;
   if (modos.ativo()) {
     stageBadgeEl.textContent = modos.rotulo();
@@ -272,6 +275,8 @@ function syncHud(): void {
     stageBadgeEl.textContent = ladoZumbi.rotulo();
   } else if (duelo.ativo()) {
     stageBadgeEl.textContent = duelo.rotulo();
+  } else if (rush.ativo()) {
+    stageBadgeEl.textContent = rush.rotulo();
   } else if (currentLevel) {
     stageBadgeEl.textContent = `Fase ${currentLevel.world}-${currentLevel.stage}`;
   }
@@ -355,6 +360,10 @@ function updateCooldownOverlays(): void {
   }
   waveProgressFillEl.style.width = `${engine.waveProgress}%`;
   synergyCounterEl.textContent = `⚡ ${engine.totalCombos} Combos`;
+  if (rush.ativo()) {
+    stageBadgeEl.textContent = rush.rotulo();
+    waveLabelEl.textContent = rush.rotuloDaOnda();
+  }
   if (duelo.ativo()) duelo.sincronizar();
   // Mini-evento em andamento
   const eventoAviso = document.getElementById('evento-aviso');
@@ -747,6 +756,7 @@ function startLevel(level: LevelConfig): void {
   vasos.sair();
   ladoZumbi.sair();
   duelo.sair();
+  rush.sair();
   currentLevel = level;
   if (!level.evento) ProgressionManager.setCurrentLevel(level.id);
   updateMenuStageInfo();
@@ -978,6 +988,14 @@ function mostrarReplay(): void {
 function darSementes(won: boolean): number {
   const progress = ProgressionManager.getProgress();
   if (duelo.ativo()) return 0; // duelo entre amigos não dá sementes
+  if (rush.ativo()) {
+    const ganhasRush = rush.sementes(won);
+    sementes.total += ganhasRush;
+    salvarSementes(sementes);
+    atualizarSementesNoMenu();
+    if (ganhasRush > 0) window.setTimeout(() => showToast(`🌰 +${ganhasRush} sementes raras (total ${sementes.total}).`), 900);
+    return ganhasRush;
+  }
   if (ladoZumbi.ativo()) {
     // Do lado zumbi as sementes raras vêm do jardim invadido: 20 por invasão, 5 pela tentativa
     const ganhasZumbi = won ? 20 : 5;
@@ -1006,7 +1024,7 @@ function darSementes(won: boolean): number {
 
 function openGameOverModal(won: boolean): void {
   // Fechou um mundo pela primeira vez: o capítulo em quadrinhos vem antes do resultado
-  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && !ladoZumbi.ativo() && !duelo.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
+  if (won && currentLevel && !currentLevel.evento && !modos.ativo() && !expedicao.ativo() && !vasos.ativo() && !ladoZumbi.ativo() && !duelo.ativo() && !rush.ativo() && fechaMundo(currentLevel.id) && !capituloVisto(`mundo${currentLevel.world}`)) {
     engine.paused = true;
     quadrinhos.mostrar(`mundo${currentLevel.world}`, () => openGameOverModal(won));
     return;
@@ -1034,6 +1052,10 @@ function openGameOverModal(won: boolean): void {
   }
   if (duelo.ativo()) {
     duelo.mostrarResultado(won);
+    return;
+  }
+  if (rush.ativo()) {
+    rush.mostrarResultado(won);
     return;
   }
   if (won && engine.plants.length > 0) {
@@ -1128,8 +1150,14 @@ deckBtn.addEventListener('click', () => {
   almanacReturnTo = 'hud';
   openDeckModal();
 });
+let voltarParaRush = false;
 closeDeckBtn.addEventListener('click', () => {
   deckModal.classList.add('hidden');
+  if (voltarParaRush) {
+    voltarParaRush = false;
+    rush.abrir();
+    return;
+  }
   if (mainMenuScreen.classList.contains('hidden')) {
     engine.paused = false;
   }
@@ -1137,6 +1165,11 @@ closeDeckBtn.addEventListener('click', () => {
 
 startBattleBtn.addEventListener('click', () => {
   deckModal.classList.add('hidden');
+  if (voltarParaRush) {
+    voltarParaRush = false;
+    rush.abrir();
+    return;
+  }
   if (modos.ativo()) modos.reiniciar();
   else if (expedicao.ativo()) {
     showMainMenu();
@@ -1144,6 +1177,7 @@ startBattleBtn.addEventListener('click', () => {
   } else if (vasos.ativo()) vasos.reiniciar();
   else if (ladoZumbi.ativo()) ladoZumbi.reiniciar();
   else if (duelo.ativo()) duelo.reiniciar();
+  else if (rush.ativo()) rush.reiniciar();
   else startLevel(currentLevel);
 });
 
@@ -1258,6 +1292,7 @@ restartBtn.addEventListener('click', () => {
   } else if (vasos.ativo()) vasos.reiniciar();
   else if (ladoZumbi.ativo()) ladoZumbi.reiniciar();
   else if (duelo.ativo()) duelo.reiniciar();
+  else if (rush.ativo()) rush.reiniciar();
   else startLevel(currentLevel);
 });
 
@@ -1365,6 +1400,7 @@ menuHomeBtn.addEventListener('click', () => {
   vasos.sair();
   ladoZumbi.sair();
   duelo.sair();
+  rush.sair();
   showMainMenu();
 });
 
@@ -1381,6 +1417,7 @@ const modos = new Modos({
     vasos.sair();
     ladoZumbi.sair();
     duelo.sair();
+    rush.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1426,6 +1463,7 @@ const expedicao = new ExpedicaoUi({
     vasos.sair();
     ladoZumbi.sair();
     duelo.sair();
+    rush.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1444,6 +1482,7 @@ const vasos = new VasosUi({
     expedicao.sair();
     ladoZumbi.sair();
     duelo.sair();
+    rush.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1473,6 +1512,7 @@ const ladoZumbi = new LadoZumbiUi({
     expedicao.sair();
     vasos.sair();
     duelo.sair();
+    rush.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
@@ -1495,12 +1535,45 @@ const duelo = new DueloUi({
     expedicao.sair();
     vasos.sair();
     ladoZumbi.sair();
+    rush.sair();
     buildSeedPackets();
     syncHud();
     hideMainMenuAndPlay();
   },
   mostrarMenu: () => showMainMenu(),
   toast: (msg) => showToast(msg)
+});
+
+// Boss Rush (os cinco chefes seguidos, contra o relógio)
+const rush = new BossRushUi({
+  engine,
+  deck: () => {
+    const unlocked = ProgressionManager.getProgress().unlockedPlants;
+    const deck = draftDeckIds.filter((id) => unlocked.includes(id));
+    return deck.length > 0 ? deck : unlocked.slice(0, MAX_DECK_SIZE);
+  },
+  prepararPartida: () => {
+    modos.sair();
+    expedicao.sair();
+    vasos.sair();
+    ladoZumbi.sair();
+    duelo.sair();
+    buildSeedPackets();
+    syncHud();
+    hideMainMenuAndPlay();
+  },
+  mostrarMenu: () => showMainMenu(),
+  abrirDeck: () => {
+    voltarParaRush = true;
+    almanacReturnTo = 'main-menu';
+    openDeckModal();
+  },
+  toast: (msg) => showToast(msg),
+  atualizarHud: () => {
+    buildSeedPackets();
+    syncHud();
+  },
+  conquistas: (fim) => herbario.checarConquistas(fim)
 });
 
 // Start on Main Menu with Progression Info
