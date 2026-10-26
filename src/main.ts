@@ -24,6 +24,7 @@ import { aplicarModoDev, modoDevDaPagina } from './modo-dev';
 import { BalaoFlorescer } from './florescer-ui';
 import { HerbarioUi } from './herbario-ui';
 import { ExpedicaoUi } from './expedicao-ui';
+import { lerNemesis, registrarDerrota, salvarNemesis } from './nemesis';
 import { Mascote, sapoLiberado } from './mascote';
 import { VasosUi } from './vasos-ui';
 import { LadoZumbiUi } from './lado-zumbi-ui';
@@ -763,6 +764,9 @@ function iniciarFase(level: LevelConfig): void {
 
   engine.initBoard(draftBiome, deckDaPartida.length > 0 ? deckDaPartida : draftDeckIds, currentLevel);
   aplicarRegrasDaFase(engine, level);
+  // Nêmesis: quem venceu você na última derrota da Aventura volta nesta fase
+  const nemesis = level.evento ? null : lerNemesis();
+  if (nemesis) engine.agendarNemesis(nemesis);
   // Mutações de zumbi: do Mundo 2 em diante, cada vez mais comuns (no evento, fixo)
   engine.chanceElite = level.evento ? 0.15 : level.world >= 2 ? 0.08 + (level.world - 2) * 0.06 + level.stage * 0.01 : 0;
   // Zumbis cada vez mais espertos: nível por fase (inteligencia.ts)
@@ -960,11 +964,13 @@ function darSementes(won: boolean): number {
     ondas: modo === 'expedicao' ? engine.wave : engine.wave,
     chefeDerrotado: engine.tiposDerrotados.some((t) => t === 'zomboss_mech' || t === 'mapinguari' || t === 'cuca')
   });
-  sementes.total += ganhas;
+  // Nêmesis derrotado: a recompensa da fase vale o dobro
+  const total = engine.nemesisVingado ? ganhas * 2 : ganhas;
+  sementes.total += total;
   salvarSementes(sementes);
   atualizarSementesNoMenu();
-  if (ganhas > 0) window.setTimeout(() => showToast(`🌰 +${ganhas} sementes raras (total ${sementes.total}). Suba suas plantas de nível no Almanaque.`), 900);
-  return ganhas;
+  if (total > 0) window.setTimeout(() => showToast(`🌰 +${total} sementes raras${engine.nemesisVingado ? ' (em dobro pela vingança!)' : ''} (total ${sementes.total}). Suba suas plantas de nível no Almanaque.`), 900);
+  return total;
 }
 
 function openGameOverModal(won: boolean): void {
@@ -999,13 +1005,19 @@ function openGameOverModal(won: boolean): void {
     const p = engine.plants[Math.floor(Math.random() * engine.plants.length)];
     engine.falar('vitoria', p.col + 0.5, p.row);
   }
+  // Nêmesis (só na Aventura): derrotou-o → rixa encerrada; perdeu → o algoz vira (ou segue) Nêmesis
+  if (currentLevel && !currentLevel.evento) {
+    if (engine.nemesisVingado) salvarNemesis(null);
+    else if (!won && engine.algoz) salvarNemesis(registrarDerrota(lerNemesis(), engine.algoz.variant, currentLevel.id));
+  }
   herbario.checarConquistas({
     venceu: won,
     modo: currentLevel?.evento ? 'evento' : 'aventura',
     mundo: currentLevel?.world,
     deck: engine.activeDeckIds,
     marcas: engine.marcas,
-    derrotadosNaPartida: engine.tiposDerrotados
+    derrotadosNaPartida: engine.tiposDerrotados,
+    nemesisVingado: engine.nemesisVingado
   });
   if (won && currentLevel && !currentLevel.evento) {
     const tinhaSapo = engine.mascote !== null;

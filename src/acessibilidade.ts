@@ -7,7 +7,7 @@
 // apagar brilhos e partículas do jogo.
 
 import type { ElementType, TileHazard } from './types';
-import { setMovimentoReduzido, movimentoReduzidoDoSistema } from './feedback';
+import { setMovimentoReduzido, movimentoReduzidoDoSistema, setVibracao } from './feedback';
 import { CharacterRenderer } from './renderer';
 
 const CHAVE = 'pvz_acessibilidade_v1';
@@ -15,6 +15,8 @@ const CHAVE = 'pvz_acessibilidade_v1';
 export interface OpcoesAcessibilidade {
   daltonico: boolean;
   reduzirEfeitos: boolean;
+  /** Vibração do celular nos combos, vitórias e impactos (ligada por padrão). */
+  vibracao: boolean;
 }
 
 /** Formato salvo. `escolhido` marca que o jogador mexeu na opção (salvo pela tela de Acessibilidade). */
@@ -27,12 +29,12 @@ interface OpcoesSalvas extends Partial<OpcoesAcessibilidade> {
  * "reduzir movimento" no sistema; sem a marca `escolhido` esse valor não foi escolha do jogador e é ignorado.
  */
 export function lerOpcoes(raw: string | null): OpcoesAcessibilidade {
-  if (!raw) return { daltonico: false, reduzirEfeitos: false };
+  if (!raw) return { daltonico: false, reduzirEfeitos: false, vibracao: true };
   try {
     const o = JSON.parse(raw) as OpcoesSalvas;
-    return { daltonico: !!o.daltonico, reduzirEfeitos: o.escolhido === true && !!o.reduzirEfeitos };
+    return { daltonico: !!o.daltonico, reduzirEfeitos: o.escolhido === true && !!o.reduzirEfeitos, vibracao: o.vibracao !== false };
   } catch {
-    return { daltonico: false, reduzirEfeitos: false };
+    return { daltonico: false, reduzirEfeitos: false, vibracao: true };
   }
 }
 
@@ -76,7 +78,7 @@ function carregar(): OpcoesAcessibilidade {
   try {
     return lerOpcoes(localStorage.getItem(CHAVE));
   } catch {
-    return { daltonico: false, reduzirEfeitos: false }; // sem localStorage
+    return { daltonico: false, reduzirEfeitos: false, vibracao: true }; // sem localStorage
   }
 }
 
@@ -93,6 +95,7 @@ export function aplicarAcessibilidade(salvar = false): void {
     }
   }
   setMovimentoReduzido(acessibilidade.reduzirEfeitos || movimentoReduzidoDoSistema);
+  setVibracao(acessibilidade.vibracao);
   CharacterRenderer.efeitos = !acessibilidade.reduzirEfeitos;
   document.body.classList.toggle('reduzir-efeitos', acessibilidade.reduzirEfeitos);
   document.body.classList.toggle('modo-daltonico', acessibilidade.daltonico);

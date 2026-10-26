@@ -1,6 +1,7 @@
 // Janela de acessibilidade do menu: dois interruptores e a legenda das letras dos elementos.
 
 import { acessibilidade, aplicarAcessibilidade, LETRA_DO_ELEMENTO, NOME_DO_ELEMENTO } from './acessibilidade';
+import { vibrarCombo } from './feedback';
 import type { ElementType } from './types';
 import './acessibilidade.css';
 
@@ -34,6 +35,10 @@ export class AcessibilidadeUi {
           <input type="checkbox" id="acess-reduzir">
           <span><b>🌿 Reduzir efeitos</b><small>Sem tremida de tela, brilhos, confete e abertura animada; menos partículas.</small></span>
         </label>
+        <label class="acess-opcao">
+          <input type="checkbox" id="acess-vibracao">
+          <span><b>📳 Vibração</b><small>O celular vibra nos combos (no ritmo da sequência), nas vitórias e nos impactos.</small></span>
+        </label>
         <div class="modal-footer-row">
           <button class="primary-btn" data-acao="fechar">Pronto</button>
         </div>
@@ -56,11 +61,19 @@ export class AcessibilidadeUi {
       aplicarAcessibilidade(true);
       this.toast(red.checked ? '🌿 Efeitos reduzidos.' : 'Efeitos completos de volta.');
     });
+    const vib = this.modal.querySelector('#acess-vibracao') as HTMLInputElement;
+    vib.addEventListener('change', () => {
+      acessibilidade.vibracao = vib.checked;
+      aplicarAcessibilidade(true);
+      if (vib.checked) vibrarCombo(3);
+      this.toast(vib.checked ? '📳 Vibração ligada.' : '📴 Vibração desligada.');
+    });
   }
 
   public abrir(): void {
     (this.modal.querySelector('#acess-daltonico') as HTMLInputElement).checked = acessibilidade.daltonico;
     (this.modal.querySelector('#acess-reduzir') as HTMLInputElement).checked = acessibilidade.reduzirEfeitos;
+    (this.modal.querySelector('#acess-vibracao') as HTMLInputElement).checked = acessibilidade.vibracao;
     this.modal.classList.remove('hidden');
   }
 
