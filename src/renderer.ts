@@ -1000,6 +1000,39 @@ export class CharacterRenderer {
       ctx.fillText('📯', 0, top - 8 + Math.sin(performance.now() * 0.006) * 2);
       ctx.restore();
     }
+    if (z.nemesis) {
+      // Nêmesis: cicatriz costurada no rosto e o nome em cima da cabeça
+      ctx.save();
+      const cy = top + (spec.feet - spec.head) * k * 0.22;
+      const cx = spec.halfW * k * 0.25;
+      ctx.strokeStyle = '#7f1d1d';
+      ctx.lineWidth = 2.4;
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.moveTo(cx - 7, cy - 9);
+      ctx.lineTo(cx + 6, cy + 8);
+      ctx.stroke();
+      ctx.lineWidth = 1.6;
+      for (let i = 0; i < Math.min(5, 2 + z.nemesis.derrotas); i++) {
+        const t = (i + 1) / (Math.min(5, 2 + z.nemesis.derrotas) + 1);
+        const px = cx - 7 + 13 * t;
+        const py = cy - 9 + 17 * t;
+        ctx.beginPath();
+        ctx.moveTo(px - 3, py + 2.5);
+        ctx.lineTo(px + 3, py - 2.5);
+        ctx.stroke();
+      }
+      if (z.confusoTimer > 0) ctx.scale(-1, 1);
+      ctx.font = "900 11px 'Outfit', 'Nunito', sans-serif";
+      ctx.textAlign = 'center';
+      ctx.lineWidth = 3;
+      ctx.strokeStyle = '#1c0a0a';
+      ctx.fillStyle = '#fca5a5';
+      const ny = top - 22 + Math.sin(performance.now() * 0.005) * 1.5;
+      ctx.strokeText(`😈 ${z.nemesis.nome}`, 0, ny);
+      ctx.fillText(`😈 ${z.nemesis.nome}`, 0, ny);
+      ctx.restore();
+    }
     if (z.elite) {
       // Selo da mutação em cima da cabeça
       ctx.save();

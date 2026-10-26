@@ -27,6 +27,7 @@ export const CONQUISTAS: Conquista[] = [
   { id: 'infinito_20', nome: 'Noite longa', icone: '♾️', descricao: 'Sobreviva a 20 ondas no Modo Infinito.' },
   { id: 'desafio_7', nome: 'Semana cheia', icone: '🔥', descricao: 'Vença o Desafio do Dia 7 dias seguidos.' },
   { id: 'expedicao', nome: 'Expedicionário', icone: '🧭', descricao: 'Conclua uma Expedição.' },
+  { id: 'vinganca', nome: 'Acerto de contas', icone: '😈', descricao: 'Derrote um Nêmesis (o zumbi que venceu você e voltou com nome).' },
   { id: 'cem_zumbis', nome: 'Cem na cerca', icone: '🧟', descricao: 'Derrote 100 zumbis no total.' },
   { id: 'herbario_completo', nome: 'Herbário completo', icone: '📗', descricao: 'Descubra tudo o que há no Herbário.' }
 ];
@@ -63,6 +64,8 @@ export interface FimDePartida {
   ondasVencidas?: number;
   diasSeguidos?: number;
   expedicaoConcluida?: boolean;
+  /** Derrotou o Nêmesis nesta partida. */
+  nemesisVingado?: boolean;
 }
 
 export interface Contexto {
@@ -95,6 +98,7 @@ export function verificarConquistas(ganhas: string[], fim: FimDePartida | null, 
     ok('infinito_20', fim.modo === 'infinito' && (fim.ondasVencidas ?? 0) >= 20);
     ok('desafio_7', fim.modo === 'desafio' && (fim.diasSeguidos ?? 0) >= 7);
     ok('expedicao', fim.modo === 'expedicao' && !!fim.expedicaoConcluida);
+    ok('vinganca', !!fim.nemesisVingado);
     ok('noite_da_cuca', fim.venceu && fim.derrotadosNaPartida.includes('cuca'));
   }
 

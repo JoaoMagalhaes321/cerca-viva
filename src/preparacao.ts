@@ -4,6 +4,7 @@
 // Sem isso, quem ganhava uma planta nova passava de fase sem perceber que ela existia.
 
 import { CharacterRenderer } from './renderer';
+import { avisoDoNemesis, lerNemesis } from './nemesis';
 import type { PlantEntity, ZombieVariant } from './engine';
 import { LevelConfig, PLANT_CATALOG, PlantDefinition, BIOME_CATALOG } from './types';
 import { ZUMBIS_DO_HERBARIO } from './herbario';
@@ -101,6 +102,7 @@ export class Preparacao {
             <h3>🧟 Quem vem aí</h3>
             <div class="prep-zumbis-lista"></div>
             <div class="prep-ia"></div>
+            <div class="prep-nemesis hidden"></div>
             <p class="prep-dica"></p>
           </section>
           <section class="prep-sementes">
@@ -191,6 +193,11 @@ export class Preparacao {
     caixaIa.classList.toggle('hidden', ia.length === 0);
     const dica = this.q<HTMLElement>('.prep-dica');
     dica.textContent = this.dicaDaFase(level);
+    // Nêmesis: quem venceu você na última derrota volta nesta fase
+    const nemesis = level.evento ? null : lerNemesis();
+    const caixaNemesis = this.q<HTMLElement>('.prep-nemesis');
+    caixaNemesis.classList.toggle('hidden', !nemesis);
+    if (nemesis) caixaNemesis.innerHTML = `<span class="prep-nemesis-icone">😈</span><div><strong>${nemesis.nome} vai voltar</strong><small>${avisoDoNemesis(nemesis)}</small></div>`;
 
     // Sementes
     this.renderSementes();
