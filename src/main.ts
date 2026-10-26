@@ -35,6 +35,7 @@ import { BossRushUi } from './boss-rush-ui';
 import { DificuldadeUi } from './dificuldade-ui';
 import { CasaUi } from './casa-ui';
 import { PerfilUi } from './perfil-ui';
+import { intensidadeDaPartida } from './trilha-dinamica';
 import { eliteAjustada, inteligenciaAjustada, marcarAventuraConcluida, sementesAjustadas } from './dificuldade';
 import { Preparacao } from './preparacao';
 import { aplicarRegrasDaFase, regrasDaFase } from './regras-fase';
@@ -359,6 +360,21 @@ function syncHud(): void {
       }
     });
   }
+}
+
+/** Trilha dinâmica: as vozes da música entram conforme a partida esquenta. */
+function atualizarTrilhaDinamica(): void {
+  const emJogo = mainMenuScreen.classList.contains('hidden') && !engine.gameOver;
+  sound.definirIntensidade(
+    intensidadeDaPartida({
+      emJogo,
+      ondasComecaram: engine.wave > 1 || engine.zombiesKilled > 0 || engine.zombies.length > 0,
+      onda: engine.wave,
+      totalOndas: engine.maxWaves,
+      zumbisNaTela: engine.zombies.length,
+      chefe: sound.bossMode
+    })
+  );
 }
 
 function updateCooldownOverlays(): void {
@@ -1664,6 +1680,7 @@ function loop(now: number): void {
   // Throttle DOM tree updates to 10 FPS (every 100ms) to maximize canvas draw calls on mobile
   if (now - lastHudSync > 100) {
     updateCooldownOverlays();
+    atualizarTrilhaDinamica();
     tutorial.tick();
     balaoFlorescer.tick();
     lastHudSync = now;
