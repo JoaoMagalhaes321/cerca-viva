@@ -13,7 +13,7 @@ import {
 } from './types';
 import { sound } from './audio';
 import { CharacterRenderer } from './renderer';
-import { movimentoReduzido, Peso, vibrar } from './feedback';
+import { movimentoReduzido, Peso, vibrar, vibrarCombo } from './feedback';
 import {
   CERCA,
   CercaViva,
@@ -3709,7 +3709,8 @@ export class GameEngine {
     const cena = CENAS[synergyId];
     if (cena && !reduzido && !movimentoReduzido) {
       if (cena.pausa > 0) this.pausaDeImpacto = Math.max(this.pausaDeImpacto, cena.pausa);
-      if (cena.tremor > 0) this.sacudir(cena.tremor, 0.22, cena.tremor >= 6 ? 'medio' : 'leve');
+      if (cena.tremor > 0) this.sacudir(cena.tremor, 0.22);
+      vibrarCombo(this.comboSeq); // no celular, o combo vibra no ritmo da sequência
       this.soco = Math.max(this.soco, cena.tremor >= 5 ? 1 : 0.6);
       this.socoX = x;
       this.socoY = y;
